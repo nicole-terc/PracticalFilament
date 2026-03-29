@@ -125,6 +125,7 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     int _nextHandle;
     int _viewWidth;
     int _viewHeight;
+    float4 _clearColor;
 }
 
 - (void)initializeWithMetalLayer:(CAMetalLayer *)layer
@@ -133,11 +134,12 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     _nextHandle = 1;
     _viewWidth = width;
     _viewHeight = height;
+    _clearColor = float4{0.0f, 0.0f, 0.0f, 1.0f};
 
     _engine = Engine::create(Engine::Backend::METAL);
     _renderer = _engine->createRenderer();
     _renderer->setClearOptions({
-        .clearColor = {0.12f, 0.12f, 0.14f, 1.0f},
+        .clearColor = _clearColor,
         .clear = true
     });
     _scene = _engine->createScene();
@@ -150,6 +152,16 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     _view->setViewport({0, 0, (uint32_t)width, (uint32_t)height});
 
     _swapChain = _engine->createSwapChain((__bridge void *)layer);
+}
+
+- (void)setClearColorR:(float)r g:(float)g b:(float)b a:(float)a {
+    _clearColor = float4{r, g, b, a};
+    if (_renderer) {
+        _renderer->setClearOptions({
+            .clearColor = _clearColor,
+            .clear = true
+        });
+    }
 }
 
 - (void)destroy {

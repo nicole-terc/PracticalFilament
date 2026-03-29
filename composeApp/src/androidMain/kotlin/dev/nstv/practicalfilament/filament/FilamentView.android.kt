@@ -15,6 +15,7 @@ actual fun FilamentView(
     modifier: Modifier,
     camera: CameraConfig,
     lights: List<LightConfig>,
+    backgroundColor: Color,
     onEngineReady: (FilamentEngine) -> Unit,
 ) {
     val context = LocalContext.current
@@ -32,6 +33,7 @@ actual fun FilamentView(
         factory = { context ->
             SurfaceView(context).also { surfaceView ->
                 engine.initialize()
+                engine.setClearColor(backgroundColor)
 
                 val uiHelper = UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK).apply {
                     renderCallback = object : UiHelper.RendererCallback {

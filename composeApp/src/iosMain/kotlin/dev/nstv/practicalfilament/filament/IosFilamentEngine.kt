@@ -18,6 +18,10 @@ class IosFilamentEngine(
     private var _isInitialized = false
     override val isInitialized: Boolean get() = _isInitialized
 
+    fun setClearColor(color: Color) {
+        bridge.setClearColorRGBA(color.r, g = color.g, b = color.b, a = color.a)
+    }
+
     fun attachLayer(metalLayer: CAMetalLayer, width: Int, height: Int) {
         bridge.initializeWithMetalLayer(metalLayer, width = width, height = height)
         _isInitialized = true
@@ -202,6 +206,7 @@ class IosFilamentEngine(
  */
 interface FilamentBridgeProtocol {
     fun initializeWithMetalLayer(layer: CAMetalLayer, width: Int, height: Int)
+    fun setClearColorRGBA(r: Float, g: Float, b: Float, a: Float)
     fun destroy()
     fun clearScene()
     fun updateCameraEyeX(

@@ -6,6 +6,7 @@
 - (void)initializeWithMetalLayer:(CAMetalLayer * _Nonnull)layer
                            width:(int)width
                           height:(int)height;
+- (void)setClearColorR:(float)r g:(float)g b:(float)b a:(float)a;
 - (void)destroy;
 - (void)clearScene;
 

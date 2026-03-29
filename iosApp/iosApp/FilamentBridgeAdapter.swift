@@ -28,6 +28,10 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
         startRenderLoop()
     }
 
+    func setClearColorRGBA(r: Float, g: Float, b: Float, a: Float) {
+        bridge.setClearColorR(r, g: g, b: b, a: a)
+    }
+
     func destroy() {
         stopRenderLoop()
         bridge.destroy()

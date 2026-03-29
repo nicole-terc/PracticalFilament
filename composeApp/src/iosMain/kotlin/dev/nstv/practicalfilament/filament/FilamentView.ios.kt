@@ -32,6 +32,7 @@ actual fun FilamentView(
     modifier: Modifier,
     camera: CameraConfig,
     lights: List<LightConfig>,
+    backgroundColor: Color,
     onEngineReady: (FilamentEngine) -> Unit,
 ) {
     val bridge = FilamentBridgeHolder.bridge
@@ -39,6 +40,30 @@ actual fun FilamentView(
 
     val engine = remember { IosFilamentEngine(bridge) }
     val metalLayerRef = remember { arrayOfNulls<CAMetalLayer>(1) }
+    val isAttachedRef = remember { booleanArrayOf(false) }
+
+    val syncSurface: (UIView, CAMetalLayer) -> Unit = { view, metalLayer ->
+        val scale = UIScreen.mainScreen.scale
+        metalLayer.frame = view.bounds
+        metalLayer.contentsScale = scale
+
+        view.bounds.useContents {
+            val widthPx = (size.width * scale).toInt().coerceAtLeast(1)
+            val heightPx = (size.height * scale).toInt().coerceAtLeast(1)
+            metalLayer.drawableSize = CGSizeMake(widthPx.toDouble(), heightPx.toDouble())
+
+            if (!isAttachedRef[0]) {
+                engine.attachLayer(metalLayer, widthPx, heightPx)
+                engine.updateCamera(camera)
+                lights.forEach { engine.addLight(it) }
+                onEngineReady(engine)
+                isAttachedRef[0] = true
+            } else {
+                engine.updateViewport(widthPx, heightPx)
+                engine.requestFrame()
+            }
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -60,40 +85,17 @@ actual fun FilamentView(
 
             view.layer.addSublayer(metalLayer)
             metalLayerRef[0] = metalLayer
-
-            val w: Int
-            val h: Int
-            view.bounds.useContents {
-                val scale = UIScreen.mainScreen.scale
-                w = (size.width * scale).toInt().coerceAtLeast(1)
-                h = (size.height * scale).toInt().coerceAtLeast(1)
-            }
-            metalLayer.frame = view.bounds
-            metalLayer.drawableSize = CGSizeMake(w.toDouble(), h.toDouble())
-
-            engine.attachLayer(metalLayer, w, h)
-            engine.updateCamera(camera)
-            lights.forEach { engine.addLight(it) }
-            onEngineReady(engine)
-
             view
         },
-        update = { },
-        onResize = { view, rect ->
+        update = { view ->
             val metalLayer = metalLayerRef[0] ?: return@UIKitView
-            rect.useContents {
-                view.setFrame(rect)
-                view.setBounds(CGRectMake(0.0, 0.0, size.width, size.height))
-                val scale = UIScreen.mainScreen.scale
-                metalLayer.frame = view.bounds
-                metalLayer.contentsScale = scale
-
-                val widthPx = (size.width * scale).toInt().coerceAtLeast(1)
-                val heightPx = (size.height * scale).toInt().coerceAtLeast(1)
-                metalLayer.drawableSize = CGSizeMake(widthPx.toDouble(), heightPx.toDouble())
-                engine.updateViewport(widthPx, heightPx)
-                engine.requestFrame()
-            }
+            engine.setClearColor(backgroundColor)
+            syncSurface(view, metalLayer)
+        },
+        onResize = { view, _ ->
+            val metalLayer = metalLayerRef[0] ?: return@UIKitView
+            engine.setClearColor(backgroundColor)
+            syncSurface(view, metalLayer)
         },
     )
 }

@@ -58,6 +58,13 @@ class AndroidFilamentEngine(
 
     override val isInitialized: Boolean get() = _isInitialized
 
+    fun setClearColor(color: Color) {
+        renderer?.clearOptions = Renderer.ClearOptions().apply {
+            clear = true
+            clearColor = floatArrayOf(color.r, color.g, color.b, color.a)
+        }
+    }
+
     private val frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             if (!rendering) return
@@ -81,6 +88,7 @@ class AndroidFilamentEngine(
         Filament.init()
         engine = Engine.create().also { eng ->
             renderer = eng.createRenderer()
+            setClearColor(Color(0f, 0f, 0f, 1f))
             scene = eng.createScene()
             filamentView = eng.createView().apply {
                 this.scene = this@AndroidFilamentEngine.scene
