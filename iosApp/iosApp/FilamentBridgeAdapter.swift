@@ -53,18 +53,40 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
                           posX: Float, posY: Float, posZ: Float,
                           falloffRadius: Float,
                           dirX: Float, dirY: Float, dirZ: Float,
-                          innerCone: Float, outerCone: Float) -> Int32 {
+                          innerCone: Float, outerCone: Float,
+                          sunAngularRadius: Float,
+                          sunHaloSize: Float,
+                          sunHaloFalloff: Float) -> Int32 {
         return bridge.addLight(withType: type,
                                r: r, g: g, b: b,
                                intensity: intensity,
                                posX: posX, posY: posY, posZ: posZ,
                                falloffRadius: falloffRadius,
                                dirX: dirX, dirY: dirY, dirZ: dirZ,
-                               innerCone: innerCone, outerCone: outerCone)
+                               innerCone: innerCone, outerCone: outerCone,
+                               sunAngularRadius: sunAngularRadius,
+                               sunHaloSize: sunHaloSize,
+                               sunHaloFalloff: sunHaloFalloff)
     }
 
     func removeLight(handle: Int32) { bridge.removeLight(handle) }
     func clearLights() { bridge.clearLights() }
+
+    func loadIndirectLightFromPath(path: String) -> Int32 {
+        bridge.loadIndirectLight(fromPath: path)
+    }
+
+    func setIndirectLight(handle: Int32, intensity: Float) {
+        bridge.setIndirectLight(handle, intensity: intensity)
+    }
+
+    func loadSkyboxFromPath(path: String) -> Int32 {
+        bridge.loadSkybox(fromPath: path)
+    }
+
+    func setSkybox(handle: Int32) {
+        bridge.setSkybox(handle)
+    }
 
     func loadMaterialFromPath(path: String) -> Int32 {
         return bridge.loadMaterial(fromPath: path)

@@ -39,7 +39,28 @@ import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.theme.Grid
+import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.sqrt
+
+private const val RedballIndirectLightPath = "files/envs/pillars_2k/pillars_2k_ibl.ktx"
+private const val RedballSkyboxPath = "files/envs/pillars_2k/pillars_2k_skybox.ktx"
+private const val RedballEnvironmentIntensity = 50_000f
+private val RedballBaseLights = listOf(
+    LightConfig(
+        type = LightType.SUN,
+        color = Color(0.98f, 0.92f, 0.89f),
+        intensity = 110_000f,
+        direction = Float3(0.6f, -1f, -0.8f),
+        sunAngularRadius = 1.9f,
+        sunHaloSize = 10f,
+        sunHaloFalloff = 80f,
+    ),
+    LightConfig(
+        type = LightType.DIRECTIONAL,
+        intensity = 50_000f,
+        direction = Float3(-1f, 0f, 1f),
+    ),
+)
 
 @Composable
 fun RedballScreen(
@@ -50,9 +71,9 @@ fun RedballScreen(
     var lastDragPoint by remember { mutableStateOf<Float3?>(null) }
     var orientation by remember { mutableStateOf(initialRedballOrientation()) }
     var gestureLightHandle by remember { mutableIntStateOf(0) }
-    var gestureLightPosition by remember { mutableStateOf(Float3(-0.9f, 1.1f, 3.2f)) }
+    var gestureLightPosition by remember { mutableStateOf<Float3?>(null) }
     var gestureLightScreenPosition by remember { mutableStateOf<Offset?>(null) }
-    var gestureLightVersion by remember { mutableLongStateOf(1L) }
+    var gestureLightVersion by remember { mutableLongStateOf(0L) }
     var renderableHandle by remember { mutableIntStateOf(0) }
     var materialInstanceHandle by remember { mutableIntStateOf(0) }
     var materialParameterDefinitions by remember {
@@ -97,14 +118,14 @@ fun RedballScreen(
             currentEngine.removeLight(gestureLightHandle)
             gestureLightHandle = 0
         }
-        val position = gestureLightPosition
+        val position = gestureLightPosition ?: return@LaunchedEffect
         gestureLightHandle = currentEngine.addLight(
             LightConfig(
                 type = LightType.POINT,
-                color = Color(1f, 0.96f, 0.94f),
-                intensity = 750_000f,
+                color = Color(1f, 0.95f, 0.92f),
+                intensity = 30_000f,
                 position = position,
-                falloffRadius = 12f,
+                falloffRadius = 5f,
             )
         )
         currentEngine.requestFrame()
@@ -159,29 +180,29 @@ fun RedballScreen(
                         }
                     },
                 camera = CameraConfig(
-                    position = Float3(0f, 0.1f, 4.1f),
+                    position = Float3(0f, 0f, 4f),
                     lookAt = Float3(0f, 0f, 0f),
+                    fovDegrees = 45.0,
                 ),
-                lights = listOf(
-                    LightConfig(
-                        type = LightType.DIRECTIONAL,
-                        color = Color(1f, 0.96f, 0.92f),
-                        intensity = 95_000f,
-                        direction = Float3(-0.18f, -0.36f, -1f),
-                    ),
-                    LightConfig(
-                        type = LightType.DIRECTIONAL,
-                        color = Color(0.70f, 0.82f, 1f),
-                        intensity = 20_000f,
-                        direction = Float3(0.8f, 0.1f, -0.55f),
-                    ),
-                ),
-                backgroundColor = Color(0.03f, 0.03f, 0.04f, 1f),
+                lights = RedballBaseLights,
+                backgroundColor = Color(0f, 0f, 0f, 1f),
                 onEngineReady = { engine ->
                     val (instanceHandle, definitions, parameters) = loadMaterialOnEngine(
                         engine,
                         RedballMaterial,
                     )
+                    val indirectLightHandle =
+                        engine.loadIndirectLight(Res.getUri(RedballIndirectLightPath))
+                    if (indirectLightHandle > 0) {
+                        engine.setIndirectLight(
+                            handle = indirectLightHandle,
+                            intensity = RedballEnvironmentIntensity,
+                        )
+                    }
+                    val skyboxHandle = engine.loadSkybox(Res.getUri(RedballSkyboxPath))
+                    if (skyboxHandle > 0) {
+                        engine.setSkybox(skyboxHandle)
+                    }
                     filamentEngine = engine
                     materialParameterDefinitions = definitions
                     materialParameters = parameters
@@ -189,6 +210,9 @@ fun RedballScreen(
                     orientation = initialRedballOrientation()
                     lastDragPoint = null
                     gestureLightHandle = 0
+                    gestureLightPosition = null
+                    gestureLightScreenPosition = null
+                    gestureLightVersion = 0L
                     renderableHandle = engine.createSphereRenderable(
                         materialInstanceHandle = instanceHandle,
                         radius = 1f,
@@ -231,7 +255,7 @@ fun RedballScreen(
             )
             Text(
                 modifier = Modifier.padding(top = Grid.Half, bottom = Grid.One),
-                text = "Custom plastic material based on Filament's redball sample. Drag to rotate the sphere and double-tap the viewport to reposition the highlight light.",
+                text = "Plastic sphere using the redball sample's sun, backlight, and baked pillars reflections, with Marble-style drag rotation, double-tap light placement, and live material inputs.",
                 style = MaterialTheme.typography.bodyMedium,
             )
 
@@ -292,9 +316,7 @@ private data class RedballQuaternion(
 }
 
 private fun initialRedballOrientation(): RedballQuaternion {
-    val pitch = redballQuaternionFromAxisAngle(Float3(1f, 0f, 0f), -10f)
-    val yaw = redballQuaternionFromAxisAngle(Float3(0f, 1f, 0f), 16f)
-    return yaw * pitch
+    return RedballQuaternion(0f, 0f, 0f, 1f)
 }
 
 private fun redballQuaternionFromAxisAngle(axis: Float3, angleDegrees: Float): RedballQuaternion {

@@ -17,12 +17,12 @@ val MaterialFilesList = listOf(
 val RedballMaterial = Material(
     fileName = "plastic.filamat",
     label = "redball",
-    description = "Red plastic sphere based on Filament's redball sample, with clear coat tuned for a tight glossy highlight.",
+    description = "Red plastic sphere based on Filament's redball sample.",
     overrides = mapOf(
-        "baseColor" to Float3(0.80f, 0.07f, 0.15f),
-        "roughness" to 0.14f,
+        "baseColor" to Float3(0.8f, 0f, 0f),
+        "roughness" to 0.5f,
         "clearCoat" to 1f,
-        "clearCoatRoughness" to 0.04f,
+        "clearCoatRoughness" to 0.3f,
     ),
 )
 

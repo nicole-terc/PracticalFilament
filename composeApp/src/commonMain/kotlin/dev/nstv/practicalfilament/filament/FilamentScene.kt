@@ -1,6 +1,6 @@
 package dev.nstv.practicalfilament.filament
 
-enum class LightType { DIRECTIONAL, POINT, SPOT }
+enum class LightType { DIRECTIONAL, POINT, SPOT, SUN }
 
 data class LightConfig(
     val type: LightType,
@@ -11,6 +11,9 @@ data class LightConfig(
     val direction: Float3 = Float3(0f, -1f, 0f),
     val innerConeAngle: Float = 0.5f,
     val outerConeAngle: Float = 0.7f,
+    val sunAngularRadius: Float = 1.9f,
+    val sunHaloSize: Float = 10f,
+    val sunHaloFalloff: Float = 80f,
 )
 
 data class CameraConfig(

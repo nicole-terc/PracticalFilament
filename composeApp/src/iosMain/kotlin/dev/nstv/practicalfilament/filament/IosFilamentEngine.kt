@@ -61,6 +61,9 @@ class IosFilamentEngine(
             falloffRadius = config.falloffRadius,
             dirX = config.direction.x, dirY = config.direction.y, dirZ = config.direction.z,
             innerCone = config.innerConeAngle, outerCone = config.outerConeAngle,
+            sunAngularRadius = config.sunAngularRadius,
+            sunHaloSize = config.sunHaloSize,
+            sunHaloFalloff = config.sunHaloFalloff,
         )
     }
 
@@ -70,6 +73,22 @@ class IosFilamentEngine(
 
     override fun clearLights() {
         bridge.clearLights()
+    }
+
+    override fun loadIndirectLight(path: String): Int {
+        return bridge.loadIndirectLightFromPath(path)
+    }
+
+    override fun setIndirectLight(handle: Int, intensity: Float) {
+        bridge.setIndirectLight(handle, intensity = intensity)
+    }
+
+    override fun loadSkybox(path: String): Int {
+        return bridge.loadSkyboxFromPath(path)
+    }
+
+    override fun setSkybox(handle: Int) {
+        bridge.setSkybox(handle)
     }
 
     override fun loadMaterial(path: String): Int {
@@ -241,9 +260,16 @@ interface FilamentBridgeProtocol {
         falloffRadius: Float,
         dirX: Float, dirY: Float, dirZ: Float,
         innerCone: Float, outerCone: Float,
+        sunAngularRadius: Float,
+        sunHaloSize: Float,
+        sunHaloFalloff: Float,
     ): Int
     fun removeLight(handle: Int)
     fun clearLights()
+    fun loadIndirectLightFromPath(path: String): Int
+    fun setIndirectLight(handle: Int, intensity: Float)
+    fun loadSkyboxFromPath(path: String): Int
+    fun setSkybox(handle: Int)
     fun loadMaterialFromPath(path: String): Int
     fun getMaterialParameterDefinitionCount(materialHandle: Int): Int
     fun getMaterialParameterName(materialHandle: Int, index: Int): String

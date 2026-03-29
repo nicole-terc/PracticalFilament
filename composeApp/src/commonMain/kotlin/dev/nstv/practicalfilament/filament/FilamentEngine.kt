@@ -19,6 +19,12 @@ interface FilamentEngine {
     fun removeLight(handle: Int)
     fun clearLights()
 
+    // Environment
+    fun loadIndirectLight(path: String): Int
+    fun setIndirectLight(handle: Int, intensity: Float = 30_000f)
+    fun loadSkybox(path: String): Int
+    fun setSkybox(handle: Int)
+
     // Materials
     fun loadMaterial(path: String): Int
     fun getMaterialParameters(materialHandle: Int): List<MaterialParameterDefinition>

@@ -9,13 +9,17 @@
 #import <filament/SwapChain.h>
 #import <filament/Material.h>
 #import <filament/MaterialInstance.h>
+#import <filament/IndirectLight.h>
 #import <filament/LightManager.h>
 #import <filament/RenderableManager.h>
 #import <filament/TransformManager.h>
 #import <filament/VertexBuffer.h>
 #import <filament/IndexBuffer.h>
+#import <filament/Skybox.h>
 #import <filament/Texture.h>
 #import <filament/TextureSampler.h>
+#import <image/Ktx1Bundle.h>
+#import <ktxreader/Ktx1Reader.h>
 #import <utils/EntityManager.h>
 #import <math/mat3.h>
 #import <math/vec3.h>
@@ -118,6 +122,8 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
 
     std::map<int, Entity> _lights;
     std::map<int, Entity> _renderables;
+    std::map<int, IndirectLight *> _indirectLights;
+    std::map<int, Skybox *> _skyboxes;
     std::map<int, Material *> _materials;
     std::map<int, MaterialInstance *> _materialInstances;
     std::map<int, Texture *> _textures;
@@ -169,6 +175,9 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
 - (void)destroy {
     if (!_engine) return;
 
+    _scene->setIndirectLight(nullptr);
+    _scene->setSkybox(nullptr);
+
     for (auto &pair : _renderables) {
         _scene->remove(pair.second);
         _engine->destroy(pair.second);
@@ -187,6 +196,16 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
         _engine->destroy(pair.second);
     }
     _materialInstances.clear();
+
+    for (auto &pair : _indirectLights) {
+        _engine->destroy(pair.second);
+    }
+    _indirectLights.clear();
+
+    for (auto &pair : _skyboxes) {
+        _engine->destroy(pair.second);
+    }
+    _skyboxes.clear();
 
     for (auto &pair : _materials) {
         _engine->destroy(pair.second);
@@ -243,9 +262,12 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
                       r:(float)r g:(float)g b:(float)b
               intensity:(float)intensity
                    posX:(float)posX posY:(float)posY posZ:(float)posZ
-           falloffRadius:(float)falloffRadius
+            falloffRadius:(float)falloffRadius
                    dirX:(float)dirX dirY:(float)dirY dirZ:(float)dirZ
-              innerCone:(float)innerCone outerCone:(float)outerCone {
+              innerCone:(float)innerCone outerCone:(float)outerCone
+      sunAngularRadius:(float)sunAngularRadius
+            sunHaloSize:(float)sunHaloSize
+         sunHaloFalloff:(float)sunHaloFalloff {
     if (!_engine) return -1;
 
     Entity entity = EntityManager::get().create();
@@ -255,6 +277,7 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
         case 0: ltype = LightManager::Type::DIRECTIONAL; break;
         case 1: ltype = LightManager::Type::POINT; break;
         case 2: ltype = LightManager::Type::SPOT; break;
+        case 3: ltype = LightManager::Type::SUN; break;
         default: ltype = LightManager::Type::DIRECTIONAL; break;
     }
 
@@ -269,6 +292,11 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     }
     if (type == 2) {
         builder.spotLightCone(innerCone, outerCone);
+    }
+    if (type == 3) {
+        builder.sunAngularRadius(sunAngularRadius);
+        builder.sunHaloSize(sunHaloSize);
+        builder.sunHaloFalloff(sunHaloFalloff);
     }
 
     builder.build(*_engine, entity);
@@ -296,6 +324,96 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
         EntityManager::get().destroy(pair.second);
     }
     _lights.clear();
+}
+
+- (int)loadIndirectLightFromPath:(NSString *)path {
+    if (!_engine) return -1;
+    NSData *data = PFLoadDataFromPathOrUri(path);
+    if (!data) {
+        NSLog(@"Failed to load indirect light data from '%@'", path);
+        return -1;
+    }
+
+    auto ktx = std::make_unique<image::Ktx1Bundle>(
+        static_cast<const uint8_t *>(data.bytes),
+        (uint32_t)data.length
+    );
+    filament::math::float3 sphericalHarmonics[9];
+    if (!ktx->getSphericalHarmonics(sphericalHarmonics)) {
+        NSLog(@"Failed to read spherical harmonics from '%@'", path);
+        return -1;
+    }
+
+    Texture *cubemap = ktxreader::Ktx1Reader::createTexture(_engine, ktx.release(), false);
+    if (!cubemap) {
+        NSLog(@"Failed to create indirect light cubemap from '%@'", path);
+        return -1;
+    }
+
+    IndirectLight *indirectLight = IndirectLight::Builder()
+        .reflections(cubemap)
+        .irradiance(3, sphericalHarmonics)
+        .build(*_engine);
+    if (!indirectLight) {
+        NSLog(@"Failed to build indirect light from '%@'", path);
+        _engine->destroy(cubemap);
+        return -1;
+    }
+
+    int textureHandle = _nextHandle++;
+    _textures[textureHandle] = cubemap;
+
+    int handle = _nextHandle++;
+    _indirectLights[handle] = indirectLight;
+    return handle;
+}
+
+- (void)setIndirectLight:(int)handle intensity:(float)intensity {
+    auto it = _indirectLights.find(handle);
+    if (it == _indirectLights.end() || !_scene) return;
+    it->second->setIntensity(intensity);
+    _scene->setIndirectLight(it->second);
+}
+
+- (int)loadSkyboxFromPath:(NSString *)path {
+    if (!_engine) return -1;
+    NSData *data = PFLoadDataFromPathOrUri(path);
+    if (!data) {
+        NSLog(@"Failed to load skybox data from '%@'", path);
+        return -1;
+    }
+
+    auto ktx = std::make_unique<image::Ktx1Bundle>(
+        static_cast<const uint8_t *>(data.bytes),
+        (uint32_t)data.length
+    );
+    Texture *cubemap = ktxreader::Ktx1Reader::createTexture(_engine, ktx.release(), false);
+    if (!cubemap) {
+        NSLog(@"Failed to create skybox cubemap from '%@'", path);
+        return -1;
+    }
+
+    Skybox *skybox = Skybox::Builder()
+        .environment(cubemap)
+        .build(*_engine);
+    if (!skybox) {
+        NSLog(@"Failed to build skybox from '%@'", path);
+        _engine->destroy(cubemap);
+        return -1;
+    }
+
+    int textureHandle = _nextHandle++;
+    _textures[textureHandle] = cubemap;
+
+    int handle = _nextHandle++;
+    _skyboxes[handle] = skybox;
+    return handle;
+}
+
+- (void)setSkybox:(int)handle {
+    auto it = _skyboxes.find(handle);
+    if (it == _skyboxes.end() || !_scene) return;
+    _scene->setSkybox(it->second);
 }
 
 - (int)loadMaterialFromPath:(NSString *)path {

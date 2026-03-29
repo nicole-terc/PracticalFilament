@@ -21,10 +21,18 @@
                    posX:(float)posX posY:(float)posY posZ:(float)posZ
             falloffRadius:(float)falloffRadius
                    dirX:(float)dirX dirY:(float)dirY dirZ:(float)dirZ
-              innerCone:(float)innerCone outerCone:(float)outerCone;
+              innerCone:(float)innerCone outerCone:(float)outerCone
+      sunAngularRadius:(float)sunAngularRadius
+            sunHaloSize:(float)sunHaloSize
+         sunHaloFalloff:(float)sunHaloFalloff;
 
 - (void)removeLight:(int)handle;
 - (void)clearLights;
+
+- (int)loadIndirectLightFromPath:(NSString * _Nonnull)path;
+- (void)setIndirectLight:(int)handle intensity:(float)intensity;
+- (int)loadSkyboxFromPath:(NSString * _Nonnull)path;
+- (void)setSkybox:(int)handle;
 
 - (int)loadMaterialFromPath:(NSString * _Nonnull)path;
 - (int)getMaterialParameterDefinitionCount:(int)materialHandle;

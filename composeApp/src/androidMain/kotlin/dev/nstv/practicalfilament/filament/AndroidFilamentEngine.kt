@@ -7,8 +7,8 @@ import android.view.Surface
 import com.google.android.filament.Camera
 import com.google.android.filament.Engine
 import com.google.android.filament.EntityManager
-import com.google.android.filament.Filament
 import com.google.android.filament.IndexBuffer
+import com.google.android.filament.IndirectLight
 import com.google.android.filament.LightManager
 import com.google.android.filament.Material
 import com.google.android.filament.MaterialInstance
@@ -23,6 +23,8 @@ import com.google.android.filament.VertexBuffer
 import com.google.android.filament.View
 import com.google.android.filament.Viewport
 import com.google.android.filament.android.UiHelper
+import com.google.android.filament.utils.KTX1Loader
+import com.google.android.filament.utils.Utils
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.MaterialParameterPrecision
@@ -54,6 +56,8 @@ class AndroidFilamentEngine(
     private val materialInstanceMaterials = mutableMapOf<Int, Int>()
     private val materialParameterDefinitions = mutableMapOf<Int, Map<String, MaterialParameterDefinition>>()
     private val textures = mutableMapOf<Int, Texture>()
+    private val indirectLights = mutableMapOf<Int, EnvironmentIndirectLight>()
+    private val skyboxes = mutableMapOf<Int, EnvironmentSkybox>()
     private val vertexBuffers = mutableListOf<VertexBuffer>()
     private val indexBuffers = mutableListOf<IndexBuffer>()
 
@@ -90,7 +94,7 @@ class AndroidFilamentEngine(
 
     override fun initialize() {
         if (_isInitialized) return
-        Filament.init()
+        Utils.init()
         engine = Engine.create().also { eng ->
             renderer = eng.createRenderer()
             setClearColor(Color(0f, 0f, 0f, 1f))
@@ -110,6 +114,8 @@ class AndroidFilamentEngine(
     override fun destroy() {
         stopRenderLoop()
         val eng = engine ?: return
+        scene?.setIndirectLight(null)
+        scene?.setSkybox(null)
 
         renderables.values.forEach { entity ->
             eng.destroyEntity(entity)
@@ -130,6 +136,18 @@ class AndroidFilamentEngine(
         materials.values.forEach { eng.destroyMaterial(it) }
         materials.clear()
         materialParameterDefinitions.clear()
+
+        indirectLights.values.forEach { bundle ->
+            eng.destroyIndirectLight(bundle.indirectLight)
+            eng.destroyTexture(bundle.cubemap)
+        }
+        indirectLights.clear()
+
+        skyboxes.values.forEach { bundle ->
+            eng.destroySkybox(bundle.skybox)
+            eng.destroyTexture(bundle.cubemap)
+        }
+        skyboxes.clear()
 
         textures.values.forEach { eng.destroyTexture(it) }
         textures.clear()
@@ -220,6 +238,7 @@ class AndroidFilamentEngine(
             LightType.DIRECTIONAL -> LightManager.Type.DIRECTIONAL
             LightType.POINT -> LightManager.Type.POINT
             LightType.SPOT -> LightManager.Type.SPOT
+            LightType.SUN -> LightManager.Type.SUN
         }
 
         LightManager.Builder(type)
@@ -233,6 +252,11 @@ class AndroidFilamentEngine(
                 }
                 if (config.type == LightType.SPOT) {
                     spotLightCone(config.innerConeAngle, config.outerConeAngle)
+                }
+                if (config.type == LightType.SUN) {
+                    sunAngularRadius(config.sunAngularRadius)
+                    sunHaloSize(config.sunHaloSize)
+                    sunHaloFalloff(config.sunHaloFalloff)
                 }
             }
             .build(eng, entity)
@@ -261,16 +285,42 @@ class AndroidFilamentEngine(
         lights.clear()
     }
 
-    override fun loadMaterial(path: String): Int {
-        val assetPath = path.removePrefix("file:///android_asset/")
-
+    override fun loadIndirectLight(path: String): Int {
         val eng = engine ?: return -1
-        val bytes = context.assets.open(assetPath).readBytes()
-        val buffer = ByteBuffer.allocateDirect(bytes.size).apply {
-            order(ByteOrder.nativeOrder())
-            put(bytes)
-            flip()
-        }
+        val buffer = loadAssetBuffer(path) ?: return -1
+        val bundle = KTX1Loader.createIndirectLight(eng, buffer)
+        val indirectLight = bundle.indirectLight ?: return -1
+        val cubemap = bundle.cubemap ?: return -1
+        val handle = nextHandle++
+        indirectLights[handle] = EnvironmentIndirectLight(indirectLight, cubemap)
+        return handle
+    }
+
+    override fun setIndirectLight(handle: Int, intensity: Float) {
+        val bundle = indirectLights[handle] ?: return
+        bundle.indirectLight.intensity = intensity
+        scene?.setIndirectLight(bundle.indirectLight)
+    }
+
+    override fun loadSkybox(path: String): Int {
+        val eng = engine ?: return -1
+        val buffer = loadAssetBuffer(path) ?: return -1
+        val bundle = KTX1Loader.createSkybox(eng, buffer)
+        val skybox = bundle.skybox ?: return -1
+        val cubemap = bundle.cubemap ?: return -1
+        val handle = nextHandle++
+        skyboxes[handle] = EnvironmentSkybox(skybox, cubemap)
+        return handle
+    }
+
+    override fun setSkybox(handle: Int) {
+        val bundle = skyboxes[handle] ?: return
+        scene?.setSkybox(bundle.skybox)
+    }
+
+    override fun loadMaterial(path: String): Int {
+        val eng = engine ?: return -1
+        val buffer = loadAssetBuffer(path) ?: return -1
         val material = Material.Builder()
             .payload(buffer, buffer.remaining())
             .build(eng)
@@ -690,6 +740,16 @@ class AndroidFilamentEngine(
         // This is a no-op since we render every frame.
     }
 
+    private fun loadAssetBuffer(path: String): ByteBuffer? {
+        val assetPath = path.removePrefix("file:///android_asset/")
+        val bytes = runCatching { context.assets.open(assetPath).readBytes() }.getOrNull() ?: return null
+        return ByteBuffer.allocateDirect(bytes.size).apply {
+            order(ByteOrder.nativeOrder())
+            put(bytes)
+            flip()
+        }
+    }
+
     private fun buildVertexBuffer(eng: Engine, data: FloatArray, vertexCount: Int): VertexBuffer {
         val byteBuffer = ByteBuffer.allocateDirect(data.size * 4).apply {
             order(ByteOrder.nativeOrder())
@@ -782,4 +842,14 @@ class AndroidFilamentEngine(
         indexBuffers.add(ib)
         return ib
     }
+
+    private data class EnvironmentIndirectLight(
+        val indirectLight: IndirectLight,
+        val cubemap: Texture,
+    )
+
+    private data class EnvironmentSkybox(
+        val skybox: com.google.android.filament.Skybox,
+        val cubemap: Texture,
+    )
 }
