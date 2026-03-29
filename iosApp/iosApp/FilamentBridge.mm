@@ -724,9 +724,29 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
 
     const float radiansX = rotationX * (float)M_PI / 180.0f;
     const float radiansY = rotationY * (float)M_PI / 180.0f;
-    const mat4f rotation = mat4f::rotation(radiansY, float3{0.0f, 1.0f, 0.0f}) *
-        mat4f::rotation(radiansX, float3{1.0f, 0.0f, 0.0f});
+    const mat4f rotation = mat4f::rotation(radiansX, float3{1.0f, 0.0f, 0.0f}) *
+        mat4f::rotation(radiansY, float3{0.0f, 1.0f, 0.0f});
     transformManager.setTransform(instance, rotation);
+}
+
+- (void)setRenderableTransform:(int)handle
+                           m00:(float)m00 m01:(float)m01 m02:(float)m02 m03:(float)m03
+                           m10:(float)m10 m11:(float)m11 m12:(float)m12 m13:(float)m13
+                           m20:(float)m20 m21:(float)m21 m22:(float)m22 m23:(float)m23
+                           m30:(float)m30 m31:(float)m31 m32:(float)m32 m33:(float)m33 {
+    auto it = _renderables.find(handle);
+    if (it == _renderables.end() || !_engine) return;
+
+    auto& transformManager = _engine->getTransformManager();
+    auto instance = transformManager.getInstance(it->second);
+    if (!instance.isValid()) return;
+
+    transformManager.setTransform(instance, mat4f{
+        float4{m00, m01, m02, m03},
+        float4{m10, m11, m12, m13},
+        float4{m20, m21, m22, m23},
+        float4{m30, m31, m32, m33},
+    });
 }
 
 - (void)removeRenderable:(int)handle {

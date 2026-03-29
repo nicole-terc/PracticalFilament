@@ -8,6 +8,7 @@ import dev.nstv.practicalfilament.filament.material.Material
 
 val MaterialFilesList = listOf(
     "aiDefaultMat.filamat",
+    "image.filamat",
     "sandboxLitFade.filamat",
     "sandboxCloth.filamat",
     "mirror.filamat",
@@ -26,8 +27,14 @@ val MaterialOverridesList = listOf(
         ),
     ),
     Material(
+        fileName = "image.filamat",
+        label = "image",
+        description = "The bundled image material wrapped onto a sphere for a softer stone-like look.",
+        overrides = emptyMap(),
+    ),
+    Material(
         fileName = "sandboxLitFade.filamat",
-        label = "Lit Fade",
+        label = "sandboxLitFade",
         description = "Glossy lit material on a sphere with the existing runtime controls.",
         overrides = mapOf(
             "baseColor" to Float3(0.78f, 0.84f, 0.92f),
@@ -44,7 +51,7 @@ val MaterialOverridesList = listOf(
     ),
     Material(
         fileName = "sandboxCloth.filamat",
-        label = "Cloth",
+        label = "sandboxCloth",
         description = "The bundled cloth material wrapped onto a sphere for a softer stone-like look.",
         overrides = mapOf(
             "baseColor" to Float3(0.72f, 0.74f, 0.70f),
@@ -55,7 +62,7 @@ val MaterialOverridesList = listOf(
     ),
     Material(
         fileName = "mirror.filamat",
-        label = "Mirror",
+        label = "mirror",
         description = "The existing mirror material using its bundled static texture path.",
         overrides = mapOf(
             "baseColor" to Float4(1f, 1f, 1f, 1f),

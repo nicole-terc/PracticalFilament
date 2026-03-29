@@ -659,8 +659,18 @@ class AndroidFilamentEngine(
 
         val transform = FloatArray(16)
         Matrix.setIdentityM(transform, 0)
-        Matrix.rotateM(transform, 0, rotationYDegrees, 0f, 1f, 0f)
         Matrix.rotateM(transform, 0, rotationXDegrees, 1f, 0f, 0f)
+        Matrix.rotateM(transform, 0, rotationYDegrees, 0f, 1f, 0f)
+        transformManager.setTransform(instance, transform)
+    }
+
+    override fun setRenderableTransform(handle: Int, transform: FloatArray) {
+        val eng = engine ?: return
+        val entity = renderables[handle] ?: return
+        val transformManager = eng.transformManager
+        val instance = transformManager.getInstance(entity)
+        if (instance == 0) return
+        require(transform.size == 16) { "Renderable transform must have 16 values" }
         transformManager.setTransform(instance, transform)
     }
 

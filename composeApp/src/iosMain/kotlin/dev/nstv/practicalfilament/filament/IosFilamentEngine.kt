@@ -193,6 +193,17 @@ class IosFilamentEngine(
         bridge.setRenderableRotation(handle, rotationX = rotationXDegrees, rotationY = rotationYDegrees)
     }
 
+    override fun setRenderableTransform(handle: Int, transform: FloatArray) {
+        require(transform.size == 16) { "Renderable transform must have 16 values" }
+        bridge.setRenderableTransform(
+            handle,
+            transform[0], transform[1], transform[2], transform[3],
+            transform[4], transform[5], transform[6], transform[7],
+            transform[8], transform[9], transform[10], transform[11],
+            transform[12], transform[13], transform[14], transform[15],
+        )
+    }
+
     override fun removeRenderable(handle: Int) {
         bridge.removeRenderable(handle)
     }
@@ -270,6 +281,13 @@ interface FilamentBridgeProtocol {
     fun createPlaneWithMaterial(instanceHandle: Int, width: Float, height: Float): Int
     fun createSphereWithMaterial(instanceHandle: Int, radius: Float): Int
     fun setRenderableRotation(handle: Int, rotationX: Float, rotationY: Float)
+    fun setRenderableTransform(
+        handle: Int,
+        m00: Float, m01: Float, m02: Float, m03: Float,
+        m10: Float, m11: Float, m12: Float, m13: Float,
+        m20: Float, m21: Float, m22: Float, m23: Float,
+        m30: Float, m31: Float, m32: Float, m33: Float,
+    )
     fun removeRenderable(handle: Int)
     fun render()
     fun updateViewportWidth(width: Int, height: Int)
