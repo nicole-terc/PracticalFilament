@@ -257,11 +257,6 @@ fun MarbleScreen(
                 text = "Marble",
                 style = MaterialTheme.typography.headlineSmall,
             )
-            Text(
-                modifier = Modifier.padding(top = Grid.Half, bottom = Grid.One),
-                text = marbleMaterials[selectedMaterialIndex].description,
-                style = MaterialTheme.typography.bodyMedium,
-            )
 
             DropDownWithArrows(
                 options = marbleMaterials.map { it.label },

@@ -138,7 +138,7 @@ fun MaterialViewerScreen(
                 .padding(Grid.Two)
         ) {
             DropDownWithArrows(
-                options = availableMaterials.map { it.removeSuffix(".filamat") },
+                options = availableMaterials.map { it.substringAfterLast('/').removeSuffix(".filamat") },
                 selectedIndex = selectedMaterialIndex,
                 label = "Material",
                 onSelectionChanged = { index ->

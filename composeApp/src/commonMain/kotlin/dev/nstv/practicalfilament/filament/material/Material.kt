@@ -6,7 +6,6 @@ import practicalfilament.composeapp.generated.resources.Res
 data class Material(
     val fileName: String,
     val label: String,
-    val description: String,
     val overrides: Map<String, Any>,
 )
 
