@@ -16,6 +16,7 @@ import com.google.android.filament.RenderableManager
 import com.google.android.filament.Renderer
 import com.google.android.filament.Scene
 import com.google.android.filament.SwapChain
+import com.google.android.filament.SurfaceOrientation
 import com.google.android.filament.Texture
 import com.google.android.filament.TextureSampler
 import com.google.android.filament.VertexBuffer
@@ -513,12 +514,13 @@ class AndroidFilamentEngine(
         val hw = width / 2f
         val hh = height / 2f
 
-        // Positions (x, y, z) + Normals (nx, ny, nz) + UVs (u, v) = 8 floats per vertex
+        // Positions (x, y, z) + Tangent quaternion (x, y, z, w) + UVs (u, v) = 9 floats per vertex
+        // Normal (0,0,1) → tangent quaternion (0,0,0,1)
         val vertices = floatArrayOf(
-            -hw, -hh, 0f, 0f, 0f, 1f, 0f, 0f,
-             hw, -hh, 0f, 0f, 0f, 1f, 1f, 0f,
-             hw,  hh, 0f, 0f, 0f, 1f, 1f, 1f,
-            -hw,  hh, 0f, 0f, 0f, 1f, 0f, 1f,
+            -hw, -hh, 0f, 0f, 0f, 0f, 1f, 0f, 0f,
+             hw, -hh, 0f, 0f, 0f, 0f, 1f, 1f, 0f,
+             hw,  hh, 0f, 0f, 0f, 0f, 1f, 1f, 1f,
+            -hw,  hh, 0f, 0f, 0f, 0f, 1f, 0f, 1f,
         )
 
         val indices = shortArrayOf(0, 1, 2, 0, 2, 3)
@@ -551,8 +553,12 @@ class AndroidFilamentEngine(
         val stacks = 24
         val slices = 24
         val vertexCount = (stacks + 1) * (slices + 1)
-        val vertexData = FloatArray(vertexCount * 8)
-        var vi = 0
+        val positions = FloatArray(vertexCount * 3)
+        val normals = FloatArray(vertexCount * 3)
+        val uvs = FloatArray(vertexCount * 2)
+        var positionIndex = 0
+        var normalIndex = 0
+        var uvIndex = 0
 
         for (i in 0..stacks) {
             val phi = PI * i.toDouble() / stacks
@@ -564,18 +570,20 @@ class AndroidFilamentEngine(
                 val sinTheta = sin(theta).toFloat()
                 val cosTheta = cos(theta).toFloat()
 
-                val x = cosTheta * sinPhi
-                val y = cosPhi
-                val z = sinTheta * sinPhi
+                val nx = cosTheta * sinPhi
+                val ny = cosPhi
+                val nz = sinTheta * sinPhi
 
-                vertexData[vi++] = x * radius  // position
-                vertexData[vi++] = y * radius
-                vertexData[vi++] = z * radius
-                vertexData[vi++] = x            // normal
-                vertexData[vi++] = y
-                vertexData[vi++] = z
-                vertexData[vi++] = j.toFloat() / slices   // uv
-                vertexData[vi++] = i.toFloat() / stacks
+                positions[positionIndex++] = nx * radius
+                positions[positionIndex++] = ny * radius
+                positions[positionIndex++] = nz * radius
+
+                normals[normalIndex++] = nx
+                normals[normalIndex++] = ny
+                normals[normalIndex++] = nz
+
+                uvs[uvIndex++] = j.toFloat() / slices
+                uvs[uvIndex++] = i.toFloat() / stacks
             }
         }
 
@@ -587,12 +595,38 @@ class AndroidFilamentEngine(
                 val first = i * (slices + 1) + j
                 val second = first + slices + 1
                 indexData[ii++] = first.toShort()
-                indexData[ii++] = second.toShort()
                 indexData[ii++] = (first + 1).toShort()
                 indexData[ii++] = second.toShort()
+                indexData[ii++] = (first + 1).toShort()
                 indexData[ii++] = (second + 1).toShort()
-                indexData[ii++] = (first + 1).toShort()
+                indexData[ii++] = second.toShort()
             }
+        }
+
+        val tangentQuaternions = buildSurfaceOrientationQuaternions(
+            vertexCount = vertexCount,
+            positions = positions,
+            normals = normals,
+            uvs = uvs,
+            indices = indexData,
+        )
+
+        // Interleaved vertex format: position(3) + tangent quaternion(4) + uv(2)
+        val vertexData = FloatArray(vertexCount * 9)
+        var vi = 0
+        var pi = 0
+        var qi = 0
+        var ui = 0
+        repeat(vertexCount) {
+            vertexData[vi++] = positions[pi++]
+            vertexData[vi++] = positions[pi++]
+            vertexData[vi++] = positions[pi++]
+            vertexData[vi++] = tangentQuaternions[qi++]
+            vertexData[vi++] = tangentQuaternions[qi++]
+            vertexData[vi++] = tangentQuaternions[qi++]
+            vertexData[vi++] = tangentQuaternions[qi++]
+            vertexData[vi++] = uvs[ui++]
+            vertexData[vi++] = uvs[ui++]
         }
 
         val vertexBuffer = buildVertexBuffer(eng, vertexData, vertexCount)
@@ -652,14 +686,72 @@ class AndroidFilamentEngine(
         val vb = VertexBuffer.Builder()
             .vertexCount(vertexCount)
             .bufferCount(1)
-            .attribute(VertexBuffer.VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, 32)
-            .attribute(VertexBuffer.VertexAttribute.TANGENTS, 0, VertexBuffer.AttributeType.FLOAT3, 12, 32)
-            .attribute(VertexBuffer.VertexAttribute.UV0, 0, VertexBuffer.AttributeType.FLOAT2, 24, 32)
+            .attribute(VertexBuffer.VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, 36)
+            .attribute(VertexBuffer.VertexAttribute.TANGENTS, 0, VertexBuffer.AttributeType.FLOAT4, 12, 36)
+            .attribute(VertexBuffer.VertexAttribute.UV0, 0, VertexBuffer.AttributeType.FLOAT2, 28, 36)
             .build(eng)
 
         vb.setBufferAt(eng, 0, byteBuffer)
         vertexBuffers.add(vb)
         return vb
+    }
+
+    private fun buildSurfaceOrientationQuaternions(
+        vertexCount: Int,
+        positions: FloatArray,
+        normals: FloatArray,
+        uvs: FloatArray,
+        indices: ShortArray,
+    ): FloatArray {
+        val positionsBuffer = ByteBuffer.allocateDirect(positions.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+            .apply {
+                put(positions)
+                flip()
+            }
+        val normalsBuffer = ByteBuffer.allocateDirect(normals.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+            .apply {
+                put(normals)
+                flip()
+            }
+        val uvsBuffer = ByteBuffer.allocateDirect(uvs.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+            .apply {
+                put(uvs)
+                flip()
+            }
+        val indexBuffer = ByteBuffer.allocateDirect(indices.size * 2)
+            .order(ByteOrder.nativeOrder())
+            .asShortBuffer()
+            .apply {
+                put(indices)
+                flip()
+            }
+        val quaternionsBuffer = ByteBuffer.allocateDirect(vertexCount * 4 * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+
+        val orientation = SurfaceOrientation.Builder()
+            .vertexCount(vertexCount)
+            .normals(normalsBuffer)
+            .uvs(uvsBuffer)
+            .positions(positionsBuffer)
+            .triangleCount(indices.size / 3)
+            .triangles_uint16(indexBuffer)
+            .build()
+        return try {
+            orientation.getQuatsAsFloat(quaternionsBuffer)
+            FloatArray(vertexCount * 4).also { quaternions ->
+                quaternionsBuffer.rewind()
+                quaternionsBuffer.get(quaternions)
+            }
+        } finally {
+            orientation.destroy()
+        }
     }
 
     private fun buildIndexBuffer(eng: Engine, data: ShortArray): IndexBuffer {

@@ -19,7 +19,7 @@ val MaterialOverridesList = listOf(
         label = "aiDefaultMat",
         description = "The bundled marble material wrapped onto a sphere for a softer stone-like look.",
         overrides = mapOf(
-            "baseColor" to Float4(0.72f, 0.74f, 0.70f, 1f),
+            "baseColor" to Float3(0.72f, 0.74f, 0.70f),
             "roughness" to 0.58f,
             "sheenColor" to Float3(0.32f, 0.34f, 0.31f),
             "emissive" to Float4(0f, 0f, 0f, 1f),

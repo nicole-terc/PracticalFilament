@@ -136,6 +136,8 @@ fun MarbleScreen(
                         type = LightType.DIRECTIONAL,
                         color = Color(1f, 0.99f, 0.97f),
                         intensity = 95_000f,
+                        // Filament treats this as the direction the light emits toward.
+                        // With the camera on +Z, negative Z lights the front of the sphere.
                         direction = Float3(-0.18f, -0.32f, -1f),
                     ),
                 ),

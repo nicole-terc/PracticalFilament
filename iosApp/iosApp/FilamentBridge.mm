@@ -22,6 +22,7 @@
 #import <math/vec4.h>
 #import <math/mat4.h>
 #import <math/norm.h>
+#import <geometry/SurfaceOrientation.h>
 
 #include <cmath>
 #include <cstddef>
@@ -594,7 +595,11 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     const int stacks = 24;
     const int slices = 24;
     const int vertexCount = (stacks + 1) * (slices + 1);
-    std::vector<float> vertexData(vertexCount * 8);
+
+    // Generate positions, normals, and UVs
+    std::vector<filament::math::float3> positions(vertexCount);
+    std::vector<filament::math::float3> normals(vertexCount);
+    std::vector<filament::math::float2> uvs(vertexCount);
     int vi = 0;
 
     for (int i = 0; i <= stacks; i++) {
@@ -608,41 +613,74 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
             float x = cosTheta * sinPhi;
             float y = cosPhi;
             float z = sinTheta * sinPhi;
-            vertexData[vi++] = x * radius;
-            vertexData[vi++] = y * radius;
-            vertexData[vi++] = z * radius;
-            vertexData[vi++] = x;
-            vertexData[vi++] = y;
-            vertexData[vi++] = z;
-            vertexData[vi++] = (float)j / slices;
-            vertexData[vi++] = (float)i / stacks;
+            positions[vi] = {x * radius, y * radius, z * radius};
+            normals[vi] = {x, y, z};
+            uvs[vi] = {(float)j / slices, (float)i / stacks};
+            vi++;
         }
     }
 
+    // Generate indices
     int indexCount = stacks * slices * 6;
-    std::vector<uint16_t> indexData(indexCount);
-    int ii = 0;
+    std::vector<filament::math::ushort3> triangles(stacks * slices * 2);
+    int ti = 0;
     for (int i = 0; i < stacks; i++) {
         for (int j = 0; j < slices; j++) {
-            int first = i * (slices + 1) + j;
-            int second = first + slices + 1;
-            indexData[ii++] = (uint16_t)first;
-            indexData[ii++] = (uint16_t)second;
-            indexData[ii++] = (uint16_t)(first + 1);
-            indexData[ii++] = (uint16_t)second;
-            indexData[ii++] = (uint16_t)(second + 1);
-            indexData[ii++] = (uint16_t)(first + 1);
+            uint16_t first = (uint16_t)(i * (slices + 1) + j);
+            uint16_t second = first + slices + 1;
+            triangles[ti++] = {first, (uint16_t)(first + 1), second};
+            triangles[ti++] = {(uint16_t)(first + 1), (uint16_t)(second + 1), second};
         }
+    }
+
+    // Use Filament's SurfaceOrientation to compute tangent quaternions
+    auto* orientation = filament::geometry::SurfaceOrientation::Builder()
+        .vertexCount((size_t)vertexCount)
+        .normals(normals.data())
+        .positions(positions.data())
+        .uvs(uvs.data())
+        .triangleCount((size_t)(stacks * slices * 2))
+        .triangles(triangles.data())
+        .build();
+
+    std::vector<filament::math::short4> tangentQuats(vertexCount);
+    orientation->getQuats(tangentQuats.data(), (size_t)vertexCount);
+    delete orientation;
+
+    // Build interleaved vertex data: position(3 floats) + tangent(4 shorts) + uv(2 floats)
+    struct SphereVertex {
+        float px, py, pz;
+        int16_t tx, ty, tz, tw;
+        float u, v;
+    };
+    static_assert(sizeof(SphereVertex) == 28, "SphereVertex must be 28 bytes");
+
+    std::vector<SphereVertex> vertexData(vertexCount);
+    for (int k = 0; k < vertexCount; k++) {
+        vertexData[k] = {
+            positions[k].x, positions[k].y, positions[k].z,
+            tangentQuats[k].x, tangentQuats[k].y, tangentQuats[k].z, tangentQuats[k].w,
+            uvs[k].x, uvs[k].y,
+        };
+    }
+
+    // Build index buffer as flat uint16_t array
+    std::vector<uint16_t> indexData(indexCount);
+    for (int k = 0; k < (int)triangles.size(); k++) {
+        indexData[k * 3 + 0] = triangles[k].x;
+        indexData[k * 3 + 1] = triangles[k].y;
+        indexData[k * 3 + 2] = triangles[k].z;
     }
 
     auto *vb = VertexBuffer::Builder()
         .vertexCount(vertexCount)
         .bufferCount(1)
-        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, 0, 32)
-        .attribute(VertexAttribute::TANGENTS, 0, VertexBuffer::AttributeType::FLOAT3, 12, 32)
-        .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, 24, 32)
+        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, offsetof(SphereVertex, px), sizeof(SphereVertex))
+        .attribute(VertexAttribute::TANGENTS, 0, VertexBuffer::AttributeType::SHORT4, offsetof(SphereVertex, tx), sizeof(SphereVertex))
+        .normalized(VertexAttribute::TANGENTS)
+        .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, offsetof(SphereVertex, u), sizeof(SphereVertex))
         .build(*_engine);
-    const size_t vertexDataSize = vertexData.size() * sizeof(float);
+    const size_t vertexDataSize = vertexData.size() * sizeof(SphereVertex);
     vb->setBufferAt(*_engine, 0, VertexBuffer::BufferDescriptor(
         PFMakeOwnedCopy(vertexData.data(), vertexDataSize),
         vertexDataSize,
