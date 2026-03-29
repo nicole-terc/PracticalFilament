@@ -6,6 +6,7 @@ import dev.nstv.practicalfilament.filament.material.Material
 
 
 val MaterialFilesList = listOf(
+    "plastic.filamat",
     "aiDefaultMat.filamat",
     "image.filamat",
     "sandboxLitFade.filamat",
@@ -13,7 +14,20 @@ val MaterialFilesList = listOf(
     "mirror.filamat",
 )
 
+val RedballMaterial = Material(
+    fileName = "plastic.filamat",
+    label = "redball",
+    description = "Red plastic sphere based on Filament's redball sample, with clear coat tuned for a tight glossy highlight.",
+    overrides = mapOf(
+        "baseColor" to Float3(0.80f, 0.07f, 0.15f),
+        "roughness" to 0.14f,
+        "clearCoat" to 1f,
+        "clearCoatRoughness" to 0.04f,
+    ),
+)
+
 val MaterialOverridesList = listOf(
+    RedballMaterial,
     Material(
         fileName = "aiDefaultMat.filamat",
         label = "aiDefaultMat",
@@ -24,12 +38,6 @@ val MaterialOverridesList = listOf(
             "sheenColor" to Float3(0.32f, 0.34f, 0.31f),
             "emissive" to Float4(0f, 0f, 0f, 1f),
         ),
-    ),
-    Material(
-        fileName = "image.filamat",
-        label = "image",
-        description = "The bundled image material wrapped onto a sphere for a softer stone-like look.",
-        overrides = emptyMap(),
     ),
     Material(
         fileName = "sandboxLitFade.filamat",
