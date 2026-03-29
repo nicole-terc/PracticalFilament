@@ -14,16 +14,56 @@
 #import <filament/VertexBuffer.h>
 #import <filament/IndexBuffer.h>
 #import <utils/EntityManager.h>
+#import <math/mat3.h>
 #import <math/vec3.h>
+#import <math/vec4.h>
 #import <math/mat4.h>
 
 #include <cmath>
 #include <map>
+#include <string>
 #include <vector>
 
 using namespace filament;
 using namespace utils;
 using namespace math;
+
+static NSString *PFMaterialParameterTypeName(Material::ParameterInfo const& parameter) {
+    switch (parameter.type) {
+        case UniformType::BOOL: return @"BOOL";
+        case UniformType::BOOL2: return @"BOOL2";
+        case UniformType::BOOL3: return @"BOOL3";
+        case UniformType::BOOL4: return @"BOOL4";
+        case UniformType::FLOAT: return @"FLOAT";
+        case UniformType::FLOAT2: return @"FLOAT2";
+        case UniformType::FLOAT3: return @"FLOAT3";
+        case UniformType::FLOAT4: return @"FLOAT4";
+        case UniformType::INT: return @"INT";
+        case UniformType::INT2: return @"INT2";
+        case UniformType::INT3: return @"INT3";
+        case UniformType::INT4: return @"INT4";
+        case UniformType::UINT: return @"UINT";
+        case UniformType::UINT2: return @"UINT2";
+        case UniformType::UINT3: return @"UINT3";
+        case UniformType::UINT4: return @"UINT4";
+        case UniformType::MAT3: return @"MAT3";
+        case UniformType::MAT4: return @"MAT4";
+        case UniformType::SAMPLER_2D: return @"SAMPLER_2D";
+        case UniformType::SAMPLER_2D_ARRAY: return @"SAMPLER_2D_ARRAY";
+        case UniformType::SAMPLER_EXTERNAL: return @"SAMPLER_EXTERNAL";
+        case UniformType::SAMPLER_CUBEMAP: return @"SAMPLER_CUBEMAP";
+        default: return @"UNKNOWN";
+    }
+}
+
+static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const& parameter) {
+    switch (parameter.precision) {
+        case Material::ParameterInfo::Precision::LOW: return @"LOW";
+        case Material::ParameterInfo::Precision::MEDIUM: return @"MEDIUM";
+        case Material::ParameterInfo::Precision::HIGH: return @"HIGH";
+        case Material::ParameterInfo::Precision::DEFAULT: return @"DEFAULT";
+    }
+}
 
 @implementation FilamentBridge {
     Engine *_engine;
@@ -204,6 +244,48 @@ using namespace math;
     return handle;
 }
 
+- (int)getMaterialParameterDefinitionCount:(int)materialHandle {
+    auto it = _materials.find(materialHandle);
+    if (it == _materials.end()) return 0;
+    return (int)it->second->getParameterCount();
+}
+
+- (NSString *)getMaterialParameterName:(int)materialHandle index:(int)index {
+    auto it = _materials.find(materialHandle);
+    if (it == _materials.end()) return @"";
+    auto const* parameters = it->second->getParameters();
+    size_t count = it->second->getParameterCount();
+    if (index < 0 || (size_t)index >= count) return @"";
+    return [NSString stringWithUTF8String:parameters[index].name.c_str()];
+}
+
+- (NSString *)getMaterialParameterTypeName:(int)materialHandle index:(int)index {
+    auto it = _materials.find(materialHandle);
+    if (it == _materials.end()) return @"UNKNOWN";
+    auto const* parameters = it->second->getParameters();
+    size_t count = it->second->getParameterCount();
+    if (index < 0 || (size_t)index >= count) return @"UNKNOWN";
+    return PFMaterialParameterTypeName(parameters[index]);
+}
+
+- (NSString *)getMaterialParameterPrecisionName:(int)materialHandle index:(int)index {
+    auto it = _materials.find(materialHandle);
+    if (it == _materials.end()) return @"DEFAULT";
+    auto const* parameters = it->second->getParameters();
+    size_t count = it->second->getParameterCount();
+    if (index < 0 || (size_t)index >= count) return @"DEFAULT";
+    return PFMaterialParameterPrecisionName(parameters[index]);
+}
+
+- (int)getMaterialParameterArraySize:(int)materialHandle index:(int)index {
+    auto it = _materials.find(materialHandle);
+    if (it == _materials.end()) return 1;
+    auto const* parameters = it->second->getParameters();
+    size_t count = it->second->getParameterCount();
+    if (index < 0 || (size_t)index >= count) return 1;
+    return (int)parameters[index].count;
+}
+
 - (int)createMaterialInstance:(int)materialHandle {
     auto it = _materials.find(materialHandle);
     if (it == _materials.end()) return -1;
@@ -220,10 +302,44 @@ using namespace math;
     it->second->setParameter(name.UTF8String, value);
 }
 
+- (void)setBoolParam:(int)instanceHandle name:(NSString *)name value:(BOOL)value {
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return;
+    it->second->setParameter(name.UTF8String, (bool)value);
+}
+
 - (void)setIntParam:(int)instanceHandle name:(NSString *)name value:(int)value {
     auto it = _materialInstances.find(instanceHandle);
     if (it == _materialInstances.end()) return;
     it->second->setParameter(name.UTF8String, value);
+}
+
+- (void)setBool2Param:(int)instanceHandle name:(NSString *)name
+                    x:(BOOL)x y:(BOOL)y {
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return;
+    it->second->setParameter(name.UTF8String, bool2{(bool)x, (bool)y});
+}
+
+- (void)setBool3Param:(int)instanceHandle name:(NSString *)name
+                    x:(BOOL)x y:(BOOL)y z:(BOOL)z {
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return;
+    it->second->setParameter(name.UTF8String, bool3{(bool)x, (bool)y, (bool)z});
+}
+
+- (void)setBool4Param:(int)instanceHandle name:(NSString *)name
+                    x:(BOOL)x y:(BOOL)y z:(BOOL)z w:(BOOL)w {
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return;
+    it->second->setParameter(name.UTF8String, bool4{(bool)x, (bool)y, (bool)z, (bool)w});
+}
+
+- (void)setFloat2Param:(int)instanceHandle name:(NSString *)name
+                     x:(float)x y:(float)y {
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return;
+    it->second->setParameter(name.UTF8String, float2{x, y});
 }
 
 - (void)setFloat3Param:(int)instanceHandle name:(NSString *)name
@@ -238,6 +354,61 @@ using namespace math;
     auto it = _materialInstances.find(instanceHandle);
     if (it == _materialInstances.end()) return;
     it->second->setParameter(name.UTF8String, float4{x, y, z, w});
+}
+
+- (void)setInt2Param:(int)instanceHandle name:(NSString *)name
+                   x:(int)x y:(int)y {
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return;
+    it->second->setParameter(name.UTF8String, int2{x, y});
+}
+
+- (void)setInt3Param:(int)instanceHandle name:(NSString *)name
+                   x:(int)x y:(int)y z:(int)z {
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return;
+    it->second->setParameter(name.UTF8String, int3{x, y, z});
+}
+
+- (void)setInt4Param:(int)instanceHandle name:(NSString *)name
+                   x:(int)x y:(int)y z:(int)z w:(int)w {
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return;
+    it->second->setParameter(name.UTF8String, int4{x, y, z, w});
+}
+
+- (void)setMat3Param:(int)instanceHandle name:(NSString *)name
+                   m00:(float)m00 m01:(float)m01 m02:(float)m02
+                   m10:(float)m10 m11:(float)m11 m12:(float)m12
+                   m20:(float)m20 m21:(float)m21 m22:(float)m22 {
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return;
+    it->second->setParameter(
+        name.UTF8String,
+        mat3f{
+            float3{m00, m01, m02},
+            float3{m10, m11, m12},
+            float3{m20, m21, m22},
+        }
+    );
+}
+
+- (void)setMat4Param:(int)instanceHandle name:(NSString *)name
+                   m00:(float)m00 m01:(float)m01 m02:(float)m02 m03:(float)m03
+                   m10:(float)m10 m11:(float)m11 m12:(float)m12 m13:(float)m13
+                   m20:(float)m20 m21:(float)m21 m22:(float)m22 m23:(float)m23
+                   m30:(float)m30 m31:(float)m31 m32:(float)m32 m33:(float)m33 {
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return;
+    it->second->setParameter(
+        name.UTF8String,
+        mat4f{
+            float4{m00, m01, m02, m03},
+            float4{m10, m11, m12, m13},
+            float4{m20, m21, m22, m23},
+            float4{m30, m31, m32, m33},
+        }
+    );
 }
 
 - (int)createPlaneWithMaterial:(int)instanceHandle width:(float)width height:(float)height {

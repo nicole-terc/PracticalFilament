@@ -1,11 +1,5 @@
 package dev.nstv.practicalfilament.filament
 
-data class Float3(val x: Float, val y: Float, val z: Float)
-
-data class Float4(val x: Float, val y: Float, val z: Float, val w: Float)
-
-data class Color(val r: Float, val g: Float, val b: Float, val a: Float = 1f)
-
 enum class LightType { DIRECTIONAL, POINT, SPOT }
 
 data class LightConfig(
@@ -25,9 +19,4 @@ data class CameraConfig(
     val fovDegrees: Double = 45.0,
     val near: Double = 0.1,
     val far: Double = 100.0,
-)
-
-data class MaterialParameter(
-    val name: String,
-    val value: Any,
 )

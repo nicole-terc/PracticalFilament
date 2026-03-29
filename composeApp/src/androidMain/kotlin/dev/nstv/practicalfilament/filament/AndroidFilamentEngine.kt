@@ -44,6 +44,8 @@ class AndroidFilamentEngine(
     private val renderables = mutableMapOf<Int, Int>()
     private val materials = mutableMapOf<Int, Material>()
     private val materialInstances = mutableMapOf<Int, MaterialInstance>()
+    private val materialInstanceMaterials = mutableMapOf<Int, Int>()
+    private val materialParameterDefinitions = mutableMapOf<Int, Map<String, MaterialParameterDefinition>>()
     private val vertexBuffers = mutableListOf<VertexBuffer>()
     private val indexBuffers = mutableListOf<IndexBuffer>()
 
@@ -107,9 +109,11 @@ class AndroidFilamentEngine(
 
         materialInstances.values.forEach { eng.destroyMaterialInstance(it) }
         materialInstances.clear()
+        materialInstanceMaterials.clear()
 
         materials.values.forEach { eng.destroyMaterial(it) }
         materials.clear()
+        materialParameterDefinitions.clear()
 
         vertexBuffers.forEach { eng.destroyVertexBuffer(it) }
         vertexBuffers.clear()
@@ -254,23 +258,188 @@ class AndroidFilamentEngine(
         return handle
     }
 
+    override fun getMaterialParameters(materialHandle: Int): List<MaterialParameterDefinition> {
+        return getMaterialParameterDefinitionMap(materialHandle).values.toList()
+    }
+
+    private fun getMaterialParameterDefinitionMap(materialHandle: Int): Map<String, MaterialParameterDefinition> {
+        materialParameterDefinitions[materialHandle]?.let { return it }
+
+        val material = materials[materialHandle] ?: return emptyMap()
+        val definitions = material.parameters.map { parameter ->
+            MaterialParameterDefinition(
+                name = parameter.name,
+                type = MaterialParameterType.fromRawTypeName(
+                    rawTypeName = parameter.type.name,
+                    arraySize = parameter.count,
+                ),
+                precision = when (parameter.precision) {
+                    Material.Parameter.Precision.LOW -> MaterialParameterPrecision.LOW
+                    Material.Parameter.Precision.MEDIUM -> MaterialParameterPrecision.MEDIUM
+                    Material.Parameter.Precision.HIGH -> MaterialParameterPrecision.HIGH
+                    Material.Parameter.Precision.DEFAULT -> MaterialParameterPrecision.DEFAULT
+                },
+            )
+        }.associateBy(MaterialParameterDefinition::name)
+        materialParameterDefinitions[materialHandle] = definitions
+        return definitions
+    }
+
     override fun createMaterialInstance(materialHandle: Int): Int {
         val material = materials[materialHandle] ?: return -1
         val instance = material.createInstance()
         val handle = nextHandle++
         materialInstances[handle] = instance
+        materialInstanceMaterials[handle] = materialHandle
         return handle
     }
 
+    @OptIn(ExperimentalUnsignedTypes::class)
     override fun setMaterialParameter(instanceHandle: Int, param: MaterialParameter) {
         val instance = materialInstances[instanceHandle] ?: return
+        val definition = materialInstanceMaterials[instanceHandle]
+            ?.let(::getMaterialParameterDefinitionMap)
+            ?.get(param.name)
+
         when (val value = param.value) {
             is Float -> instance.setParameter(param.name, value)
             is Int -> instance.setParameter(param.name, value)
+            is UInt -> instance.setParameter(param.name, value.toInt())
             is Boolean -> instance.setParameter(param.name, value)
+            is Float2 -> instance.setParameter(param.name, value.x, value.y)
             is Float3 -> instance.setParameter(param.name, value.x, value.y, value.z)
             is Float4 -> instance.setParameter(param.name, value.x, value.y, value.z, value.w)
+            is Int2 -> instance.setParameter(param.name, value.x, value.y)
+            is Int3 -> instance.setParameter(param.name, value.x, value.y, value.z)
+            is Int4 -> instance.setParameter(param.name, value.x, value.y, value.z, value.w)
+            is UInt2 -> instance.setParameter(param.name, value.x.toInt(), value.y.toInt())
+            is UInt3 -> instance.setParameter(param.name, value.x.toInt(), value.y.toInt(), value.z.toInt())
+            is UInt4 -> instance.setParameter(param.name, value.x.toInt(), value.y.toInt(), value.z.toInt(), value.w.toInt())
+            is Bool2 -> instance.setParameter(param.name, value.x, value.y)
+            is Bool3 -> instance.setParameter(param.name, value.x, value.y, value.z)
+            is Bool4 -> instance.setParameter(param.name, value.x, value.y, value.z, value.w)
+            is FloatArray -> setFloatArrayParameter(instance, param.name, value, definition)
+            is IntArray -> setIntArrayParameter(instance, param.name, value, definition)
+            is UIntArray -> setIntArrayParameter(instance, param.name, value.map(UInt::toInt).toIntArray(), definition)
+            is BooleanArray -> setBooleanArrayParameter(instance, param.name, value, definition)
             is Color -> instance.setParameter(param.name, value.r, value.g, value.b)
+            else -> error("Unsupported material parameter value for ${param.name}: ${value::class.simpleName}")
+        }
+    }
+
+    private fun setFloatArrayParameter(
+        instance: MaterialInstance,
+        name: String,
+        value: FloatArray,
+        definition: MaterialParameterDefinition?,
+    ) {
+        val type = definition?.type ?: error("Missing material definition for float array parameter $name")
+        when (type) {
+            is MaterialParameterType.Float -> setFloatArray(instance, name, MaterialInstance.FloatElement.FLOAT, value, type.arraySize)
+            is MaterialParameterType.Float2 -> setFloatArray(instance, name, MaterialInstance.FloatElement.FLOAT2, value, type.arraySize)
+            is MaterialParameterType.Float3 -> setFloatArray(instance, name, MaterialInstance.FloatElement.FLOAT3, value, type.arraySize)
+            is MaterialParameterType.Float4 -> setFloatArray(instance, name, MaterialInstance.FloatElement.FLOAT4, value, type.arraySize)
+            is MaterialParameterType.Float3x3 -> setFloatArray(instance, name, MaterialInstance.FloatElement.MAT3, value, type.arraySize)
+            is MaterialParameterType.Float4x4 -> setFloatArray(instance, name, MaterialInstance.FloatElement.MAT4, value, type.arraySize)
+            else -> error("Float array does not match material parameter type for $name: $type")
+        }
+    }
+
+    private fun setIntArrayParameter(
+        instance: MaterialInstance,
+        name: String,
+        value: IntArray,
+        definition: MaterialParameterDefinition?,
+    ) {
+        val type = definition?.type ?: error("Missing material definition for int array parameter $name")
+        when (type) {
+            is MaterialParameterType.Int -> setIntArray(instance, name, MaterialInstance.IntElement.INT, value, type.arraySize)
+            is MaterialParameterType.Int2 -> setIntArray(instance, name, MaterialInstance.IntElement.INT2, value, type.arraySize)
+            is MaterialParameterType.Int3 -> setIntArray(instance, name, MaterialInstance.IntElement.INT3, value, type.arraySize)
+            is MaterialParameterType.Int4 -> setIntArray(instance, name, MaterialInstance.IntElement.INT4, value, type.arraySize)
+            is MaterialParameterType.UInt -> setIntArray(instance, name, MaterialInstance.IntElement.INT, value, type.arraySize)
+            is MaterialParameterType.UInt2 -> setIntArray(instance, name, MaterialInstance.IntElement.INT2, value, type.arraySize)
+            is MaterialParameterType.UInt3 -> setIntArray(instance, name, MaterialInstance.IntElement.INT3, value, type.arraySize)
+            is MaterialParameterType.UInt4 -> setIntArray(instance, name, MaterialInstance.IntElement.INT4, value, type.arraySize)
+            else -> error("Int array does not match material parameter type for $name: $type")
+        }
+    }
+
+    private fun setBooleanArrayParameter(
+        instance: MaterialInstance,
+        name: String,
+        value: BooleanArray,
+        definition: MaterialParameterDefinition?,
+    ) {
+        val type = definition?.type ?: error("Missing material definition for boolean array parameter $name")
+        when (type) {
+            is MaterialParameterType.Bool -> setBooleanArray(instance, name, MaterialInstance.BooleanElement.BOOL, value, type.arraySize)
+            is MaterialParameterType.Bool2 -> setBooleanArray(instance, name, MaterialInstance.BooleanElement.BOOL2, value, type.arraySize)
+            is MaterialParameterType.Bool3 -> setBooleanArray(instance, name, MaterialInstance.BooleanElement.BOOL3, value, type.arraySize)
+            is MaterialParameterType.Bool4 -> setBooleanArray(instance, name, MaterialInstance.BooleanElement.BOOL4, value, type.arraySize)
+            else -> error("Boolean array does not match material parameter type for $name: $type")
+        }
+    }
+
+    private fun setFloatArray(
+        instance: MaterialInstance,
+        name: String,
+        element: MaterialInstance.FloatElement,
+        value: FloatArray,
+        count: Int,
+    ) {
+        validateArrayLength(name, value.size, elementComponentCount(element) * count)
+        instance.setParameter(name, element, value, 0, count)
+    }
+
+    private fun setIntArray(
+        instance: MaterialInstance,
+        name: String,
+        element: MaterialInstance.IntElement,
+        value: IntArray,
+        count: Int,
+    ) {
+        validateArrayLength(name, value.size, elementComponentCount(element) * count)
+        instance.setParameter(name, element, value, 0, count)
+    }
+
+    private fun setBooleanArray(
+        instance: MaterialInstance,
+        name: String,
+        element: MaterialInstance.BooleanElement,
+        value: BooleanArray,
+        count: Int,
+    ) {
+        validateArrayLength(name, value.size, elementComponentCount(element) * count)
+        instance.setParameter(name, element, value, 0, count)
+    }
+
+    private fun elementComponentCount(element: MaterialInstance.FloatElement): Int = when (element) {
+        MaterialInstance.FloatElement.FLOAT -> 1
+        MaterialInstance.FloatElement.FLOAT2 -> 2
+        MaterialInstance.FloatElement.FLOAT3 -> 3
+        MaterialInstance.FloatElement.FLOAT4 -> 4
+        MaterialInstance.FloatElement.MAT3 -> 9
+        MaterialInstance.FloatElement.MAT4 -> 16
+    }
+
+    private fun elementComponentCount(element: MaterialInstance.IntElement): Int = when (element) {
+        MaterialInstance.IntElement.INT -> 1
+        MaterialInstance.IntElement.INT2 -> 2
+        MaterialInstance.IntElement.INT3 -> 3
+        MaterialInstance.IntElement.INT4 -> 4
+    }
+
+    private fun elementComponentCount(element: MaterialInstance.BooleanElement): Int = when (element) {
+        MaterialInstance.BooleanElement.BOOL -> 1
+        MaterialInstance.BooleanElement.BOOL2 -> 2
+        MaterialInstance.BooleanElement.BOOL3 -> 3
+        MaterialInstance.BooleanElement.BOOL4 -> 4
+    }
+
+    private fun validateArrayLength(name: String, actualSize: Int, expectedSize: Int) {
+        require(actualSize == expectedSize) {
+            "Parameter $name expects $expectedSize values but received $actualSize"
         }
     }
 

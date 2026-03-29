@@ -18,6 +18,7 @@ interface FilamentEngine {
 
     // Materials
     fun loadMaterial(path: String): Int
+    fun getMaterialParameters(materialHandle: Int): List<MaterialParameterDefinition>
     fun createMaterialInstance(materialHandle: Int): Int
     fun setMaterialParameter(instanceHandle: Int, param: MaterialParameter)
 
