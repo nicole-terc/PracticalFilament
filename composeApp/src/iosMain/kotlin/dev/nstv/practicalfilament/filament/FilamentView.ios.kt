@@ -8,10 +8,12 @@ import androidx.compose.ui.interop.UIKitView
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import platform.CoreGraphics.CGRectMake
+import platform.CoreGraphics.CGSizeMake
 import platform.Metal.MTLCreateSystemDefaultDevice
 import platform.Metal.MTLPixelFormatBGRA8Unorm
 import platform.QuartzCore.CAMetalLayer
 import platform.UIKit.UIView
+import platform.UIKit.UIScreen
 
 /**
  * Singleton holder for the FilamentBridge instance.
@@ -36,6 +38,7 @@ actual fun FilamentView(
         ?: error("FilamentBridgeHolder.bridge must be set from Swift before using FilamentView")
 
     val engine = remember { IosFilamentEngine(bridge) }
+    val metalLayerRef = remember { arrayOfNulls<CAMetalLayer>(1) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -46,23 +49,27 @@ actual fun FilamentView(
     UIKitView(
         modifier = modifier,
         factory = {
-            val view = UIView(frame = CGRectMake(0.0, 0.0, 300.0, 300.0))
+            val view = UIView(frame = UIScreen.mainScreen.bounds)
             val metalLayer = CAMetalLayer()
             @Suppress("USELESS_CAST")
             metalLayer.device = MTLCreateSystemDefaultDevice() as objcnames.protocols.MTLDeviceProtocol?
             metalLayer.setOpaque(true)
             metalLayer.setFramebufferOnly(true)
             metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm
+            metalLayer.contentsScale = UIScreen.mainScreen.scale
 
             view.layer.addSublayer(metalLayer)
+            metalLayerRef[0] = metalLayer
 
             val w: Int
             val h: Int
             view.bounds.useContents {
-                w = size.width.toInt().coerceAtLeast(1)
-                h = size.height.toInt().coerceAtLeast(1)
+                val scale = UIScreen.mainScreen.scale
+                w = (size.width * scale).toInt().coerceAtLeast(1)
+                h = (size.height * scale).toInt().coerceAtLeast(1)
             }
             metalLayer.frame = view.bounds
+            metalLayer.drawableSize = CGSizeMake(w.toDouble(), h.toDouble())
 
             engine.attachLayer(metalLayer, w, h)
             engine.updateCamera(camera)
@@ -71,14 +78,22 @@ actual fun FilamentView(
 
             view
         },
-        update = { view ->
-            view.bounds.useContents {
-                val w = size.width.toInt()
-                val h = size.height.toInt()
-                if (w > 0 && h > 0) {
-                    engine.updateViewport(w, h)
-                }
+        update = { },
+        onResize = { view, rect ->
+            val metalLayer = metalLayerRef[0] ?: return@UIKitView
+            rect.useContents {
+                view.setFrame(rect)
+                view.setBounds(CGRectMake(0.0, 0.0, size.width, size.height))
+                val scale = UIScreen.mainScreen.scale
+                metalLayer.frame = view.bounds
+                metalLayer.contentsScale = scale
+
+                val widthPx = (size.width * scale).toInt().coerceAtLeast(1)
+                val heightPx = (size.height * scale).toInt().coerceAtLeast(1)
+                metalLayer.drawableSize = CGSizeMake(widthPx.toDouble(), heightPx.toDouble())
+                engine.updateViewport(widthPx, heightPx)
+                engine.requestFrame()
             }
-        }
+        },
     )
 }

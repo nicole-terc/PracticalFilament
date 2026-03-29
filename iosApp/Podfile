@@ -2,5 +2,5 @@ platform :ios, '15.0'
 
 target 'iosApp' do
   use_frameworks!
-  pod 'Filament', '1.70.1'
+  pod 'Filament'
 end

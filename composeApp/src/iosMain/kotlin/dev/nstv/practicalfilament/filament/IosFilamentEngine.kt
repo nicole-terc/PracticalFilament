@@ -167,6 +167,14 @@ class IosFilamentEngine(
         }
     }
 
+    override fun createTexture(width: Int, height: Int, pixels: ByteArray): Int {
+        return bridge.createTextureWithWidth(width, height = height, pixels = pixels)
+    }
+
+    override fun setTextureParameter(instanceHandle: Int, paramName: String, textureHandle: Int) {
+        bridge.setTextureParam(instanceHandle, name = paramName, textureHandle = textureHandle)
+    }
+
     override fun createPlaneRenderable(materialInstanceHandle: Int, width: Float, height: Float): Int {
         return bridge.createPlaneWithMaterial(materialInstanceHandle, width = width, height = height)
     }
@@ -246,6 +254,8 @@ interface FilamentBridgeProtocol {
         m20: Float, m21: Float, m22: Float, m23: Float,
         m30: Float, m31: Float, m32: Float, m33: Float,
     )
+    fun createTextureWithWidth(width: Int, height: Int, pixels: ByteArray): Int
+    fun setTextureParam(instanceHandle: Int, name: String, textureHandle: Int)
     fun createPlaneWithMaterial(instanceHandle: Int, width: Float, height: Float): Int
     fun createSphereWithMaterial(instanceHandle: Int, radius: Float): Int
     fun removeRenderable(handle: Int)

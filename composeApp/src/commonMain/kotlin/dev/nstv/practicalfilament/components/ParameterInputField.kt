@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import dev.nstv.practicalfilament.filament.Bool2
 import dev.nstv.practicalfilament.filament.Bool3
 import dev.nstv.practicalfilament.filament.Bool4
+import dev.nstv.practicalfilament.filament.BuiltInTexture
 import dev.nstv.practicalfilament.filament.Float2
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.Float4
@@ -26,6 +27,7 @@ import dev.nstv.practicalfilament.filament.UInt3
 import dev.nstv.practicalfilament.filament.UInt4
 import dev.nstv.practicalfilament.filament.identityMat3
 import dev.nstv.practicalfilament.filament.identityMat4
+import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import kotlin.math.roundToInt
 
 
@@ -354,10 +356,19 @@ fun ParameterInputField(
         is MaterialParameterType.Sampler2dArray,
         is MaterialParameterType.SamplerExternal,
         is MaterialParameterType.SamplerCubemap -> {
-            Text(
-                text = "$name: texture input not yet supported",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(vertical = 4.dp),
+            val textures = BuiltInTexture.entries
+            val current = value as? BuiltInTexture ?: BuiltInTexture.NONE
+            DropDownWithArrows(
+                options = textures.map(BuiltInTexture::displayName),
+                onSelectionChanged = { index ->
+                    onValueChange(textures[index])
+                },
+                selectedIndex = textures.indexOf(current).coerceAtLeast(0),
+                label = name,
+                loopSelection = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
             )
         }
     }

@@ -1,5 +1,5 @@
-@import Foundation;
-@import QuartzCore;
+#import <Foundation/Foundation.h>
+#import <QuartzCore/QuartzCore.h>
 
 @interface FilamentBridge : NSObject
 
@@ -62,6 +62,9 @@
                    m10:(float)m10 m11:(float)m11 m12:(float)m12 m13:(float)m13
                    m20:(float)m20 m21:(float)m21 m22:(float)m22 m23:(float)m23
                    m30:(float)m30 m31:(float)m31 m32:(float)m32 m33:(float)m33;
+
+- (int)createTextureWithWidth:(int)width height:(int)height pixels:(NSData * _Nonnull)pixels;
+- (void)setTextureParam:(int)instanceHandle name:(NSString * _Nonnull)name textureHandle:(int)textureHandle;
 
 - (int)createPlaneWithMaterial:(int)instanceHandle width:(float)width height:(float)height;
 - (int)createSphereWithMaterial:(int)instanceHandle radius:(float)radius;

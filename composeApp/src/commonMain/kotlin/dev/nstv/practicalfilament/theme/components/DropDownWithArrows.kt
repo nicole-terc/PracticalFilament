@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +62,12 @@ fun DropDownWithArrows(
         var expanded by remember { mutableStateOf(false) }
         var selectedItemIndex by remember { mutableStateOf(selectedIndex) }
         var direction by remember { mutableStateOf(Direction.FROM_DROPDOWN) }
+
+        LaunchedEffect(selectedIndex, options) {
+            if (options.isNotEmpty()) {
+                selectedItemIndex = selectedIndex.coerceIn(0, options.lastIndex)
+            }
+        }
 
         Box(
             modifier = modifier

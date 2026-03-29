@@ -174,7 +174,7 @@ fun defaultMaterialParameter(definition: MaterialParameterDefinition): MaterialP
         is MaterialParameterType.Sampler2d,
         is MaterialParameterType.Sampler2dArray,
         is MaterialParameterType.SamplerExternal,
-        is MaterialParameterType.SamplerCubemap -> FloatArray(0)
+        is MaterialParameterType.SamplerCubemap -> BuiltInTexture.NONE
     }
     return MaterialParameter(definition.name, value)
 }
@@ -191,4 +191,64 @@ fun identityMat4(): FloatArray = floatArrayOf(
     0f, 0f, 1f, 0f,
     0f, 0f, 0f, 1f,
 )
+
+enum class BuiltInTexture(val displayName: String) {
+    NONE("None"),
+    CHECKERBOARD("Checkerboard"),
+    WHITE("White"),
+    RED("Red"),
+    GRADIENT("Gradient"),
+}
+
+fun generateTexturePixels(texture: BuiltInTexture, size: Int = 256): ByteArray {
+    val pixels = ByteArray(size * size * 4)
+    when (texture) {
+        BuiltInTexture.NONE -> {
+            // Solid black
+        }
+        BuiltInTexture.CHECKERBOARD -> {
+            val cellSize = size / 8
+            for (y in 0 until size) {
+                for (x in 0 until size) {
+                    val i = (y * size + x) * 4
+                    val isWhite = ((x / cellSize) + (y / cellSize)) % 2 == 0
+                    val v = if (isWhite) 255.toByte() else 0.toByte()
+                    pixels[i] = v
+                    pixels[i + 1] = v
+                    pixels[i + 2] = v
+                    pixels[i + 3] = 255.toByte()
+                }
+            }
+        }
+        BuiltInTexture.WHITE -> {
+            for (i in pixels.indices step 4) {
+                pixels[i] = 255.toByte()
+                pixels[i + 1] = 255.toByte()
+                pixels[i + 2] = 255.toByte()
+                pixels[i + 3] = 255.toByte()
+            }
+        }
+        BuiltInTexture.RED -> {
+            for (i in pixels.indices step 4) {
+                pixels[i] = 255.toByte()
+                pixels[i + 1] = 0
+                pixels[i + 2] = 0
+                pixels[i + 3] = 255.toByte()
+            }
+        }
+        BuiltInTexture.GRADIENT -> {
+            for (y in 0 until size) {
+                val v = (y * 255 / (size - 1)).toByte()
+                for (x in 0 until size) {
+                    val i = (y * size + x) * 4
+                    pixels[i] = v
+                    pixels[i + 1] = v
+                    pixels[i + 2] = v
+                    pixels[i + 3] = 255.toByte()
+                }
+            }
+        }
+    }
+    return pixels
+}
 

@@ -15,6 +15,8 @@ import com.google.android.filament.RenderableManager
 import com.google.android.filament.Renderer
 import com.google.android.filament.Scene
 import com.google.android.filament.SwapChain
+import com.google.android.filament.Texture
+import com.google.android.filament.TextureSampler
 import com.google.android.filament.VertexBuffer
 import com.google.android.filament.View
 import com.google.android.filament.Viewport
@@ -46,6 +48,7 @@ class AndroidFilamentEngine(
     private val materialInstances = mutableMapOf<Int, MaterialInstance>()
     private val materialInstanceMaterials = mutableMapOf<Int, Int>()
     private val materialParameterDefinitions = mutableMapOf<Int, Map<String, MaterialParameterDefinition>>()
+    private val textures = mutableMapOf<Int, Texture>()
     private val vertexBuffers = mutableListOf<VertexBuffer>()
     private val indexBuffers = mutableListOf<IndexBuffer>()
 
@@ -114,6 +117,9 @@ class AndroidFilamentEngine(
         materials.values.forEach { eng.destroyMaterial(it) }
         materials.clear()
         materialParameterDefinitions.clear()
+
+        textures.values.forEach { eng.destroyTexture(it) }
+        textures.clear()
 
         vertexBuffers.forEach { eng.destroyVertexBuffer(it) }
         vertexBuffers.clear()
@@ -441,6 +447,51 @@ class AndroidFilamentEngine(
         require(actualSize == expectedSize) {
             "Parameter $name expects $expectedSize values but received $actualSize"
         }
+    }
+
+    override fun createTexture(width: Int, height: Int, pixels: ByteArray): Int {
+        val eng = engine ?: return -1
+        require(pixels.size == width * height * 4) {
+            "Pixel data size ${pixels.size} does not match expected ${width * height * 4} for ${width}x${height} RGBA"
+        }
+
+        val texture = Texture.Builder()
+            .width(width)
+            .height(height)
+            .sampler(Texture.Sampler.SAMPLER_2D)
+            .format(Texture.InternalFormat.RGBA8)
+            .levels(1)
+            .build(eng)
+
+        val buffer = ByteBuffer.allocateDirect(pixels.size).apply {
+            order(ByteOrder.nativeOrder())
+            put(pixels)
+            flip()
+        }
+        texture.setImage(
+            eng, 0,
+            Texture.PixelBufferDescriptor(
+                buffer,
+                Texture.Format.RGBA,
+                Texture.Type.UBYTE,
+            )
+        )
+
+        val handle = nextHandle++
+        textures[handle] = texture
+        return handle
+    }
+
+    override fun setTextureParameter(instanceHandle: Int, paramName: String, textureHandle: Int) {
+        val instance = materialInstances[instanceHandle] ?: return
+        val texture = textures[textureHandle] ?: return
+
+        val sampler = TextureSampler(
+            TextureSampler.MinFilter.LINEAR,
+            TextureSampler.MagFilter.LINEAR,
+            TextureSampler.WrapMode.REPEAT,
+        )
+        instance.setParameter(paramName, texture, sampler)
     }
 
     override fun createPlaneRenderable(materialInstanceHandle: Int, width: Float, height: Float): Int {

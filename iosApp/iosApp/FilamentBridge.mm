@@ -13,22 +13,66 @@
 #import <filament/RenderableManager.h>
 #import <filament/VertexBuffer.h>
 #import <filament/IndexBuffer.h>
+#import <filament/Texture.h>
+#import <filament/TextureSampler.h>
 #import <utils/EntityManager.h>
 #import <math/mat3.h>
 #import <math/vec3.h>
 #import <math/vec4.h>
 #import <math/mat4.h>
+#import <math/norm.h>
 
 #include <cmath>
+#include <cstddef>
 #include <map>
 #include <string>
 #include <vector>
 
 using namespace filament;
+using namespace filament::backend;
 using namespace utils;
 using namespace math;
 
+static NSData *PFLoadDataFromPathOrUri(NSString *location) {
+    if (location.length == 0) return nil;
+
+    NSData *data = [NSData dataWithContentsOfFile:location];
+    if (data) return data;
+
+    NSURL *url = [NSURL URLWithString:location];
+    if (url) {
+        data = [NSData dataWithContentsOfURL:url];
+        if (data) return data;
+    }
+
+    if ([location hasPrefix:@"file://"]) {
+        NSString *filePath = [location stringByRemovingPercentEncoding];
+        filePath = [filePath stringByReplacingOccurrencesOfString:@"file://" withString:@""];
+        data = [NSData dataWithContentsOfFile:filePath];
+        if (data) return data;
+    }
+
+    return nil;
+}
+
+static void *PFMakeOwnedCopy(const void *source, size_t size) {
+    void *copy = malloc(size);
+    memcpy(copy, source, size);
+    return copy;
+}
+
 static NSString *PFMaterialParameterTypeName(Material::ParameterInfo const& parameter) {
+    if (parameter.isSampler) {
+        switch (parameter.samplerType) {
+            case SamplerType::SAMPLER_2D: return @"SAMPLER_2D";
+            case SamplerType::SAMPLER_2D_ARRAY: return @"SAMPLER_2D_ARRAY";
+            case SamplerType::SAMPLER_EXTERNAL: return @"SAMPLER_EXTERNAL";
+            case SamplerType::SAMPLER_CUBEMAP: return @"SAMPLER_CUBEMAP";
+            case SamplerType::SAMPLER_3D: return @"SAMPLER_3D";
+            case SamplerType::SAMPLER_CUBEMAP_ARRAY: return @"SAMPLER_CUBEMAP_ARRAY";
+            default: return @"UNKNOWN";
+        }
+    }
     switch (parameter.type) {
         case UniformType::BOOL: return @"BOOL";
         case UniformType::BOOL2: return @"BOOL2";
@@ -48,20 +92,16 @@ static NSString *PFMaterialParameterTypeName(Material::ParameterInfo const& para
         case UniformType::UINT4: return @"UINT4";
         case UniformType::MAT3: return @"MAT3";
         case UniformType::MAT4: return @"MAT4";
-        case UniformType::SAMPLER_2D: return @"SAMPLER_2D";
-        case UniformType::SAMPLER_2D_ARRAY: return @"SAMPLER_2D_ARRAY";
-        case UniformType::SAMPLER_EXTERNAL: return @"SAMPLER_EXTERNAL";
-        case UniformType::SAMPLER_CUBEMAP: return @"SAMPLER_CUBEMAP";
         default: return @"UNKNOWN";
     }
 }
 
 static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const& parameter) {
     switch (parameter.precision) {
-        case Material::ParameterInfo::Precision::LOW: return @"LOW";
-        case Material::ParameterInfo::Precision::MEDIUM: return @"MEDIUM";
-        case Material::ParameterInfo::Precision::HIGH: return @"HIGH";
-        case Material::ParameterInfo::Precision::DEFAULT: return @"DEFAULT";
+        case Precision::LOW: return @"LOW";
+        case Precision::MEDIUM: return @"MEDIUM";
+        case Precision::HIGH: return @"HIGH";
+        case Precision::DEFAULT: return @"DEFAULT";
     }
 }
 
@@ -78,6 +118,7 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     std::map<int, Entity> _renderables;
     std::map<int, Material *> _materials;
     std::map<int, MaterialInstance *> _materialInstances;
+    std::map<int, Texture *> _textures;
     std::vector<VertexBuffer *> _vertexBuffers;
     std::vector<IndexBuffer *> _indexBuffers;
 
@@ -95,6 +136,10 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
 
     _engine = Engine::create(Engine::Backend::METAL);
     _renderer = _engine->createRenderer();
+    _renderer->setClearOptions({
+        .clearColor = {0.12f, 0.12f, 0.14f, 1.0f},
+        .clear = true
+    });
     _scene = _engine->createScene();
     _view = _engine->createView();
     _view->setScene(_scene);
@@ -134,16 +179,21 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     }
     _materials.clear();
 
+    for (auto &pair : _textures) {
+        _engine->destroy(pair.second);
+    }
+    _textures.clear();
+
     for (auto *vb : _vertexBuffers) _engine->destroy(vb);
     _vertexBuffers.clear();
     for (auto *ib : _indexBuffers) _engine->destroy(ib);
     _indexBuffers.clear();
 
-    _engine->destroyView(_view);
-    _engine->destroyScene(_scene);
+    _engine->destroy(_view);
+    _engine->destroy(_scene);
     _engine->destroyCameraComponent(_cameraEntity);
-    _engine->destroyRenderer(_renderer);
-    if (_swapChain) _engine->destroySwapChain(_swapChain);
+    _engine->destroy(_renderer);
+    if (_swapChain) _engine->destroy(_swapChain);
 
     Engine::destroy(&_engine);
     _engine = nullptr;
@@ -232,8 +282,11 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
 
 - (int)loadMaterialFromPath:(NSString *)path {
     if (!_engine) return -1;
-    NSData *data = [NSData dataWithContentsOfFile:path];
-    if (!data) return -1;
+    NSData *data = PFLoadDataFromPathOrUri(path);
+    if (!data) {
+        NSLog(@"Failed to load material data from '%@'", path);
+        return -1;
+    }
 
     Material *mat = Material::Builder()
         .package(data.bytes, data.length)
@@ -253,37 +306,41 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
 - (NSString *)getMaterialParameterName:(int)materialHandle index:(int)index {
     auto it = _materials.find(materialHandle);
     if (it == _materials.end()) return @"";
-    auto const* parameters = it->second->getParameters();
     size_t count = it->second->getParameterCount();
     if (index < 0 || (size_t)index >= count) return @"";
-    return [NSString stringWithUTF8String:parameters[index].name.c_str()];
+    std::vector<Material::ParameterInfo> params(count);
+    it->second->getParameters(params.data(), count);
+    return [NSString stringWithUTF8String:params[index].name];
 }
 
 - (NSString *)getMaterialParameterTypeName:(int)materialHandle index:(int)index {
     auto it = _materials.find(materialHandle);
     if (it == _materials.end()) return @"UNKNOWN";
-    auto const* parameters = it->second->getParameters();
     size_t count = it->second->getParameterCount();
     if (index < 0 || (size_t)index >= count) return @"UNKNOWN";
-    return PFMaterialParameterTypeName(parameters[index]);
+    std::vector<Material::ParameterInfo> params(count);
+    it->second->getParameters(params.data(), count);
+    return PFMaterialParameterTypeName(params[index]);
 }
 
 - (NSString *)getMaterialParameterPrecisionName:(int)materialHandle index:(int)index {
     auto it = _materials.find(materialHandle);
     if (it == _materials.end()) return @"DEFAULT";
-    auto const* parameters = it->second->getParameters();
     size_t count = it->second->getParameterCount();
     if (index < 0 || (size_t)index >= count) return @"DEFAULT";
-    return PFMaterialParameterPrecisionName(parameters[index]);
+    std::vector<Material::ParameterInfo> params(count);
+    it->second->getParameters(params.data(), count);
+    return PFMaterialParameterPrecisionName(params[index]);
 }
 
 - (int)getMaterialParameterArraySize:(int)materialHandle index:(int)index {
     auto it = _materials.find(materialHandle);
     if (it == _materials.end()) return 1;
-    auto const* parameters = it->second->getParameters();
     size_t count = it->second->getParameterCount();
     if (index < 0 || (size_t)index >= count) return 1;
-    return (int)parameters[index].count;
+    std::vector<Material::ParameterInfo> params(count);
+    it->second->getParameters(params.data(), count);
+    return (int)params[index].count;
 }
 
 - (int)createMaterialInstance:(int)materialHandle {
@@ -411,6 +468,48 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     );
 }
 
+- (int)createTextureWithWidth:(int)width height:(int)height pixels:(NSData *)pixels {
+    if (!_engine) return -1;
+
+    auto *texture = Texture::Builder()
+        .width((uint32_t)width)
+        .height((uint32_t)height)
+        .sampler(Texture::Sampler::SAMPLER_2D)
+        .format(Texture::InternalFormat::RGBA8)
+        .levels(1)
+        .build(*_engine);
+
+    // Copy pixel data so it outlives the call
+    size_t size = pixels.length;
+    void *pixelCopy = malloc(size);
+    memcpy(pixelCopy, pixels.bytes, size);
+
+    Texture::PixelBufferDescriptor buffer(
+        pixelCopy, size,
+        Texture::Format::RGBA, Texture::Type::UBYTE,
+        [](void *buf, size_t, void *) { free(buf); }
+    );
+    texture->setImage(*_engine, 0, std::move(buffer));
+
+    int handle = _nextHandle++;
+    _textures[handle] = texture;
+    return handle;
+}
+
+- (void)setTextureParam:(int)instanceHandle name:(NSString *)name textureHandle:(int)textureHandle {
+    auto instIt = _materialInstances.find(instanceHandle);
+    if (instIt == _materialInstances.end()) return;
+    auto texIt = _textures.find(textureHandle);
+    if (texIt == _textures.end()) return;
+
+    TextureSampler sampler(
+        TextureSampler::MinFilter::LINEAR,
+        TextureSampler::MagFilter::LINEAR,
+        TextureSampler::WrapMode::REPEAT
+    );
+    instIt->second->setParameter(name.UTF8String, texIt->second, sampler);
+}
+
 - (int)createPlaneWithMaterial:(int)instanceHandle width:(float)width height:(float)height {
     if (!_engine) return -1;
     auto it = _materialInstances.find(instanceHandle);
@@ -418,31 +517,46 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
 
     float hw = width / 2.0f;
     float hh = height / 2.0f;
+    const short4 tangentFrame = packSnorm16(float4{0.0f, 0.0f, 0.0f, 1.0f});
 
-    // 4 vertices: position(3) + normal(3) + uv(2) = 8 floats each
-    float vertices[] = {
-        -hw, -hh, 0, 0, 0, 1, 0, 0,
-         hw, -hh, 0, 0, 0, 1, 1, 0,
-         hw,  hh, 0, 0, 0, 1, 1, 1,
-        -hw,  hh, 0, 0, 0, 1, 0, 1,
+    struct PlaneVertex {
+        float px, py, pz;
+        int16_t tx, ty, tz, tw;
+        float u, v;
+    };
+
+    PlaneVertex vertices[] = {
+        {-hw, -hh, 0.0f, tangentFrame.x, tangentFrame.y, tangentFrame.z, tangentFrame.w, 0.0f, 0.0f},
+        { hw, -hh, 0.0f, tangentFrame.x, tangentFrame.y, tangentFrame.z, tangentFrame.w, 1.0f, 0.0f},
+        { hw,  hh, 0.0f, tangentFrame.x, tangentFrame.y, tangentFrame.z, tangentFrame.w, 1.0f, 1.0f},
+        {-hw,  hh, 0.0f, tangentFrame.x, tangentFrame.y, tangentFrame.z, tangentFrame.w, 0.0f, 1.0f},
     };
     uint16_t indices[] = {0, 1, 2, 0, 2, 3};
 
     auto *vb = VertexBuffer::Builder()
         .vertexCount(4)
         .bufferCount(1)
-        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, 0, 32)
-        .attribute(VertexAttribute::TANGENTS, 0, VertexBuffer::AttributeType::FLOAT3, 12, 32)
-        .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, 24, 32)
+        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, 0, sizeof(PlaneVertex))
+        .attribute(VertexAttribute::TANGENTS, 0, VertexBuffer::AttributeType::SHORT4, offsetof(PlaneVertex, tx), sizeof(PlaneVertex))
+        .normalized(VertexAttribute::TANGENTS)
+        .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, offsetof(PlaneVertex, u), sizeof(PlaneVertex))
         .build(*_engine);
-    vb->setBufferAt(*_engine, 0, VertexBuffer::BufferDescriptor(vertices, sizeof(vertices)));
+    vb->setBufferAt(*_engine, 0, VertexBuffer::BufferDescriptor(
+        PFMakeOwnedCopy(vertices, sizeof(vertices)),
+        sizeof(vertices),
+        [](void *buffer, size_t, void *) { free(buffer); }
+    ));
     _vertexBuffers.push_back(vb);
 
     auto *ib = IndexBuffer::Builder()
         .indexCount(6)
         .bufferType(IndexBuffer::IndexType::USHORT)
         .build(*_engine);
-    ib->setBuffer(*_engine, IndexBuffer::BufferDescriptor(indices, sizeof(indices)));
+    ib->setBuffer(*_engine, IndexBuffer::BufferDescriptor(
+        PFMakeOwnedCopy(indices, sizeof(indices)),
+        sizeof(indices),
+        [](void *buffer, size_t, void *) { free(buffer); }
+    ));
     _indexBuffers.push_back(ib);
 
     Entity entity = EntityManager::get().create();
@@ -450,6 +564,7 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib)
         .material(0, it->second)
         .boundingBox({{-hw, -hh, -0.01f}, {hw, hh, 0.01f}})
+        .culling(false)
         .build(*_engine, entity);
 
     _scene->addEntity(entity);
@@ -514,16 +629,24 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
         .attribute(VertexAttribute::TANGENTS, 0, VertexBuffer::AttributeType::FLOAT3, 12, 32)
         .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, 24, 32)
         .build(*_engine);
-    vb->setBufferAt(*_engine, 0,
-        VertexBuffer::BufferDescriptor(vertexData.data(), vertexData.size() * sizeof(float)));
+    const size_t vertexDataSize = vertexData.size() * sizeof(float);
+    vb->setBufferAt(*_engine, 0, VertexBuffer::BufferDescriptor(
+        PFMakeOwnedCopy(vertexData.data(), vertexDataSize),
+        vertexDataSize,
+        [](void *buffer, size_t, void *) { free(buffer); }
+    ));
     _vertexBuffers.push_back(vb);
 
     auto *ib = IndexBuffer::Builder()
         .indexCount(indexCount)
         .bufferType(IndexBuffer::IndexType::USHORT)
         .build(*_engine);
-    ib->setBuffer(*_engine,
-        IndexBuffer::BufferDescriptor(indexData.data(), indexData.size() * sizeof(uint16_t)));
+    const size_t indexDataSize = indexData.size() * sizeof(uint16_t);
+    ib->setBuffer(*_engine, IndexBuffer::BufferDescriptor(
+        PFMakeOwnedCopy(indexData.data(), indexDataSize),
+        indexDataSize,
+        [](void *buffer, size_t, void *) { free(buffer); }
+    ));
     _indexBuffers.push_back(ib);
 
     Entity entity = EntityManager::get().create();
@@ -531,6 +654,7 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib)
         .material(0, it->second)
         .boundingBox({{-radius, -radius, -radius}, {radius, radius, radius}})
+        .culling(false)
         .build(*_engine, entity);
 
     _scene->addEntity(entity);

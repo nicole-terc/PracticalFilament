@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -15,9 +16,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import dev.nstv.practicalfilament.components.ParameterInputField
 import dev.nstv.practicalfilament.filament.CameraConfig
+import dev.nstv.practicalfilament.filament.BuiltInTexture
 import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
@@ -25,18 +29,39 @@ import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.MaterialParameter
 import dev.nstv.practicalfilament.filament.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.defaultMaterialParameter
+import dev.nstv.practicalfilament.filament.generateTexturePixels
 import dev.nstv.practicalfilament.theme.Grid
+import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import practicalfilament.composeapp.generated.resources.Res
+
+private val availableMaterials = listOf(
+    "sandboxLitFade.filamat",
+    "sandboxCloth.filamat",
+    "mirror.filamat",
+)
+
+private fun loadMaterialOnEngine(
+    engine: FilamentEngine,
+    fileName: String,
+): Triple<Int, List<MaterialParameterDefinition>, Map<String, MaterialParameter>> {
+    val materialHandle = engine.loadMaterial(Res.getUri("files/$fileName"))
+    val definitions = engine.getMaterialParameters(materialHandle)
+    val instanceHandle = engine.createMaterialInstance(materialHandle)
+    val parameters = definitions.associate { definition ->
+        definition.name to defaultMaterialParameter(definition)
+    }
+    return Triple(instanceHandle, definitions, parameters)
+}
 
 @Composable
 fun MaterialViewerScreen(
     modifier: Modifier = Modifier,
 ) {
     var filamentEngine by remember {
-        mutableStateOf<dev.nstv.practicalfilament.filament.FilamentEngine?>(
-            null
-        )
+        mutableStateOf<FilamentEngine?>(null)
     }
+    var selectedMaterialIndex by remember { mutableIntStateOf(0) }
+    var renderableHandle by remember { mutableIntStateOf(0) }
     var materialInstanceHandle by remember { mutableIntStateOf(0) }
     var materialParameterDefinitions by remember {
         mutableStateOf<List<MaterialParameterDefinition>>(
@@ -44,6 +69,7 @@ fun MaterialViewerScreen(
         )
     }
     var materialParameters by remember { mutableStateOf<Map<String, MaterialParameter>>(emptyMap()) }
+    var textureHandles by remember { mutableStateOf<Map<BuiltInTexture, Int>>(emptyMap()) }
 
     LaunchedEffect(
         filamentEngine,
@@ -53,8 +79,25 @@ fun MaterialViewerScreen(
         val currentEngine = filamentEngine ?: return@LaunchedEffect
         if (materialInstanceHandle == 0) return@LaunchedEffect
 
+        var updatedTextureHandles = textureHandles
         materialParameters.values.forEach { parameter ->
-            currentEngine.setMaterialParameter(materialInstanceHandle, parameter)
+            when (val value = parameter.value) {
+                is BuiltInTexture -> {
+                    val textureHandle = updatedTextureHandles[value] ?: currentEngine.createTexture(
+                        width = 256,
+                        height = 256,
+                        pixels = generateTexturePixels(value),
+                    ).also { handle ->
+                        updatedTextureHandles = updatedTextureHandles + (value to handle)
+                    }
+                    currentEngine.setTextureParameter(materialInstanceHandle, parameter.name, textureHandle)
+                }
+
+                else -> currentEngine.setMaterialParameter(materialInstanceHandle, parameter)
+            }
+        }
+        if (updatedTextureHandles != textureHandles) {
+            textureHandles = updatedTextureHandles
         }
         currentEngine.requestFrame()
     }
@@ -89,17 +132,16 @@ fun MaterialViewerScreen(
                     ),
                 ),
                 onEngineReady = { engine ->
-                    val materialHandle =
-                        engine.loadMaterial(Res.getUri("files/sandboxLitFade.filamat"))
-                    val definitions = engine.getMaterialParameters(materialHandle)
-                    val instanceHandle = engine.createMaterialInstance(materialHandle)
+                    val (instanceHandle, definitions, parameters) = loadMaterialOnEngine(
+                        engine,
+                        availableMaterials[selectedMaterialIndex],
+                    )
                     filamentEngine = engine
+                    textureHandles = emptyMap()
                     materialParameterDefinitions = definitions
-                    materialParameters = definitions.associate { definition ->
-                        definition.name to defaultMaterialParameter(definition)
-                    }
+                    materialParameters = parameters
                     materialInstanceHandle = instanceHandle
-                    engine.createPlaneRenderable(instanceHandle)
+                    renderableHandle = engine.createPlaneRenderable(instanceHandle)
                 },
             )
         }
@@ -111,6 +153,33 @@ fun MaterialViewerScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(Grid.Two)
         ) {
+            DropDownWithArrows(
+                options = availableMaterials.map { it.removeSuffix(".filamat") },
+                selectedIndex = selectedMaterialIndex,
+                label = "Material",
+                onSelectionChanged = { index ->
+                    val engine = filamentEngine ?: return@DropDownWithArrows
+                    selectedMaterialIndex = index
+
+                    // Remove old renderable
+                    if (renderableHandle != 0) {
+                        engine.removeRenderable(renderableHandle)
+                        renderableHandle = 0
+                    }
+
+                    // Load new material and create renderable
+                    val (instanceHandle, definitions, parameters) = loadMaterialOnEngine(
+                        engine,
+                        availableMaterials[index],
+                    )
+                    materialParameterDefinitions = definitions
+                    materialParameters = parameters
+                    materialInstanceHandle = instanceHandle
+                    renderableHandle = engine.createPlaneRenderable(instanceHandle)
+                },
+                modifier = Modifier.fillMaxWidth().padding(bottom = Grid.One),
+            )
+
             materialParameterDefinitions.forEach { definition ->
                 val parameter = materialParameters[definition.name] ?: return@forEach
                 ParameterInputField(
