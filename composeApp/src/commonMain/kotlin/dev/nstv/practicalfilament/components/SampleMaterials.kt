@@ -16,7 +16,7 @@ val MaterialFilesList = listOf(
 val MaterialOverridesList = listOf(
     Material(
         fileName = "aiDefaultMat.filamat",
-        label = "Marble",
+        label = "aiDefaultMat",
         description = "The bundled marble material wrapped onto a sphere for a softer stone-like look.",
         overrides = mapOf(
             "baseColor" to Float4(0.72f, 0.74f, 0.70f, 1f),
