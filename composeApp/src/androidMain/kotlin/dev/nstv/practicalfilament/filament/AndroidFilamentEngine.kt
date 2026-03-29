@@ -1,5 +1,6 @@
 package dev.nstv.practicalfilament.filament
 
+import android.content.Context
 import android.view.Choreographer
 import android.view.Surface
 import com.google.android.filament.Camera
@@ -25,7 +26,9 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-class AndroidFilamentEngine : FilamentEngine {
+class AndroidFilamentEngine(
+    private val context: Context
+) : FilamentEngine {
 
     private var engine: Engine? = null
     private var renderer: Renderer? = null
@@ -233,8 +236,10 @@ class AndroidFilamentEngine : FilamentEngine {
     }
 
     override fun loadMaterial(path: String): Int {
+        val assetPath = path.removePrefix("file:///android_asset/")
+
         val eng = engine ?: return -1
-        val bytes = File(path).readBytes()
+        val bytes = context.assets.open(assetPath).readBytes()
         val buffer = ByteBuffer.allocateDirect(bytes.size).apply {
             order(ByteOrder.nativeOrder())
             put(bytes)

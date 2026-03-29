@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.filament.android.UiHelper
 
@@ -16,7 +17,8 @@ actual fun FilamentView(
     lights: List<LightConfig>,
     onEngineReady: (FilamentEngine) -> Unit,
 ) {
-    val engine = remember { AndroidFilamentEngine() }
+    val context = LocalContext.current
+    val engine = remember { AndroidFilamentEngine(context) }
 
     DisposableEffect(Unit) {
         onDispose {
