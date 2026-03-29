@@ -2,7 +2,6 @@ package dev.nstv.practicalfilament.components
 
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.Float4
-import dev.nstv.practicalfilament.filament.material.BuiltInTexture
 import dev.nstv.practicalfilament.filament.material.Material
 
 
@@ -61,15 +60,20 @@ val MaterialOverridesList = listOf(
         ),
     ),
     Material(
-        fileName = "mirror.filamat",
+        fileName = "sandboxLitFade.filamat",
         label = "mirror",
-        description = "The existing mirror material using its bundled static texture path.",
+        description = "Mirror-like glossy sphere driven by surface lighting. True background reflections would require render-to-texture or an environment map.",
         overrides = mapOf(
-            "baseColor" to Float4(1f, 1f, 1f, 1f),
+            "baseColor" to Float3(0.96f, 0.97f, 0.98f),
+            "roughness" to 0.02f,
+            "metallic" to 0f,
+            "reflectance" to 1f,
             "clearCoat" to 1f,
-            "clearCoatRoughness" to 0.03f,
+            "clearCoatRoughness" to 0.02f,
+            "sheenColor" to Float3(0f, 0f, 0f),
+            "sheenRoughness" to 0f,
+            "anisotropy" to 0f,
             "emissive" to Float4(0f, 0f, 0f, 1f),
-            "albedo" to BuiltInTexture.GRADIENT,
         ),
     ),
 )

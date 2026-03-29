@@ -7,6 +7,7 @@ data class LightConfig(
     val color: Color = Color(1f, 1f, 1f),
     val intensity: Float = 100_000f,
     val position: Float3 = Float3(0f, 0f, 0f),
+    val falloffRadius: Float = 1f,
     val direction: Float3 = Float3(0f, -1f, 0f),
     val innerConeAngle: Float = 0.5f,
     val outerConeAngle: Float = 0.7f,

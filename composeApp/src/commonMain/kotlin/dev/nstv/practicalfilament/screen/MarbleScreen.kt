@@ -1,6 +1,8 @@
 package dev.nstv.practicalfilament.screen
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,6 +42,7 @@ import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import kotlin.math.sqrt
+import androidx.compose.ui.graphics.Color as ComposeColor
 
 
 @Composable
@@ -54,6 +58,10 @@ fun MarbleScreen(
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var lastDragPoint by remember { mutableStateOf<Float3?>(null) }
     var orientation by remember { mutableStateOf(initialArcballOrientation()) }
+    var gestureLightHandle by remember { mutableIntStateOf(0) }
+    var gestureLightPosition by remember { mutableStateOf<Float3?>(null) }
+    var gestureLightScreenPosition by remember { mutableStateOf<Offset?>(null) }
+    var gestureLightVersion by remember { mutableLongStateOf(0L) }
     var renderableHandle by remember { mutableIntStateOf(0) }
     var materialInstanceHandle by remember { mutableIntStateOf(0) }
     var materialParameterDefinitions by remember {
@@ -111,6 +119,28 @@ fun MarbleScreen(
         currentEngine.requestFrame()
     }
 
+    LaunchedEffect(
+        filamentEngine,
+        gestureLightVersion,
+    ) {
+        val currentEngine = filamentEngine ?: return@LaunchedEffect
+        if (gestureLightHandle != 0) {
+            currentEngine.removeLight(gestureLightHandle)
+            gestureLightHandle = 0
+        }
+        val position = gestureLightPosition ?: return@LaunchedEffect
+        gestureLightHandle = currentEngine.addLight(
+            LightConfig(
+                type = LightType.POINT,
+                color = Color(1f, 1f, 1f),
+                intensity = 600_000f,
+                position = position,
+                falloffRadius = 10f,
+            )
+        )
+        currentEngine.requestFrame()
+    }
+
     Column(
         modifier = modifier.fillMaxSize()
     ) {
@@ -123,6 +153,19 @@ fun MarbleScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .onSizeChanged { viewportSize = it }
+                    .pointerInput(viewportSize) {
+                        detectTapGestures(
+                            onDoubleTap = { tapOffset ->
+                                val worldLightPosition =
+                                    tapOffset.toGestureLightPosition(viewportSize)
+                                if (worldLightPosition != null) {
+                                    gestureLightScreenPosition = tapOffset
+                                    gestureLightPosition = worldLightPosition
+                                    gestureLightVersion += 1L
+                                }
+                            }
+                        )
+                    }
                     .pointerInput(renderableHandle) {
                         detectDragGestures(
                             onDragStart = { start ->
@@ -135,10 +178,12 @@ fun MarbleScreen(
                                 lastDragPoint = null
                             },
                         ) { change, _ ->
-                            val previousPoint = lastDragPoint ?: change.previousPosition.toArcballPoint(viewportSize)
+                            val previousPoint = lastDragPoint
+                                ?: change.previousPosition.toArcballPoint(viewportSize)
                             val currentPoint = change.position.toArcballPoint(viewportSize)
                             if (previousPoint != null && currentPoint != null) {
-                                orientation = arcballDelta(previousPoint, currentPoint) * orientation
+                                orientation =
+                                    arcballDelta(previousPoint, currentPoint) * orientation
                                 lastDragPoint = currentPoint
                             }
                             change.consume()
@@ -151,11 +196,11 @@ fun MarbleScreen(
                 lights = listOf(
                     LightConfig(
                         type = LightType.DIRECTIONAL,
-                        color = Color(1f, 0.99f, 0.97f),
-                        intensity = 95_000f,
+                        color = Color(1f, 0.98f, 0.95f),
+                        intensity = 75_000f,
                         // Filament treats this as the direction the light emits toward.
                         // With the camera on +Z, negative Z lights the front of the sphere.
-                        direction = Float3(-0.18f, -0.32f, -1f),
+                        direction = Float3(-0.24f, -0.38f, -1f),
                     ),
                 ),
                 backgroundColor = Color(0.16f, 0.18f, 0.27f, 1f),
@@ -171,12 +216,34 @@ fun MarbleScreen(
                     materialInstanceHandle = instanceHandle
                     orientation = initialArcballOrientation()
                     lastDragPoint = null
+                    gestureLightHandle = 0
                     renderableHandle = engine.createSphereRenderable(
                         materialInstanceHandle = instanceHandle,
                         radius = 1f,
                     )
                 },
             )
+            Canvas(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                val marker = gestureLightScreenPosition ?: return@Canvas
+                drawCircle(
+                    color = ComposeColor.White.copy(alpha = 0.2f),
+                    radius = 26f,
+                    center = marker,
+                )
+                drawCircle(
+                    color = ComposeColor.White.copy(alpha = 0.95f),
+                    radius = 12f,
+                    center = marker,
+                )
+                drawCircle(
+                    color = ComposeColor.White.copy(alpha = 0.8f),
+                    radius = 18f,
+                    center = marker,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f),
+                )
+            }
         }
 
         Column(
@@ -222,10 +289,17 @@ fun MarbleScreen(
                     materialInstanceHandle = instanceHandle
                     orientation = initialArcballOrientation()
                     lastDragPoint = null
+                    if (gestureLightHandle != 0) {
+                        engine.removeLight(gestureLightHandle)
+                        gestureLightHandle = 0
+                    }
                     renderableHandle = engine.createSphereRenderable(
                         materialInstanceHandle = instanceHandle,
                         radius = 1f,
                     )
+                    gestureLightPosition?.let {
+                        gestureLightVersion += 1L
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -344,6 +418,28 @@ private fun Offset.toArcballPoint(size: IntSize): Float3? {
     }
 }
 
+private fun Offset.toGestureLightPosition(size: IntSize): Float3? {
+    if (size.width <= 0 || size.height <= 0) return null
+    val scale = minOf(size.width, size.height).toFloat()
+    val normalizedX = ((2f * x) - size.width) / scale
+    val normalizedY = (size.height - (2f * y)) / scale
+    val radial = normalizedX * normalizedX + normalizedY * normalizedY
+    val hemisphereZ = if (radial <= 1f) {
+        sqrt(1f - radial)
+    } else {
+        0f
+    }
+    val length =
+        sqrt(normalizedX * normalizedX + normalizedY * normalizedY + hemisphereZ * hemisphereZ)
+            .coerceAtLeast(1e-6f)
+    val radius = 3.6f
+    return Float3(
+        x = (normalizedX / length) * radius,
+        y = (normalizedY / length) * radius,
+        z = (hemisphereZ / length) * radius,
+    )
+}
+
 private infix fun Float3.dot(other: Float3): Float = x * other.x + y * other.y + z * other.z
 
 private infix fun Float3.cross(other: Float3): Float3 = Float3(
@@ -351,6 +447,7 @@ private infix fun Float3.cross(other: Float3): Float3 = Float3(
     y = z * other.x - x * other.z,
     z = x * other.y - y * other.x,
 )
+
 
 private fun Float3.length(): Float = sqrt(x * x + y * y + z * z)
 

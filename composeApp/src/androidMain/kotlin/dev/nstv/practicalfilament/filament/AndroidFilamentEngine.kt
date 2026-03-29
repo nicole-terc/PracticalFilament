@@ -228,6 +228,9 @@ class AndroidFilamentEngine(
             .position(config.position.x, config.position.y, config.position.z)
             .direction(config.direction.x, config.direction.y, config.direction.z)
             .apply {
+                if (config.type == LightType.POINT || config.type == LightType.SPOT) {
+                    falloff(config.falloffRadius)
+                }
                 if (config.type == LightType.SPOT) {
                     spotLightCone(config.innerConeAngle, config.outerConeAngle)
                 }

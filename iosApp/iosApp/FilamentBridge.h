@@ -19,6 +19,7 @@
                       r:(float)r g:(float)g b:(float)b
               intensity:(float)intensity
                    posX:(float)posX posY:(float)posY posZ:(float)posZ
+            falloffRadius:(float)falloffRadius
                    dirX:(float)dirX dirY:(float)dirY dirZ:(float)dirZ
               innerCone:(float)innerCone outerCone:(float)outerCone;
 

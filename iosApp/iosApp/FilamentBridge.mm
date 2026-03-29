@@ -243,6 +243,7 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
                       r:(float)r g:(float)g b:(float)b
               intensity:(float)intensity
                    posX:(float)posX posY:(float)posY posZ:(float)posZ
+           falloffRadius:(float)falloffRadius
                    dirX:(float)dirX dirY:(float)dirY dirZ:(float)dirZ
               innerCone:(float)innerCone outerCone:(float)outerCone {
     if (!_engine) return -1;
@@ -263,6 +264,9 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
         .position({posX, posY, posZ})
         .direction({dirX, dirY, dirZ});
 
+    if (type == 1 || type == 2) {
+        builder.falloff(falloffRadius);
+    }
     if (type == 2) {
         builder.spotLightCone(innerCone, outerCone);
     }

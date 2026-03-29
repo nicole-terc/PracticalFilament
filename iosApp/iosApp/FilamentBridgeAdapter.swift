@@ -51,12 +51,14 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
     func addLightWithType(type: Int32, r: Float, g: Float, b: Float,
                           intensity: Float,
                           posX: Float, posY: Float, posZ: Float,
+                          falloffRadius: Float,
                           dirX: Float, dirY: Float, dirZ: Float,
                           innerCone: Float, outerCone: Float) -> Int32 {
         return bridge.addLight(withType: type,
                                r: r, g: g, b: b,
                                intensity: intensity,
                                posX: posX, posY: posY, posZ: posZ,
+                               falloffRadius: falloffRadius,
                                dirX: dirX, dirY: dirY, dirZ: dirZ,
                                innerCone: innerCone, outerCone: outerCone)
     }

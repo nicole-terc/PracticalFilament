@@ -58,6 +58,7 @@ class IosFilamentEngine(
             r = config.color.r, g = config.color.g, b = config.color.b,
             intensity = config.intensity,
             posX = config.position.x, posY = config.position.y, posZ = config.position.z,
+            falloffRadius = config.falloffRadius,
             dirX = config.direction.x, dirY = config.direction.y, dirZ = config.direction.z,
             innerCone = config.innerConeAngle, outerCone = config.outerConeAngle,
         )
@@ -237,6 +238,7 @@ interface FilamentBridgeProtocol {
         r: Float, g: Float, b: Float,
         intensity: Float,
         posX: Float, posY: Float, posZ: Float,
+        falloffRadius: Float,
         dirX: Float, dirY: Float, dirZ: Float,
         innerCone: Float, outerCone: Float,
     ): Int
