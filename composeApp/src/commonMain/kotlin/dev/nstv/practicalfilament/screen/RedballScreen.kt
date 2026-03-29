@@ -42,6 +42,8 @@ import dev.nstv.practicalfilament.theme.Grid
 import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.sqrt
 
+// Based on Filament's redball sample: https://google.github.io/filament/samples/web/redball.html
+
 private const val RedballIndirectLightPath = "files/envs/pillars_2k/pillars_2k_ibl.ktx"
 private const val RedballSkyboxPath = "files/envs/pillars_2k/pillars_2k_skybox.ktx"
 private const val RedballEnvironmentIntensity = 50_000f
@@ -97,15 +99,10 @@ fun RedballScreen(
 
     LaunchedEffect(
         filamentEngine,
-        renderableHandle,
         orientation,
     ) {
         val currentEngine = filamentEngine ?: return@LaunchedEffect
-        if (renderableHandle == 0) return@LaunchedEffect
-        currentEngine.setRenderableTransform(
-            handle = renderableHandle,
-            transform = orientation.toMatrix4(),
-        )
+        currentEngine.updateCamera(redballCameraForOrientation(orientation))
         currentEngine.requestFrame()
     }
 
@@ -179,11 +176,7 @@ fun RedballScreen(
                             change.consume()
                         }
                     },
-                camera = CameraConfig(
-                    position = Float3(0f, 0f, 4f),
-                    lookAt = Float3(0f, 0f, 0f),
-                    fovDegrees = 45.0,
-                ),
+                camera = redballCameraForOrientation(orientation),
                 lights = RedballBaseLights,
                 backgroundColor = Color(0f, 0f, 0f, 1f),
                 onEngineReady = { engine ->
@@ -282,18 +275,30 @@ private data class RedballQuaternion(
     val w: Float,
 ) {
     operator fun times(other: RedballQuaternion): RedballQuaternion {
+        return multiplyRaw(other).normalized()
+    }
+
+    private fun multiplyRaw(other: RedballQuaternion): RedballQuaternion {
         return RedballQuaternion(
             x = w * other.x + x * other.w + y * other.z - z * other.y,
             y = w * other.y - x * other.z + y * other.w + z * other.x,
             z = w * other.z + x * other.y - y * other.x + z * other.w,
             w = w * other.w - x * other.x - y * other.y - z * other.z,
-        ).normalized()
+        )
     }
 
     fun normalized(): RedballQuaternion {
         val magnitude = sqrt(x * x + y * y + z * z + w * w)
         if (magnitude <= 1e-6f) return RedballQuaternion(0f, 0f, 0f, 1f)
         return RedballQuaternion(x / magnitude, y / magnitude, z / magnitude, w / magnitude)
+    }
+
+    fun conjugate(): RedballQuaternion = RedballQuaternion(-x, -y, -z, w)
+
+    fun rotate(vector: Float3): Float3 {
+        val quaternionVector = RedballQuaternion(vector.x, vector.y, vector.z, 0f)
+        val rotated = multiplyRaw(quaternionVector).multiplyRaw(conjugate())
+        return Float3(rotated.x, rotated.y, rotated.z)
     }
 
     fun toMatrix4(): FloatArray {
@@ -317,6 +322,16 @@ private data class RedballQuaternion(
 
 private fun initialRedballOrientation(): RedballQuaternion {
     return RedballQuaternion(0f, 0f, 0f, 1f)
+}
+
+private fun redballCameraForOrientation(orientation: RedballQuaternion): CameraConfig {
+    val orbit = orientation.conjugate()
+    return CameraConfig(
+        position = orbit.rotate(Float3(0f, 0f, 4f)),
+        lookAt = Float3(0f, 0f, 0f),
+        up = orbit.rotate(Float3(0f, 1f, 0f)),
+        fovDegrees = 45.0,
+    )
 }
 
 private fun redballQuaternionFromAxisAngle(axis: Float3, angleDegrees: Float): RedballQuaternion {
