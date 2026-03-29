@@ -186,6 +186,10 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
         return bridge.createSphere(withMaterial: instanceHandle, radius: radius)
     }
 
+    func setRenderableRotation(handle: Int32, rotationX: Float, rotationY: Float) {
+        bridge.setRenderableRotation(handle, rotationX: rotationX, rotationY: rotationY)
+    }
+
     func removeRenderable(handle: Int32) { bridge.removeRenderable(handle) }
     func render() { bridge.render() }
 

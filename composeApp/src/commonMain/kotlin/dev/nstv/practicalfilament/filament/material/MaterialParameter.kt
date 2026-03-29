@@ -1,4 +1,17 @@
-package dev.nstv.practicalfilament.filament
+package dev.nstv.practicalfilament.filament.material
+
+import dev.nstv.practicalfilament.filament.Bool2
+import dev.nstv.practicalfilament.filament.Bool3
+import dev.nstv.practicalfilament.filament.Bool4
+import dev.nstv.practicalfilament.filament.Float2
+import dev.nstv.practicalfilament.filament.Float3
+import dev.nstv.practicalfilament.filament.Float4
+import dev.nstv.practicalfilament.filament.Int2
+import dev.nstv.practicalfilament.filament.Int3
+import dev.nstv.practicalfilament.filament.Int4
+import dev.nstv.practicalfilament.filament.UInt2
+import dev.nstv.practicalfilament.filament.UInt3
+import dev.nstv.practicalfilament.filament.UInt4
 
 data class MaterialParameter(
     val name: String,

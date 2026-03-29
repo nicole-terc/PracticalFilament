@@ -11,6 +11,7 @@
 #import <filament/MaterialInstance.h>
 #import <filament/LightManager.h>
 #import <filament/RenderableManager.h>
+#import <filament/TransformManager.h>
 #import <filament/VertexBuffer.h>
 #import <filament/IndexBuffer.h>
 #import <filament/Texture.h>
@@ -673,6 +674,21 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     int handle = _nextHandle++;
     _renderables[handle] = entity;
     return handle;
+}
+
+- (void)setRenderableRotation:(int)handle rotationX:(float)rotationX rotationY:(float)rotationY {
+    auto it = _renderables.find(handle);
+    if (it == _renderables.end() || !_engine) return;
+
+    auto& transformManager = _engine->getTransformManager();
+    auto instance = transformManager.getInstance(it->second);
+    if (!instance.isValid()) return;
+
+    const float radiansX = rotationX * (float)M_PI / 180.0f;
+    const float radiansY = rotationY * (float)M_PI / 180.0f;
+    const mat4f rotation = mat4f::rotation(radiansY, float3{0.0f, 1.0f, 0.0f}) *
+        mat4f::rotation(radiansX, float3{1.0f, 0.0f, 0.0f});
+    transformManager.setTransform(instance, rotation);
 }
 
 - (void)removeRenderable:(int)handle {

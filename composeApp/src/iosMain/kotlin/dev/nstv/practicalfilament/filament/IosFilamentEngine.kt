@@ -1,7 +1,9 @@
 package dev.nstv.practicalfilament.filament
 
-import platform.Foundation.NSData
-import platform.Foundation.dataWithContentsOfFile
+import dev.nstv.practicalfilament.filament.material.MaterialParameter
+import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
+import dev.nstv.practicalfilament.filament.material.MaterialParameterPrecision
+import dev.nstv.practicalfilament.filament.material.MaterialParameterType
 import platform.QuartzCore.CAMetalLayer
 
 /**
@@ -187,6 +189,10 @@ class IosFilamentEngine(
         return bridge.createSphereWithMaterial(materialInstanceHandle, radius = radius)
     }
 
+    override fun setRenderableRotation(handle: Int, rotationXDegrees: Float, rotationYDegrees: Float) {
+        bridge.setRenderableRotation(handle, rotationX = rotationXDegrees, rotationY = rotationYDegrees)
+    }
+
     override fun removeRenderable(handle: Int) {
         bridge.removeRenderable(handle)
     }
@@ -263,6 +269,7 @@ interface FilamentBridgeProtocol {
     fun setTextureParam(instanceHandle: Int, name: String, textureHandle: Int)
     fun createPlaneWithMaterial(instanceHandle: Int, width: Float, height: Float): Int
     fun createSphereWithMaterial(instanceHandle: Int, radius: Float): Int
+    fun setRenderableRotation(handle: Int, rotationX: Float, rotationY: Float)
     fun removeRenderable(handle: Int)
     fun render()
     fun updateViewportWidth(width: Int, height: Int)

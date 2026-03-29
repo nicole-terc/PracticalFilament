@@ -69,6 +69,7 @@
 
 - (int)createPlaneWithMaterial:(int)instanceHandle width:(float)width height:(float)height;
 - (int)createSphereWithMaterial:(int)instanceHandle radius:(float)radius;
+- (void)setRenderableRotation:(int)handle rotationX:(float)rotationX rotationY:(float)rotationY;
 - (void)removeRenderable:(int)handle;
 
 - (void)render;

@@ -27,6 +27,7 @@ import dev.nstv.practicalfilament.theme.slidesBackground
 
 private enum class Screen {
     MATERIAL_VIEWER,
+    MARBLE,
 }
 
 const val musicFileName = "nicmix.wav"
@@ -41,7 +42,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by remember { mutableStateOf(Screen.MATERIAL_VIEWER) }
+        var selectedScreen by remember { mutableStateOf(Screen.MARBLE) }
 
         Column(
             modifier = Modifier
@@ -65,6 +66,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
             ) { screen ->
                 when (screen) {
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
+                    Screen.MARBLE -> MarbleScreen()
                 }
             }
         }

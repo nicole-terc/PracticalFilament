@@ -1,6 +1,7 @@
 package dev.nstv.practicalfilament.filament
 
 import android.content.Context
+import android.opengl.Matrix
 import android.view.Choreographer
 import android.view.Surface
 import com.google.android.filament.Camera
@@ -21,7 +22,10 @@ import com.google.android.filament.VertexBuffer
 import com.google.android.filament.View
 import com.google.android.filament.Viewport
 import com.google.android.filament.android.UiHelper
-import java.io.File
+import dev.nstv.practicalfilament.filament.material.MaterialParameter
+import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
+import dev.nstv.practicalfilament.filament.material.MaterialParameterPrecision
+import dev.nstv.practicalfilament.filament.material.MaterialParameterType
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
@@ -610,6 +614,20 @@ class AndroidFilamentEngine(
         val handle = nextHandle++
         renderables[handle] = entity
         return handle
+    }
+
+    override fun setRenderableRotation(handle: Int, rotationXDegrees: Float, rotationYDegrees: Float) {
+        val eng = engine ?: return
+        val entity = renderables[handle] ?: return
+        val transformManager = eng.transformManager
+        val instance = transformManager.getInstance(entity)
+        if (instance == 0) return
+
+        val transform = FloatArray(16)
+        Matrix.setIdentityM(transform, 0)
+        Matrix.rotateM(transform, 0, rotationYDegrees, 0f, 1f, 0f)
+        Matrix.rotateM(transform, 0, rotationXDegrees, 1f, 0f, 0f)
+        transformManager.setTransform(instance, transform)
     }
 
     override fun removeRenderable(handle: Int) {

@@ -1,5 +1,8 @@
 package dev.nstv.practicalfilament.filament
 
+import dev.nstv.practicalfilament.filament.material.MaterialParameter
+import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
+
 interface FilamentEngine {
     fun initialize()
     fun destroy()
@@ -29,6 +32,7 @@ interface FilamentEngine {
     // Renderables
     fun createPlaneRenderable(materialInstanceHandle: Int, width: Float = 2f, height: Float = 2f): Int
     fun createSphereRenderable(materialInstanceHandle: Int, radius: Float = 1f): Int
+    fun setRenderableRotation(handle: Int, rotationXDegrees: Float, rotationYDegrees: Float)
     fun removeRenderable(handle: Int)
 
     // Rendering
