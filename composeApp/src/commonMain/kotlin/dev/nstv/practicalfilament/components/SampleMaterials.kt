@@ -6,18 +6,17 @@ import dev.nstv.practicalfilament.filament.material.Material
 
 
 val MaterialFilesList = listOf(
-    "plastic.filamat",
-    "aiDefaultMat.filamat",
-    "image.filamat",
-    "sandboxLitFade.filamat",
-    "sandboxCloth.filamat",
-    "mirror.filamat",
+    "materials/plastic.filamat",
+    "materials/aiDefaultMat.filamat",
+    "materials/image.filamat",
+    "materials/sandboxLitFade.filamat",
+    "materials/sandboxCloth.filamat",
+    "materials/mirror.filamat",
 )
 
 val RedballMaterial = Material(
     fileName = "plastic.filamat",
     label = "redball",
-    description = "",
     overrides = mapOf(
         "baseColor" to Float3(0.80f, 0.07f, 0.15f),
         "roughness" to 0.14f,
@@ -29,9 +28,8 @@ val RedballMaterial = Material(
 val MaterialOverridesList = listOf(
     RedballMaterial,
     Material(
-        fileName = "aiDefaultMat.filamat",
+        fileName = "materials/aiDefaultMat.filamat",
         label = "aiDefaultMat",
-        description = "",
         overrides = mapOf(
             "baseColor" to Float3(0.72f, 0.74f, 0.70f),
             "roughness" to 0.58f,
@@ -40,9 +38,13 @@ val MaterialOverridesList = listOf(
         ),
     ),
     Material(
-        fileName = "sandboxLitFade.filamat",
+        fileName = "materials/image.filamat",
+        label = "image",
+        overrides = emptyMap(),
+    ),
+    Material(
+        fileName = "materials/sandboxLitFade.filamat",
         label = "sandboxLitFade",
-        description = "",
         overrides = mapOf(
             "baseColor" to Float3(0.78f, 0.84f, 0.92f),
             "roughness" to 0.18f,
@@ -57,9 +59,8 @@ val MaterialOverridesList = listOf(
         ),
     ),
     Material(
-        fileName = "sandboxCloth.filamat",
+        fileName = "materials/sandboxCloth.filamat",
         label = "sandboxCloth",
-        description = "",
         overrides = mapOf(
             "baseColor" to Float3(0.72f, 0.74f, 0.70f),
             "roughness" to 0.58f,
@@ -68,20 +69,8 @@ val MaterialOverridesList = listOf(
         ),
     ),
     Material(
-        fileName = "sandboxLitFade.filamat",
+        fileName = "materials/mirror.filamat",
         label = "mirror",
-        description = "",
-        overrides = mapOf(
-            "baseColor" to Float3(0.96f, 0.97f, 0.98f),
-            "roughness" to 0.02f,
-            "metallic" to 0f,
-            "reflectance" to 1f,
-            "clearCoat" to 1f,
-            "clearCoatRoughness" to 0.02f,
-            "sheenColor" to Float3(0f, 0f, 0f),
-            "sheenRoughness" to 0f,
-            "anisotropy" to 0f,
-            "emissive" to Float4(0f, 0f, 0f, 1f),
-        ),
+        overrides = mapOf(),
     ),
 )
