@@ -242,16 +242,6 @@ fun RedballScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(Grid.Two)
         ) {
-            Text(
-                text = "Red Ball",
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            Text(
-                modifier = Modifier.padding(top = Grid.Half, bottom = Grid.One),
-                text = "Plastic sphere using the redball sample's sun, backlight, and baked pillars reflections, with Marble-style drag rotation, double-tap light placement, and live material inputs.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-
             materialParameterDefinitions.forEach { definition ->
                 val parameter = materialParameters[definition.name] ?: return@forEach
                 ParameterInputField(

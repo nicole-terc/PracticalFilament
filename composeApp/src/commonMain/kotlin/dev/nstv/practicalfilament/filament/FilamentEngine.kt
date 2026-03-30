@@ -38,8 +38,10 @@ interface FilamentEngine {
     // Renderables
     fun createPlaneRenderable(materialInstanceHandle: Int, width: Float = 2f, height: Float = 2f): Int
     fun createSphereRenderable(materialInstanceHandle: Int, radius: Float = 1f): Int
+    fun createMorphRenderable(materialInstanceHandle: Int, geometry: MorphRenderableGeometry): Int
     fun setRenderableRotation(handle: Int, rotationXDegrees: Float, rotationYDegrees: Float)
     fun setRenderableTransform(handle: Int, transform: FloatArray)
+    fun setMorphWeights(handle: Int, weights: FloatArray)
     fun removeRenderable(handle: Int)
 
     // Rendering

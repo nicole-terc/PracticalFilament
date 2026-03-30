@@ -253,11 +253,6 @@ fun MarbleScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(Grid.Two)
         ) {
-            Text(
-                text = "Marble",
-                style = MaterialTheme.typography.headlineSmall,
-            )
-
             DropDownWithArrows(
                 options = marbleMaterials.map { it.label },
                 selectedIndex = selectedMaterialIndex,

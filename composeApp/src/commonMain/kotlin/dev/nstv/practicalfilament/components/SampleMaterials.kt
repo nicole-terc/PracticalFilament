@@ -25,6 +25,18 @@ val RedballMaterial = Material(
     ),
 )
 
+val MorphingMaterial = Material(
+    fileName = "plastic.filamat",
+    label = "morphing",
+    overrides = mapOf(
+        "baseColor" to Float3(0.16f, 0.69f, 0.92f),
+        "roughness" to 0.12f,
+        "clearCoat" to 1f,
+        "clearCoatRoughness" to 0.08f,
+        "metallic" to 0f,
+    ),
+)
+
 val MaterialOverridesList = listOf(
     RedballMaterial,
     Material(

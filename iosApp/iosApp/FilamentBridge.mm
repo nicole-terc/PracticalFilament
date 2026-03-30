@@ -11,6 +11,7 @@
 #import <filament/MaterialInstance.h>
 #import <filament/IndirectLight.h>
 #import <filament/LightManager.h>
+#import <filament/MorphTargetBuffer.h>
 #import <filament/RenderableManager.h>
 #import <filament/TransformManager.h>
 #import <filament/VertexBuffer.h>
@@ -29,7 +30,9 @@
 #import <geometry/SurfaceOrientation.h>
 
 #include <cmath>
+#include <array>
 #include <cstddef>
+#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -65,6 +68,85 @@ static void *PFMakeOwnedCopy(const void *source, size_t size) {
     void *copy = malloc(size);
     memcpy(copy, source, size);
     return copy;
+}
+
+static std::vector<float3> PFFloat3VectorFromData(NSData *data) {
+    const size_t floatCount = data.length / sizeof(float);
+    std::vector<float3> values(floatCount / 3);
+    auto *source = static_cast<float const *>(data.bytes);
+    for (size_t index = 0; index < values.size(); index++) {
+        values[index] = float3{
+            source[index * 3],
+            source[index * 3 + 1],
+            source[index * 3 + 2],
+        };
+    }
+    return values;
+}
+
+static std::vector<float2> PFFloat2VectorFromData(NSData *data) {
+    const size_t floatCount = data.length / sizeof(float);
+    std::vector<float2> values(floatCount / 2);
+    auto *source = static_cast<float const *>(data.bytes);
+    for (size_t index = 0; index < values.size(); index++) {
+        values[index] = float2{
+            source[index * 2],
+            source[index * 2 + 1],
+        };
+    }
+    return values;
+}
+
+static std::vector<ushort3> PFUShort3VectorFromData(NSData *data) {
+    const size_t indexCount = data.length / sizeof(uint16_t);
+    std::vector<ushort3> values(indexCount / 3);
+    auto *source = static_cast<uint16_t const *>(data.bytes);
+    for (size_t index = 0; index < values.size(); index++) {
+        values[index] = ushort3{
+            source[index * 3],
+            source[index * 3 + 1],
+            source[index * 3 + 2],
+        };
+    }
+    return values;
+}
+
+static std::vector<uint16_t> PFUInt16VectorFromTriangles(std::vector<ushort3> const& triangles) {
+    std::vector<uint16_t> values(triangles.size() * 3);
+    for (size_t index = 0; index < triangles.size(); index++) {
+        values[index * 3] = triangles[index].x;
+        values[index * 3 + 1] = triangles[index].y;
+        values[index * 3 + 2] = triangles[index].z;
+    }
+    return values;
+}
+
+static Box PFBoundsFromMorphData(
+        std::vector<float3> const& positions,
+        std::vector<std::vector<float3>> const& morphTargets) {
+    float3 minBounds{
+        std::numeric_limits<float>::infinity(),
+        std::numeric_limits<float>::infinity(),
+        std::numeric_limits<float>::infinity(),
+    };
+    float3 maxBounds{
+        -std::numeric_limits<float>::infinity(),
+        -std::numeric_limits<float>::infinity(),
+        -std::numeric_limits<float>::infinity(),
+    };
+
+    auto include = [&](std::vector<float3> const& values) {
+        for (auto const& value : values) {
+            minBounds = min(minBounds, value);
+            maxBounds = max(maxBounds, value);
+        }
+    };
+
+    include(positions);
+    for (auto const& target : morphTargets) {
+        include(target);
+    }
+    return Box{minBounds, maxBounds};
 }
 
 static NSString *PFMaterialParameterTypeName(Material::ParameterInfo const& parameter) {
@@ -127,6 +209,7 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     std::map<int, Material *> _materials;
     std::map<int, MaterialInstance *> _materialInstances;
     std::map<int, Texture *> _textures;
+    std::map<int, MorphTargetBuffer *> _morphTargetBuffers;
     std::vector<VertexBuffer *> _vertexBuffers;
     std::vector<IndexBuffer *> _indexBuffers;
 
@@ -184,6 +267,10 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
         EntityManager::get().destroy(pair.second);
     }
     _renderables.clear();
+    for (auto &pair : _morphTargetBuffers) {
+        _engine->destroy(pair.second);
+    }
+    _morphTargetBuffers.clear();
 
     for (auto &pair : _lights) {
         _scene->remove(pair.second);
@@ -240,6 +327,10 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
         EntityManager::get().destroy(pair.second);
     }
     _renderables.clear();
+    for (auto &pair : _morphTargetBuffers) {
+        _engine->destroy(pair.second);
+    }
+    _morphTargetBuffers.clear();
 }
 
 - (void)updateCameraEyeX:(float)eyeX eyeY:(float)eyeY eyeZ:(float)eyeZ
@@ -836,6 +927,142 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     return handle;
 }
 
+- (int)createMorphRenderableWithMaterial:(int)instanceHandle
+                               positions:(NSData *)positionsData
+                                      uvs:(NSData *)uvsData
+                                  indices:(NSData *)indicesData
+                      morphTargetPositions:(NSData *)morphTargetPositionsData
+                          morphTargetCount:(int)morphTargetCount {
+    if (!_engine) return -1;
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return -1;
+
+    const auto positions = PFFloat3VectorFromData(positionsData);
+    const auto uvs = PFFloat2VectorFromData(uvsData);
+    const auto triangles = PFUShort3VectorFromData(indicesData);
+    if (positions.empty() || uvs.size() != positions.size() || triangles.empty() || morphTargetCount <= 0) {
+        return -1;
+    }
+
+    const size_t morphFloatCount = morphTargetPositionsData.length / sizeof(float);
+    const size_t valuesPerTarget = positions.size() * 3;
+    if (morphFloatCount != valuesPerTarget * (size_t)morphTargetCount) {
+        return -1;
+    }
+    auto *morphSource = static_cast<float const *>(morphTargetPositionsData.bytes);
+    std::vector<std::vector<float3>> morphTargets((size_t)morphTargetCount);
+    for (int targetIndex = 0; targetIndex < morphTargetCount; targetIndex++) {
+        auto& target = morphTargets[(size_t)targetIndex];
+        target.resize(positions.size());
+        const size_t baseOffset = (size_t)targetIndex * valuesPerTarget;
+        for (size_t vertexIndex = 0; vertexIndex < positions.size(); vertexIndex++) {
+            const size_t offset = baseOffset + vertexIndex * 3;
+            target[vertexIndex] = float3{
+                morphSource[offset],
+                morphSource[offset + 1],
+                morphSource[offset + 2],
+            };
+        }
+    }
+
+    auto* baseOrientation = filament::geometry::SurfaceOrientation::Builder()
+        .vertexCount(positions.size())
+        .positions(positions.data())
+        .uvs(uvs.data())
+        .triangleCount(triangles.size())
+        .triangles(triangles.data())
+        .build();
+    std::vector<short4> baseTangents(positions.size());
+    baseOrientation->getQuats(baseTangents.data(), positions.size());
+    delete baseOrientation;
+
+    struct MorphRenderableVertex {
+        float px, py, pz;
+        int16_t tx, ty, tz, tw;
+        float u, v;
+    };
+    static_assert(sizeof(MorphRenderableVertex) == 28, "MorphRenderableVertex must be 28 bytes");
+
+    std::vector<MorphRenderableVertex> vertexData(positions.size());
+    for (size_t index = 0; index < positions.size(); index++) {
+        vertexData[index] = {
+            positions[index].x, positions[index].y, positions[index].z,
+            baseTangents[index].x, baseTangents[index].y, baseTangents[index].z, baseTangents[index].w,
+            uvs[index].x, uvs[index].y,
+        };
+    }
+
+    const auto indexData = PFUInt16VectorFromTriangles(triangles);
+
+    auto *vb = VertexBuffer::Builder()
+        .vertexCount(positions.size())
+        .bufferCount(1)
+        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, offsetof(MorphRenderableVertex, px), sizeof(MorphRenderableVertex))
+        .attribute(VertexAttribute::TANGENTS, 0, VertexBuffer::AttributeType::SHORT4, offsetof(MorphRenderableVertex, tx), sizeof(MorphRenderableVertex))
+        .normalized(VertexAttribute::TANGENTS)
+        .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, offsetof(MorphRenderableVertex, u), sizeof(MorphRenderableVertex))
+        .build(*_engine);
+    const size_t vertexDataSize = vertexData.size() * sizeof(MorphRenderableVertex);
+    vb->setBufferAt(*_engine, 0, VertexBuffer::BufferDescriptor(
+        PFMakeOwnedCopy(vertexData.data(), vertexDataSize),
+        vertexDataSize,
+        [](void *buffer, size_t, void *) { free(buffer); }
+    ));
+    _vertexBuffers.push_back(vb);
+
+    auto *ib = IndexBuffer::Builder()
+        .indexCount((uint32_t)indexData.size())
+        .bufferType(IndexBuffer::IndexType::USHORT)
+        .build(*_engine);
+    const size_t indexDataSize = indexData.size() * sizeof(uint16_t);
+    ib->setBuffer(*_engine, IndexBuffer::BufferDescriptor(
+        PFMakeOwnedCopy(indexData.data(), indexDataSize),
+        indexDataSize,
+        [](void *buffer, size_t, void *) { free(buffer); }
+    ));
+    _indexBuffers.push_back(ib);
+
+    auto* morphTargetBuffer = MorphTargetBuffer::Builder()
+        .vertexCount(positions.size())
+        .count((size_t)morphTargetCount)
+        .withPositions(true)
+        .withTangents(true)
+        .build(*_engine);
+
+    for (size_t targetIndex = 0; targetIndex < morphTargets.size(); targetIndex++) {
+        auto const& targetPositions = morphTargets[targetIndex];
+        morphTargetBuffer->setPositionsAt(*_engine, targetIndex, targetPositions.data(), targetPositions.size());
+        auto* targetOrientation = filament::geometry::SurfaceOrientation::Builder()
+            .vertexCount(positions.size())
+            .positions(targetPositions.data())
+            .uvs(uvs.data())
+            .triangleCount(triangles.size())
+            .triangles(triangles.data())
+            .build();
+        std::vector<short4> targetTangents(positions.size());
+        targetOrientation->getQuats(targetTangents.data(), positions.size());
+        delete targetOrientation;
+        morphTargetBuffer->setTangentsAt(*_engine, targetIndex, targetTangents.data(), targetTangents.size());
+    }
+
+    const auto bounds = PFBoundsFromMorphData(positions, morphTargets);
+
+    Entity entity = EntityManager::get().create();
+    RenderableManager::Builder(1)
+        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib)
+        .material(0, it->second)
+        .morphing(morphTargetBuffer)
+        .boundingBox(bounds)
+        .culling(false)
+        .build(*_engine, entity);
+
+    _scene->addEntity(entity);
+    int handle = _nextHandle++;
+    _renderables[handle] = entity;
+    _morphTargetBuffers[handle] = morphTargetBuffer;
+    return handle;
+}
+
 - (void)setRenderableRotation:(int)handle rotationX:(float)rotationX rotationY:(float)rotationY {
     auto it = _renderables.find(handle);
     if (it == _renderables.end() || !_engine) return;
@@ -871,10 +1098,31 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
     });
 }
 
+- (void)setMorphWeights:(int)handle weights:(NSArray<NSNumber *> *)weights {
+    auto it = _renderables.find(handle);
+    if (it == _renderables.end() || !_engine || weights.count == 0) return;
+
+    auto& renderableManager = _engine->getRenderableManager();
+    auto instance = renderableManager.getInstance(it->second);
+    if (!instance.isValid()) return;
+
+    std::vector<float> values;
+    values.reserve(weights.count);
+    for (NSNumber *value in weights) {
+        values.push_back(value.floatValue);
+    }
+    renderableManager.setMorphWeights(instance, values.data(), values.size());
+}
+
 - (void)removeRenderable:(int)handle {
     auto it = _renderables.find(handle);
     if (it == _renderables.end() || !_engine) return;
+    auto morphIt = _morphTargetBuffers.find(handle);
     _scene->remove(it->second);
+    if (morphIt != _morphTargetBuffers.end()) {
+        _engine->destroy(morphIt->second);
+        _morphTargetBuffers.erase(morphIt);
+    }
     _engine->destroy(it->second);
     EntityManager::get().destroy(it->second);
     _renderables.erase(it);

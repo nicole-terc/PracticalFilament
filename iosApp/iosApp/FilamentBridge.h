@@ -78,12 +78,19 @@
 
 - (int)createPlaneWithMaterial:(int)instanceHandle width:(float)width height:(float)height;
 - (int)createSphereWithMaterial:(int)instanceHandle radius:(float)radius;
+- (int)createMorphRenderableWithMaterial:(int)instanceHandle
+                               positions:(NSData * _Nonnull)positions
+                                      uvs:(NSData * _Nonnull)uvs
+                                  indices:(NSData * _Nonnull)indices
+                      morphTargetPositions:(NSData * _Nonnull)morphTargetPositions
+                          morphTargetCount:(int)morphTargetCount;
 - (void)setRenderableRotation:(int)handle rotationX:(float)rotationX rotationY:(float)rotationY;
 - (void)setRenderableTransform:(int)handle
                            m00:(float)m00 m01:(float)m01 m02:(float)m02 m03:(float)m03
                            m10:(float)m10 m11:(float)m11 m12:(float)m12 m13:(float)m13
                            m20:(float)m20 m21:(float)m21 m22:(float)m22 m23:(float)m23
                            m30:(float)m30 m31:(float)m31 m32:(float)m32 m33:(float)m33;
+- (void)setMorphWeights:(int)handle weights:(NSArray<NSNumber *> * _Nonnull)weights;
 - (void)removeRenderable:(int)handle;
 
 - (void)render;

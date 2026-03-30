@@ -209,6 +209,20 @@ class IosFilamentEngine(
         return bridge.createSphereWithMaterial(materialInstanceHandle, radius = radius)
     }
 
+    override fun createMorphRenderable(
+        materialInstanceHandle: Int,
+        geometry: MorphRenderableGeometry,
+    ): Int {
+        return bridge.createMorphRenderableWithMaterial(
+            instanceHandle = materialInstanceHandle,
+            positions = geometry.positions,
+            uvs = geometry.uvs,
+            indices = geometry.indices,
+            morphTargetPositions = geometry.flattenedMorphTargetPositions(),
+            morphTargetCount = geometry.morphTargetCount,
+        )
+    }
+
     override fun setRenderableRotation(handle: Int, rotationXDegrees: Float, rotationYDegrees: Float) {
         bridge.setRenderableRotation(handle, rotationX = rotationXDegrees, rotationY = rotationYDegrees)
     }
@@ -222,6 +236,10 @@ class IosFilamentEngine(
             transform[8], transform[9], transform[10], transform[11],
             transform[12], transform[13], transform[14], transform[15],
         )
+    }
+
+    override fun setMorphWeights(handle: Int, weights: FloatArray) {
+        bridge.setMorphWeights(handle, weights = weights)
     }
 
     override fun removeRenderable(handle: Int) {
@@ -308,6 +326,14 @@ interface FilamentBridgeProtocol {
     fun setTextureParam(instanceHandle: Int, name: String, textureHandle: Int)
     fun createPlaneWithMaterial(instanceHandle: Int, width: Float, height: Float): Int
     fun createSphereWithMaterial(instanceHandle: Int, radius: Float): Int
+    fun createMorphRenderableWithMaterial(
+        instanceHandle: Int,
+        positions: FloatArray,
+        uvs: FloatArray,
+        indices: ShortArray,
+        morphTargetPositions: FloatArray,
+        morphTargetCount: Int,
+    ): Int
     fun setRenderableRotation(handle: Int, rotationX: Float, rotationY: Float)
     fun setRenderableTransform(
         handle: Int,
@@ -316,6 +342,7 @@ interface FilamentBridgeProtocol {
         m20: Float, m21: Float, m22: Float, m23: Float,
         m30: Float, m31: Float, m32: Float, m33: Float,
     )
+    fun setMorphWeights(handle: Int, weights: FloatArray)
     fun removeRenderable(handle: Int)
     fun render()
     fun updateViewportWidth(width: Int, height: Int)

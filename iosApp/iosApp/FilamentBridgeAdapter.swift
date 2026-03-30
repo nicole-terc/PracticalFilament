@@ -210,6 +210,22 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
         return bridge.createSphere(withMaterial: instanceHandle, radius: radius)
     }
 
+    func createMorphRenderableWithMaterial(instanceHandle: Int32,
+                                          positions: KotlinFloatArray,
+                                          uvs: KotlinFloatArray,
+                                          indices: KotlinShortArray,
+                                          morphTargetPositions: KotlinFloatArray,
+                                          morphTargetCount: Int32) -> Int32 {
+        return bridge.createMorphRenderable(
+            withMaterial: instanceHandle,
+            positions: positions.toFloatData(),
+            uvs: uvs.toFloatData(),
+            indices: indices.toShortData(),
+            morphTargetPositions: morphTargetPositions.toFloatData(),
+            morphTargetCount: morphTargetCount
+        )
+    }
+
     func setRenderableRotation(handle: Int32, rotationX: Float, rotationY: Float) {
         bridge.setRenderableRotation(handle, rotationX: rotationX, rotationY: rotationY)
     }
@@ -224,6 +240,12 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
                                       m10: m10, m11: m11, m12: m12, m13: m13,
                                       m20: m20, m21: m21, m22: m22, m23: m23,
                                       m30: m30, m31: m31, m32: m32, m33: m33)
+    }
+
+    func setMorphWeights(handle: Int32, weights: KotlinFloatArray) {
+        let count = Int(weights.size)
+        let values = (0..<count).map { NSNumber(value: weights.get(index: Int32($0))) }
+        bridge.setMorphWeights(handle, weights: values)
     }
 
     func removeRenderable(handle: Int32) { bridge.removeRenderable(handle) }
@@ -243,5 +265,23 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
     private func stopRenderLoop() {
         displayLink?.invalidate()
         displayLink = nil
+    }
+}
+
+private extension KotlinFloatArray {
+    func toFloatData() -> Data {
+        let count = Int(size)
+        return Data((0..<count).flatMap { index in
+            withUnsafeBytes(of: get(index: Int32(index)).bitPattern.littleEndian, Array.init)
+        })
+    }
+}
+
+private extension KotlinShortArray {
+    func toShortData() -> Data {
+        let count = Int(size)
+        return Data((0..<count).flatMap { index in
+            withUnsafeBytes(of: UInt16(bitPattern: get(index: Int32(index))).littleEndian, Array.init)
+        })
     }
 }

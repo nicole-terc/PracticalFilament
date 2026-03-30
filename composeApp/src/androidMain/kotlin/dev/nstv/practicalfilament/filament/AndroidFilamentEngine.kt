@@ -12,6 +12,7 @@ import com.google.android.filament.IndirectLight
 import com.google.android.filament.LightManager
 import com.google.android.filament.Material
 import com.google.android.filament.MaterialInstance
+import com.google.android.filament.MorphTargetBuffer
 import com.google.android.filament.RenderableManager
 import com.google.android.filament.Renderer
 import com.google.android.filament.Scene
@@ -56,6 +57,7 @@ class AndroidFilamentEngine(
     private val materialInstanceMaterials = mutableMapOf<Int, Int>()
     private val materialParameterDefinitions = mutableMapOf<Int, Map<String, MaterialParameterDefinition>>()
     private val textures = mutableMapOf<Int, Texture>()
+    private val morphTargetBuffers = mutableMapOf<Int, MorphTargetBuffer>()
     private val indirectLights = mutableMapOf<Int, EnvironmentIndirectLight>()
     private val skyboxes = mutableMapOf<Int, EnvironmentSkybox>()
     private val vertexBuffers = mutableListOf<VertexBuffer>()
@@ -122,6 +124,8 @@ class AndroidFilamentEngine(
             EntityManager.get().destroy(entity)
         }
         renderables.clear()
+        morphTargetBuffers.values.forEach { eng.destroyMorphTargetBuffer(it) }
+        morphTargetBuffers.clear()
 
         lights.values.forEach { entity ->
             eng.destroyEntity(entity)
@@ -205,14 +209,7 @@ class AndroidFilamentEngine(
     }
 
     override fun clearScene() {
-        val s = scene ?: return
-        val eng = engine ?: return
-        renderables.values.forEach { entity ->
-            s.removeEntity(entity)
-            eng.destroyEntity(entity)
-            EntityManager.get().destroy(entity)
-        }
-        renderables.clear()
+        renderables.keys.toList().forEach(::destroyRenderableEntity)
     }
 
     override fun updateCamera(config: CameraConfig) {
@@ -703,6 +700,80 @@ class AndroidFilamentEngine(
         return handle
     }
 
+    override fun createMorphRenderable(
+        materialInstanceHandle: Int,
+        geometry: MorphRenderableGeometry,
+    ): Int {
+        val eng = engine ?: return -1
+        val instance = materialInstances[materialInstanceHandle] ?: return -1
+
+        val tangentQuaternions = buildSurfaceOrientationShortQuaternions(
+            vertexCount = geometry.vertexCount,
+            positions = geometry.positions,
+            uvs = geometry.uvs,
+            indices = geometry.indices,
+        )
+        val vertexBuffer = buildShortTangentVertexBuffer(
+            eng = eng,
+            positions = geometry.positions,
+            tangentQuaternions = tangentQuaternions,
+            uvs = geometry.uvs,
+            vertexCount = geometry.vertexCount,
+        )
+        val indexBuffer = buildIndexBuffer(eng, geometry.indices)
+        val morphTargetBuffer = MorphTargetBuffer.Builder()
+            .vertexCount(geometry.vertexCount)
+            .count(geometry.morphTargetCount)
+            .withPositions(true)
+            .withTangents(true)
+            .build(eng)
+
+        geometry.morphTargetPositions.forEachIndexed { index, targetPositions ->
+            morphTargetBuffer.setPositionsAt(
+                eng,
+                index,
+                targetPositions.toFloat4Array(),
+                geometry.vertexCount,
+            )
+            morphTargetBuffer.setTangentsAt(
+                eng,
+                index,
+                buildSurfaceOrientationShortQuaternions(
+                    vertexCount = geometry.vertexCount,
+                    positions = targetPositions,
+                    uvs = geometry.uvs,
+                    indices = geometry.indices,
+                ),
+                geometry.vertexCount,
+            )
+        }
+
+        val bounds = geometry.calculateMorphBounds()
+
+        val entity = EntityManager.get().create()
+        RenderableManager.Builder(1)
+            .geometry(0, RenderableManager.PrimitiveType.TRIANGLES, vertexBuffer, indexBuffer)
+            .material(0, instance)
+            .morphing(morphTargetBuffer)
+            .boundingBox(
+                com.google.android.filament.Box(
+                    bounds.center.x,
+                    bounds.center.y,
+                    bounds.center.z,
+                    bounds.halfExtent.x,
+                    bounds.halfExtent.y,
+                    bounds.halfExtent.z,
+                )
+            )
+            .build(eng, entity)
+
+        scene?.addEntity(entity)
+        val handle = nextHandle++
+        renderables[handle] = entity
+        morphTargetBuffers[handle] = morphTargetBuffer
+        return handle
+    }
+
     override fun setRenderableRotation(handle: Int, rotationXDegrees: Float, rotationYDegrees: Float) {
         val eng = engine ?: return
         val entity = renderables[handle] ?: return
@@ -727,12 +798,16 @@ class AndroidFilamentEngine(
         transformManager.setTransform(instance, transform)
     }
 
-    override fun removeRenderable(handle: Int) {
-        val entity = renderables.remove(handle) ?: return
+    override fun setMorphWeights(handle: Int, weights: FloatArray) {
         val eng = engine ?: return
-        scene?.removeEntity(entity)
-        eng.destroyEntity(entity)
-        EntityManager.get().destroy(entity)
+        val entity = renderables[handle] ?: return
+        val instance = eng.renderableManager.getInstance(entity)
+        if (instance == 0) return
+        eng.renderableManager.setMorphWeights(instance, weights, 0)
+    }
+
+    override fun removeRenderable(handle: Int) {
+        destroyRenderableEntity(handle)
     }
 
     override fun requestFrame() {
@@ -762,6 +837,47 @@ class AndroidFilamentEngine(
             .attribute(VertexBuffer.VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, 36)
             .attribute(VertexBuffer.VertexAttribute.TANGENTS, 0, VertexBuffer.AttributeType.FLOAT4, 12, 36)
             .attribute(VertexBuffer.VertexAttribute.UV0, 0, VertexBuffer.AttributeType.FLOAT2, 28, 36)
+            .build(eng)
+
+        vb.setBufferAt(eng, 0, byteBuffer)
+        vertexBuffers.add(vb)
+        return vb
+    }
+
+    private fun buildShortTangentVertexBuffer(
+        eng: Engine,
+        positions: FloatArray,
+        tangentQuaternions: ShortArray,
+        uvs: FloatArray,
+        vertexCount: Int,
+    ): VertexBuffer {
+        val stride = 28
+        val byteBuffer = ByteBuffer.allocateDirect(vertexCount * stride).apply {
+            order(ByteOrder.nativeOrder())
+            repeat(vertexCount) { index ->
+                val positionOffset = index * 3
+                putFloat(positions[positionOffset])
+                putFloat(positions[positionOffset + 1])
+                putFloat(positions[positionOffset + 2])
+                val tangentOffset = index * 4
+                putShort(tangentQuaternions[tangentOffset])
+                putShort(tangentQuaternions[tangentOffset + 1])
+                putShort(tangentQuaternions[tangentOffset + 2])
+                putShort(tangentQuaternions[tangentOffset + 3])
+                val uvOffset = index * 2
+                putFloat(uvs[uvOffset])
+                putFloat(uvs[uvOffset + 1])
+            }
+            flip()
+        }
+
+        val vb = VertexBuffer.Builder()
+            .vertexCount(vertexCount)
+            .bufferCount(1)
+            .attribute(VertexBuffer.VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, stride)
+            .attribute(VertexBuffer.VertexAttribute.TANGENTS, 0, VertexBuffer.AttributeType.SHORT4, 12, stride)
+            .normalized(VertexBuffer.VertexAttribute.TANGENTS)
+            .attribute(VertexBuffer.VertexAttribute.UV0, 0, VertexBuffer.AttributeType.FLOAT2, 20, stride)
             .build(eng)
 
         vb.setBufferAt(eng, 0, byteBuffer)
@@ -827,6 +943,55 @@ class AndroidFilamentEngine(
         }
     }
 
+    private fun buildSurfaceOrientationShortQuaternions(
+        vertexCount: Int,
+        positions: FloatArray,
+        uvs: FloatArray,
+        indices: ShortArray,
+    ): ShortArray {
+        val positionsBuffer = ByteBuffer.allocateDirect(positions.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+            .apply {
+                put(positions)
+                flip()
+            }
+        val uvsBuffer = ByteBuffer.allocateDirect(uvs.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+            .apply {
+                put(uvs)
+                flip()
+            }
+        val indexBuffer = ByteBuffer.allocateDirect(indices.size * 2)
+            .order(ByteOrder.nativeOrder())
+            .asShortBuffer()
+            .apply {
+                put(indices)
+                flip()
+            }
+        val quaternionsBuffer = ByteBuffer.allocateDirect(vertexCount * 4 * 2)
+            .order(ByteOrder.nativeOrder())
+            .asShortBuffer()
+
+        val orientation = SurfaceOrientation.Builder()
+            .vertexCount(vertexCount)
+            .uvs(uvsBuffer)
+            .positions(positionsBuffer)
+            .triangleCount(indices.size / 3)
+            .triangles_uint16(indexBuffer)
+            .build()
+        return try {
+            orientation.getQuatsAsShort(quaternionsBuffer)
+            ShortArray(vertexCount * 4).also { quaternions ->
+                quaternionsBuffer.rewind()
+                quaternionsBuffer.get(quaternions)
+            }
+        } finally {
+            orientation.destroy()
+        }
+    }
+
     private fun buildIndexBuffer(eng: Engine, data: ShortArray): IndexBuffer {
         val byteBuffer = ByteBuffer.allocateDirect(data.size * 2).apply {
             order(ByteOrder.nativeOrder())
@@ -843,6 +1008,15 @@ class AndroidFilamentEngine(
         return ib
     }
 
+    private fun destroyRenderableEntity(handle: Int) {
+        val eng = engine ?: return
+        val entity = renderables.remove(handle) ?: return
+        scene?.removeEntity(entity)
+        morphTargetBuffers.remove(handle)?.let(eng::destroyMorphTargetBuffer)
+        eng.destroyEntity(entity)
+        EntityManager.get().destroy(entity)
+    }
+
     private data class EnvironmentIndirectLight(
         val indirectLight: IndirectLight,
         val cubemap: Texture,
@@ -851,5 +1025,64 @@ class AndroidFilamentEngine(
     private data class EnvironmentSkybox(
         val skybox: com.google.android.filament.Skybox,
         val cubemap: Texture,
+    )
+
+}
+
+private fun FloatArray.toFloat4Array(): FloatArray {
+    val values = FloatArray(size / 3 * 4)
+    var sourceIndex = 0
+    var targetIndex = 0
+    while (sourceIndex < size) {
+        values[targetIndex++] = this[sourceIndex++]
+        values[targetIndex++] = this[sourceIndex++]
+        values[targetIndex++] = this[sourceIndex++]
+        values[targetIndex++] = 1f
+    }
+    return values
+}
+
+private data class MorphBounds(
+    val center: Float3,
+    val halfExtent: Float3,
+)
+
+private fun MorphRenderableGeometry.calculateMorphBounds(): MorphBounds {
+    var minX = Float.POSITIVE_INFINITY
+    var minY = Float.POSITIVE_INFINITY
+    var minZ = Float.POSITIVE_INFINITY
+    var maxX = Float.NEGATIVE_INFINITY
+    var maxY = Float.NEGATIVE_INFINITY
+    var maxZ = Float.NEGATIVE_INFINITY
+
+    fun include(values: FloatArray) {
+        var index = 0
+        while (index < values.size) {
+            val x = values[index++]
+            val y = values[index++]
+            val z = values[index++]
+            minX = minOf(minX, x)
+            minY = minOf(minY, y)
+            minZ = minOf(minZ, z)
+            maxX = maxOf(maxX, x)
+            maxY = maxOf(maxY, y)
+            maxZ = maxOf(maxZ, z)
+        }
+    }
+
+    include(positions)
+    morphTargetPositions.forEach(::include)
+
+    return MorphBounds(
+        center = Float3(
+            x = (minX + maxX) * 0.5f,
+            y = (minY + maxY) * 0.5f,
+            z = (minZ + maxZ) * 0.5f,
+        ),
+        halfExtent = Float3(
+            x = (maxX - minX) * 0.5f,
+            y = (maxY - minY) * 0.5f,
+            z = (maxZ - minZ) * 0.5f,
+        ),
     )
 }
