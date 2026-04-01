@@ -114,6 +114,150 @@ Filament dependency setup is platform-specific:
 
 Gradle configuration currently emits an Android Gradle Plugin deprecation warning related to `android.dependency.excludeLibraryComponentsFromConstraints=true`. It does not block initialization, but it should be cleaned up before moving to AGP 10.
 
+## Adding a New Screen
+
+All screens live in `composeApp/src/commonMain/kotlin/dev/nstv/practicalfilament/screen/`. To add one:
+
+1. Create `YourScreen.kt` in that directory.
+2. Add an entry to the `Screen` enum in `MainScreen.kt`.
+3. Add a `when` branch in `MainScreen.kt` mapping the enum to the composable.
+
+Reference screen: `RedballScreen.kt` (full setup: IBL, lights, material loading, arcball, gesture light, parameter UI). Simpler reference: `HelloTriangleScreen.kt` (custom geometry + runtime material).
+
+### Screen Composable Pattern
+
+```kotlin
+@Composable
+fun YourScreen(modifier: Modifier = Modifier) {
+    var filamentEngine by remember { mutableStateOf<FilamentEngine?>(null) }
+    var renderableHandle by remember { mutableIntStateOf(0) }
+
+    // Reactive side-effects: one LaunchedEffect per logical concern
+    LaunchedEffect(filamentEngine, renderableHandle, someState) {
+        val engine = filamentEngine ?: return@LaunchedEffect
+        // update engine state, then:
+        engine.requestFrame()
+    }
+
+    // Continuous animation loop
+    LaunchedEffect(filamentEngine, renderableHandle) {
+        while (true) {
+            val nanos = withFrameNanos { it }
+            val time = nanos / 1_000_000_000f
+            engine?.setRenderableRotation(renderableHandle, 0f, time * speed)
+        }
+    }
+
+    FilamentView(
+        modifier = modifier.fillMaxSize(),
+        camera = CameraConfig(position = Float3(0f, 0f, 4f), lookAt = Float3(0f, 0f, 0f)),
+        lights = listOf(LightConfig(type = LightType.DIRECTIONAL, intensity = 75_000f)),
+        backgroundColor = Color(0f, 0f, 0f, 1f),
+        onEngineReady = { engine ->
+            filamentEngine = engine
+            // create renderables, load materials, etc.
+        },
+    )
+}
+```
+
+Use `SampleScreenLayout` (in the same `screen/` package) for a standard split-view with a scrollable controls panel below the 3D view.
+
+## FilamentEngine API Reference
+
+Full interface: `composeApp/src/commonMain/kotlin/dev/nstv/practicalfilament/filament/FilamentEngine.kt`
+
+### Renderables
+
+| Method | Notes |
+|--------|-------|
+| `createSphereRenderable(matInstance, radius)` | 24×24 parametric sphere |
+| `createPlaneRenderable(matInstance, width, height)` | 2-triangle plane |
+| `createCubeRenderable(matInstance, size)` | 6-face cube |
+| `createMorphRenderable(matInstance, MorphRenderableGeometry)` | Morph-target mesh; see `MorphRenderableGeometry.kt` |
+| `createCustomRenderable(CustomRenderableConfig)` | Fully custom vertex/index buffers; see below |
+| `updateVertexData(handle, ByteArray)` | Replace vertex buffer contents per-frame for dynamic geometry |
+| `setMorphWeights(handle, FloatArray)` | Blend morph targets per-frame |
+| `setRenderableTransform(handle, FloatArray)` | Apply 4×4 column-major transform matrix |
+| `setRenderableRotation(handle, xDeg, yDeg)` | Convenience rotation helper |
+| `removeRenderable(handle)` | Remove from scene |
+
+### Custom Geometry (`CustomRenderableConfig`)
+
+Defined in `DataTypes.kt`. Key fields:
+- `vertexData: ByteArray` — interleaved vertex buffer
+- `vertexCount: Int`
+- `strideBytes: Int` — bytes per vertex
+- `attributes: List<VertexAttributeLayout>` — supported: `POSITION`, `TANGENTS`, `UV0`, `COLOR`
+- `indices: ShortArray` — triangle/line/point indices
+- `materialInstanceHandle: Int`
+- `boundingBox: BoundingBox(center, halfExtent)`
+- `primitiveType: PrimitiveType` — `TRIANGLES`, `LINES`, or `POINTS`
+
+Attribute data types: `FLOAT2`, `FLOAT3`, `FLOAT4`, `UBYTE4`.
+
+`PrimitiveType.POINTS` renders 1-pixel points. For visible point-sprites, use billboard quads (TRIANGLES) and expand in CPU.
+
+### Materials
+
+| Method | Notes |
+|--------|-------|
+| `loadMaterial(path)` | Load a compiled `.filamat` from `composeResources/files/materials/` |
+| `buildMaterial(source, shadingModel)` | Runtime compile (Android only; check `supportsMaterialBuilder`). `source` is just the `material()` function body. `shadingModel`: `"unlit"`, `"lit"`, `"cloth"`, `"subsurface"` |
+| `getMaterialParameters(matHandle)` | Returns `List<MaterialParameterDefinition>` for introspection |
+| `createMaterialInstance(matHandle)` | Returns instance handle |
+| `setMaterialParameter(instance, MaterialParameter)` | Update scalar/vector/matrix/array uniform |
+| `setTextureParameter(instance, name, textureHandle)` | Bind a texture sampler |
+
+Helper `loadMaterialOnEngine(engine, Material)` in `material/` package handles load + instantiate + parameter defaults in one call.
+
+Available `.filamat` files in `composeResources/files/materials/`: `plastic.filamat`, `texturedSample.filamat`, `sandboxLitFade.filamat`, `sandboxCloth.filamat`, `mirror.filamat`, `pageCurl.filamat`, `image.filamat`, `aiDefaultMat.filamat`.
+
+### Lighting & Environment
+
+| Method | Notes |
+|--------|-------|
+| `addLight(LightConfig)` | Types: `DIRECTIONAL`, `POINT`, `SPOT`, `SUN`. Returns handle |
+| `removeLight(handle)` / `clearLights()` | |
+| `loadIndirectLight(path)` + `setIndirectLight(handle, intensity)` | IBL from `.ktx` |
+| `loadSkybox(path)` + `setSkybox(handle)` | Skybox from `.ktx` |
+
+IBL + skybox assets are in `composeResources/files/envs/pillars_2k/`.
+
+### Camera
+
+`CameraConfig` fields: `position`, `lookAt`, `up` (all `Float3`), `fovDegrees`, `near`, `far`, `projectionType` (`PERSPECTIVE` or `ORTHO`), `orthoZoom`.
+
+Pass to `FilamentView(camera=…)` for initial setup, or call `engine.updateCamera(config)` at any time.
+
+### Dynamic Per-Frame Animation
+
+Use `withFrameNanos` inside a `LaunchedEffect`:
+```kotlin
+LaunchedEffect(filamentEngine, renderableHandle) {
+    while (true) {
+        val dt = withFrameNanos { it } / 1e9f
+        // mutate Compose state or call engine APIs directly
+        filamentEngine?.requestFrame()
+    }
+}
+```
+
+For dynamic vertex positions (e.g. particle systems), update a `ByteArray` and call `engine.updateVertexData(handle, bytes)` each frame. Index buffer is fixed and rebuilt only when topology changes.
+
+### Morph Targets
+
+See `MorphRenderableGeometry.kt`. Provide base positions + a list of target position arrays. Call `engine.setMorphWeights(handle, floatArrayOf(w0, w1, …))` per frame. Framework auto-computes tangents per target. Reference: `MorphingScreen.kt`.
+
+### Textures
+
+| Method | Notes |
+|--------|-------|
+| `createTexture(width, height, ByteArray)` | Upload RGBA8 pixel data |
+| `loadTexture(path)` | Load `.ktx` or image from resources |
+
+Built-in generated textures (`BuiltInTexture` enum): `NONE`, `CHECKERBOARD`, `WHITE`, `RED`, `GRADIENT`.
+
 ## Filament Notes
 
 - `MaterialViewerScreen` should derive editable controls from `getMaterialParameters(...)`; avoid reintroducing hardcoded material parameter lists in shared UI

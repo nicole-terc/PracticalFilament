@@ -37,6 +37,7 @@ private enum class Screen {
     MARBLE,
     REDBALL,
     MORPHING,
+    PARTICLE_WORD,
 }
 
 const val musicFileName = "nicmix.wav"
@@ -51,7 +52,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by remember { mutableStateOf(Screen.SAMPLE_GLTF_VIEWER) }
+        var selectedScreen by remember { mutableStateOf(Screen.PARTICLE_WORD) }
 
         Column(
             modifier = Modifier
@@ -87,6 +88,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.MARBLE -> MarbleScreen()
                     Screen.REDBALL -> RedballScreen()
                     Screen.MORPHING -> MorphingScreen()
+                    Screen.PARTICLE_WORD -> ParticleWordScreen()
                 }
             }
         }

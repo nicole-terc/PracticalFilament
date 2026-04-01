@@ -51,6 +51,16 @@ enum class PrimitiveType {
     POINTS,
 }
 
+enum class MaterialBlendingMode {
+    OPAQUE,
+    TRANSPARENT,
+    ADD,
+    MASKED,
+    FADE,
+    MULTIPLY,
+    SCREEN,
+}
+
 data class VertexAttributeLayout(
     val attribute: VertexAttribute,
     val type: AttributeDataType,

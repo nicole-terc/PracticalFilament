@@ -372,7 +372,13 @@ class AndroidFilamentEngine(
         return handle
     }
 
-    override fun buildMaterial(materialSource: String, shadingModel: String): Int {
+    override fun buildMaterial(
+        materialSource: String,
+        shadingModel: String,
+        requiredAttributes: List<dev.nstv.practicalfilament.filament.VertexAttribute>,
+        parameters: List<MaterialParameterDefinition>,
+        blendingMode: dev.nstv.practicalfilament.filament.MaterialBlendingMode,
+    ): Int {
         val eng = engine ?: return -1
         val shading = when (shadingModel.lowercase()) {
             "unlit" -> MaterialBuilder.Shading.UNLIT
@@ -381,7 +387,7 @@ class AndroidFilamentEngine(
             "specular_glossiness" -> MaterialBuilder.Shading.SPECULAR_GLOSSINESS
             else -> MaterialBuilder.Shading.LIT
         }
-        val materialPackage = MaterialBuilder()
+        val materialBuilder = MaterialBuilder()
             .name("RuntimeMaterial${nextHandle}")
             .platform(MaterialBuilder.Platform.MOBILE)
             .targetApi(MaterialBuilder.TargetApi.ALL)
@@ -393,7 +399,15 @@ class AndroidFilamentEngine(
                 }
             }
             .material(materialSource)
-            .build(eng)
+            .blending(blendingMode.toFilamentBlendingMode())
+        requiredAttributes
+            .map { it.toFilamatVertexAttribute() }
+            .distinct()
+            .forEach(materialBuilder::require)
+        parameters.forEach { definition ->
+            materialBuilder.addRuntimeParameter(definition)
+        }
+        val materialPackage = materialBuilder.build(eng)
         if (!materialPackage.isValid) {
             return -1
         }
@@ -1614,4 +1628,93 @@ private fun PrimitiveType.toFilamentPrimitiveType(): RenderableManager.Primitive
     PrimitiveType.TRIANGLES -> RenderableManager.PrimitiveType.TRIANGLES
     PrimitiveType.LINES -> RenderableManager.PrimitiveType.LINES
     PrimitiveType.POINTS -> RenderableManager.PrimitiveType.POINTS
+}
+
+private fun VertexAttribute.toFilamatVertexAttribute(): MaterialBuilder.VertexAttribute = when (this) {
+    VertexAttribute.POSITION -> MaterialBuilder.VertexAttribute.POSITION
+    VertexAttribute.TANGENTS -> MaterialBuilder.VertexAttribute.TANGENTS
+    VertexAttribute.UV0 -> MaterialBuilder.VertexAttribute.UV0
+    VertexAttribute.COLOR -> MaterialBuilder.VertexAttribute.COLOR
+}
+
+private fun MaterialParameterDefinition.toUniformPrecision(): MaterialBuilder.ParameterPrecision = when (precision) {
+    MaterialParameterPrecision.LOW -> MaterialBuilder.ParameterPrecision.LOW
+    MaterialParameterPrecision.MEDIUM -> MaterialBuilder.ParameterPrecision.MEDIUM
+    MaterialParameterPrecision.HIGH -> MaterialBuilder.ParameterPrecision.HIGH
+    MaterialParameterPrecision.DEFAULT -> MaterialBuilder.ParameterPrecision.DEFAULT
+}
+
+private fun MaterialParameterType.toFilamatUniformType(): MaterialBuilder.UniformType? = when (this) {
+    is MaterialParameterType.Bool -> MaterialBuilder.UniformType.BOOL
+    is MaterialParameterType.Bool2 -> MaterialBuilder.UniformType.BOOL2
+    is MaterialParameterType.Bool3 -> MaterialBuilder.UniformType.BOOL3
+    is MaterialParameterType.Bool4 -> MaterialBuilder.UniformType.BOOL4
+    is MaterialParameterType.Float -> MaterialBuilder.UniformType.FLOAT
+    is MaterialParameterType.Float2 -> MaterialBuilder.UniformType.FLOAT2
+    is MaterialParameterType.Float3 -> MaterialBuilder.UniformType.FLOAT3
+    is MaterialParameterType.Float4 -> MaterialBuilder.UniformType.FLOAT4
+    is MaterialParameterType.Int -> MaterialBuilder.UniformType.INT
+    is MaterialParameterType.Int2 -> MaterialBuilder.UniformType.INT2
+    is MaterialParameterType.Int3 -> MaterialBuilder.UniformType.INT3
+    is MaterialParameterType.Int4 -> MaterialBuilder.UniformType.INT4
+    is MaterialParameterType.UInt -> MaterialBuilder.UniformType.UINT
+    is MaterialParameterType.UInt2 -> MaterialBuilder.UniformType.UINT2
+    is MaterialParameterType.UInt3 -> MaterialBuilder.UniformType.UINT3
+    is MaterialParameterType.UInt4 -> MaterialBuilder.UniformType.UINT4
+    is MaterialParameterType.Float3x3 -> MaterialBuilder.UniformType.MAT3
+    is MaterialParameterType.Float4x4 -> MaterialBuilder.UniformType.MAT4
+    is MaterialParameterType.Sampler2d,
+    is MaterialParameterType.Sampler2dArray,
+    is MaterialParameterType.SamplerExternal,
+    is MaterialParameterType.SamplerCubemap -> null
+}
+
+private fun MaterialParameterType.toFilamatSamplerType(): MaterialBuilder.SamplerType? = when (this) {
+    is MaterialParameterType.Sampler2d -> MaterialBuilder.SamplerType.SAMPLER_2D
+    is MaterialParameterType.Sampler2dArray -> MaterialBuilder.SamplerType.SAMPLER_2D_ARRAY
+    is MaterialParameterType.SamplerExternal -> MaterialBuilder.SamplerType.SAMPLER_EXTERNAL
+    is MaterialParameterType.SamplerCubemap -> MaterialBuilder.SamplerType.SAMPLER_CUBEMAP
+    else -> null
+}
+
+private fun dev.nstv.practicalfilament.filament.material.SamplerFormat.toFilamatSamplerFormat(): MaterialBuilder.SamplerFormat = when (this) {
+    dev.nstv.practicalfilament.filament.material.SamplerFormat.INT -> MaterialBuilder.SamplerFormat.INT
+    dev.nstv.practicalfilament.filament.material.SamplerFormat.FLOAT -> MaterialBuilder.SamplerFormat.FLOAT
+}
+
+private fun MaterialParameterDefinition.addedAsSamplerOrUniform(builder: MaterialBuilder) {
+    val samplerType = type.toFilamatSamplerType()
+    if (samplerType != null) {
+        val samplerFormat = when (type) {
+            is MaterialParameterType.Sampler2d -> type.format
+            is MaterialParameterType.Sampler2dArray -> type.format
+            is MaterialParameterType.SamplerExternal -> type.format
+            is MaterialParameterType.SamplerCubemap -> type.format
+            else -> error("Unsupported sampler material parameter type for $name")
+        }
+        builder.samplerParameter(samplerType, samplerFormat.toFilamatSamplerFormat(), toUniformPrecision(), name)
+        return
+    }
+
+    val uniformType = type.toFilamatUniformType()
+        ?: error("Unsupported runtime material parameter type for $name: $type")
+    if (type.arraySize > 1) {
+        builder.uniformParameterArray(uniformType, type.arraySize, toUniformPrecision(), name)
+    } else {
+        builder.uniformParameter(uniformType, toUniformPrecision(), name)
+    }
+}
+
+private fun MaterialBuilder.addRuntimeParameter(definition: MaterialParameterDefinition) {
+    definition.addedAsSamplerOrUniform(this)
+}
+
+private fun MaterialBlendingMode.toFilamentBlendingMode(): MaterialBuilder.BlendingMode = when (this) {
+    MaterialBlendingMode.OPAQUE -> MaterialBuilder.BlendingMode.OPAQUE
+    MaterialBlendingMode.TRANSPARENT -> MaterialBuilder.BlendingMode.TRANSPARENT
+    MaterialBlendingMode.ADD -> MaterialBuilder.BlendingMode.ADD
+    MaterialBlendingMode.MASKED -> MaterialBuilder.BlendingMode.MASKED
+    MaterialBlendingMode.FADE -> MaterialBuilder.BlendingMode.FADE
+    MaterialBlendingMode.MULTIPLY -> MaterialBuilder.BlendingMode.MULTIPLY
+    MaterialBlendingMode.SCREEN -> MaterialBuilder.BlendingMode.SCREEN
 }

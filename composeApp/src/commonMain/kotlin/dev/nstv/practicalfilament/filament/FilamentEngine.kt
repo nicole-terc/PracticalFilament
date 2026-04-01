@@ -32,7 +32,13 @@ interface FilamentEngine {
     fun getMaterialParameters(materialHandle: Int): List<MaterialParameterDefinition>
     fun createMaterialInstance(materialHandle: Int): Int
     fun setMaterialParameter(instanceHandle: Int, param: MaterialParameter)
-    fun buildMaterial(materialSource: String, shadingModel: String = "lit"): Int = -1
+    fun buildMaterial(
+        materialSource: String,
+        shadingModel: String = "lit",
+        requiredAttributes: List<VertexAttribute> = emptyList(),
+        parameters: List<MaterialParameterDefinition> = emptyList(),
+        blendingMode: MaterialBlendingMode = MaterialBlendingMode.OPAQUE,
+    ): Int = -1
 
     // Textures
     fun createTexture(width: Int, height: Int, pixels: ByteArray): Int
