@@ -197,6 +197,10 @@ class IosFilamentEngine(
         return bridge.createTextureWithWidth(width, height = height, pixels = pixels)
     }
 
+    override fun loadTexture(path: String): Int {
+        return bridge.loadTextureFromPath(path)
+    }
+
     override fun setTextureParameter(instanceHandle: Int, paramName: String, textureHandle: Int) {
         bridge.setTextureParam(instanceHandle, name = paramName, textureHandle = textureHandle)
     }
@@ -323,6 +327,7 @@ interface FilamentBridgeProtocol {
         m30: Float, m31: Float, m32: Float, m33: Float,
     )
     fun createTextureWithWidth(width: Int, height: Int, pixels: ByteArray): Int
+    fun loadTextureFromPath(path: String): Int
     fun setTextureParam(instanceHandle: Int, name: String, textureHandle: Int)
     fun createPlaneWithMaterial(instanceHandle: Int, width: Float, height: Float): Int
     fun createSphereWithMaterial(instanceHandle: Int, radius: Float): Int

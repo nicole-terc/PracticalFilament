@@ -8,7 +8,7 @@ import dev.nstv.practicalfilament.filament.material.Material
 val MaterialFilesList = listOf(
     "materials/plastic.filamat",
     "materials/aiDefaultMat.filamat",
-    "materials/image.filamat",
+    "materials/texturedSample.filamat",
     "materials/sandboxLitFade.filamat",
     "materials/sandboxCloth.filamat",
     "materials/mirror.filamat",
@@ -50,8 +50,8 @@ val MaterialOverridesList = listOf(
         ),
     ),
     Material(
-        fileName = "materials/image.filamat",
-        label = "image",
+        fileName = "materials/texturedSample.filamat",
+        label = "texturedSample",
         overrides = emptyMap(),
     ),
     Material(

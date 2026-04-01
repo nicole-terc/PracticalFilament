@@ -35,7 +35,9 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.filament.android)
+            implementation(libs.filamat.android)
             implementation(libs.filament.utils.android)
+            implementation(libs.gltfio.android)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

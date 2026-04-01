@@ -35,7 +35,9 @@ compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMul
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 filament-android = { module = "com.google.android.filament:filament-android", version.ref = "filament" }
+filamat-android = { module = "com.google.android.filament:filamat-android", version.ref = "filament" }
 filament-utils-android = { module = "com.google.android.filament:filament-utils-android", version.ref = "filament" }
+gltfio-android = { module = "com.google.android.filament:gltfio-android", version.ref = "filament" }
 composableSheep = { module = "dev.nstv:composablesheep", version.ref = "composableSheep" }
 
 [plugins]

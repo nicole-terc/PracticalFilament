@@ -2,7 +2,6 @@ package dev.nstv.practicalfilament.screen
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,13 +18,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color.Companion
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import dev.nstv.practicalfilament.theme.slidesBackground
 
 
 private enum class Screen {
+    SAMPLE_IBL,
+    SAMPLE_LIT_CUBE,
+    SAMPLE_STRESS_TEST,
+    SAMPLE_HELLO_TRIANGLE,
+    SAMPLE_TEXTURED_OBJECT,
+    SAMPLE_MATERIAL_BUILDER,
+    SAMPLE_PAGE_CURL,
+    SAMPLE_MULTI_VIEW,
+    SAMPLE_GLTF_VIEWER,
     MATERIAL_VIEWER,
     MARBLE,
     REDBALL,
@@ -44,7 +51,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by remember { mutableStateOf(Screen.MORPHING) }
+        var selectedScreen by remember { mutableStateOf(Screen.SAMPLE_GLTF_VIEWER) }
 
         Column(
             modifier = Modifier
@@ -67,6 +74,15 @@ fun MainScreen(modifier: Modifier = Modifier) {
                 animationSpec = tween(durationMillis = 500)
             ) { screen ->
                 when (screen) {
+                    Screen.SAMPLE_IBL -> IBLScreen()
+                    Screen.SAMPLE_LIT_CUBE -> LitCubeScreen()
+                    Screen.SAMPLE_STRESS_TEST -> StressTestScreen()
+                    Screen.SAMPLE_HELLO_TRIANGLE -> HelloTriangleScreen()
+                    Screen.SAMPLE_TEXTURED_OBJECT -> TexturedObjectScreen()
+                    Screen.SAMPLE_MATERIAL_BUILDER -> MaterialBuilderScreen()
+                    Screen.SAMPLE_PAGE_CURL -> PageCurlScreen()
+                    Screen.SAMPLE_MULTI_VIEW -> MultiViewScreen()
+                    Screen.SAMPLE_GLTF_VIEWER -> GltfViewerScreen()
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
                     Screen.MARBLE -> MarbleScreen()
                     Screen.REDBALL -> RedballScreen()

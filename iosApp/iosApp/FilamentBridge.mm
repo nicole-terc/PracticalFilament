@@ -1,5 +1,7 @@
 #import "FilamentBridge.h"
 
+#import <UIKit/UIKit.h>
+
 #import <filament/Engine.h>
 #import <filament/Renderer.h>
 #import <filament/Scene.h>
@@ -68,6 +70,29 @@ static void *PFMakeOwnedCopy(const void *source, size_t size) {
     void *copy = malloc(size);
     memcpy(copy, source, size);
     return copy;
+}
+
+static Texture *PFCreateTextureFromRgbaBytes(
+        Engine *engine,
+        uint32_t width,
+        uint32_t height,
+        void *pixelData,
+        size_t byteCount) {
+    auto *texture = Texture::Builder()
+        .width(width)
+        .height(height)
+        .sampler(Texture::Sampler::SAMPLER_2D)
+        .format(Texture::InternalFormat::RGBA8)
+        .levels(1)
+        .build(*engine);
+
+    Texture::PixelBufferDescriptor buffer(
+        pixelData, byteCount,
+        Texture::Format::RGBA, Texture::Type::UBYTE,
+        [](void *buffer, size_t, void *) { free(buffer); }
+    );
+    texture->setImage(*engine, 0, std::move(buffer));
+    return texture;
 }
 
 static std::vector<float3> PFFloat3VectorFromData(NSData *data) {
@@ -698,25 +723,77 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
 - (int)createTextureWithWidth:(int)width height:(int)height pixels:(NSData *)pixels {
     if (!_engine) return -1;
 
-    auto *texture = Texture::Builder()
-        .width((uint32_t)width)
-        .height((uint32_t)height)
-        .sampler(Texture::Sampler::SAMPLER_2D)
-        .format(Texture::InternalFormat::RGBA8)
-        .levels(1)
-        .build(*_engine);
-
     // Copy pixel data so it outlives the call
     size_t size = pixels.length;
     void *pixelCopy = malloc(size);
     memcpy(pixelCopy, pixels.bytes, size);
 
-    Texture::PixelBufferDescriptor buffer(
-        pixelCopy, size,
-        Texture::Format::RGBA, Texture::Type::UBYTE,
-        [](void *buf, size_t, void *) { free(buf); }
+    auto *texture = PFCreateTextureFromRgbaBytes(
+        _engine,
+        (uint32_t)width,
+        (uint32_t)height,
+        pixelCopy,
+        size
     );
-    texture->setImage(*_engine, 0, std::move(buffer));
+
+    int handle = _nextHandle++;
+    _textures[handle] = texture;
+    return handle;
+}
+
+- (int)loadTextureFromPath:(NSString *)path {
+    if (!_engine) return -1;
+
+    NSData *data = PFLoadDataFromPathOrUri(path);
+    if (!data) {
+        NSLog(@"Failed to load texture data from '%@'", path);
+        return -1;
+    }
+
+    UIImage *image = [UIImage imageWithData:data];
+    CGImageRef cgImage = image.CGImage;
+    if (!cgImage) {
+        NSLog(@"Failed to decode texture image from '%@'", path);
+        return -1;
+    }
+
+    const size_t width = CGImageGetWidth(cgImage);
+    const size_t height = CGImageGetHeight(cgImage);
+    const size_t bytesPerRow = width * 4;
+    const size_t byteCount = bytesPerRow * height;
+    void *pixelCopy = calloc(1, byteCount);
+    if (!pixelCopy) {
+        return -1;
+    }
+
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    CGContextRef context = CGBitmapContextCreate(
+        pixelCopy,
+        width,
+        height,
+        8,
+        bytesPerRow,
+        colorSpace,
+        kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big
+    );
+    CGColorSpaceRelease(colorSpace);
+
+    if (!context) {
+        free(pixelCopy);
+        NSLog(@"Failed to create texture bitmap context for '%@'", path);
+        return -1;
+    }
+
+    CGContextDrawImage(context, CGRectMake(0, 0, width, height), cgImage);
+    CGContextRelease(context);
+
+    auto *texture = PFCreateTextureFromRgbaBytes(
+        _engine,
+        (uint32_t)width,
+        (uint32_t)height,
+        pixelCopy,
+        byteCount
+    );
 
     int handle = _nextHandle++;
     _textures[handle] = texture;

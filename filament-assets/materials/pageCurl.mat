@@ -1,0 +1,36 @@
+material {
+    name : PageCurl,
+    parameters : [
+        {
+            type : sampler2d,
+            name : image
+        },
+        {
+            type : float3,
+            name : backgroundColor
+        }
+    ],
+    requires : [ uv0 ],
+    shadingModel : unlit,
+    depthWrite : false,
+    culling : none
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+
+        vec4 bg = vec4(materialParams.backgroundColor, 1.0);
+        highp vec2 uv = getUV0();
+
+        if (uv.s < 0.0 || uv.s > 1.0 || uv.t < 0.0 || uv.t > 1.0) {
+            material.baseColor = bg;
+            return;
+        }
+
+        vec2 sampledUv = vec2(clamp(uv.s, 0.0, 1.0), 1.0 - clamp(uv.t, 0.0, 1.0));
+        vec4 color = max(texture(materialParams_image, sampledUv), 0.0);
+        color.rgb *= color.a;
+        material.baseColor = vec4(color.rgb + bg.rgb * (1.0 - color.a), 1.0);
+    }
+}

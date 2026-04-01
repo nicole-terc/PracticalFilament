@@ -1,6 +1,7 @@
 package dev.nstv.practicalfilament.filament
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.opengl.Matrix
 import android.view.Choreographer
 import android.view.Surface
@@ -24,16 +25,24 @@ import com.google.android.filament.VertexBuffer
 import com.google.android.filament.View
 import com.google.android.filament.Viewport
 import com.google.android.filament.android.UiHelper
+import com.google.android.filament.filamat.MaterialBuilder
+import com.google.android.filament.gltfio.Animator
+import com.google.android.filament.gltfio.AssetLoader
+import com.google.android.filament.gltfio.FilamentAsset
+import com.google.android.filament.gltfio.ResourceLoader
+import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.utils.KTX1Loader
 import com.google.android.filament.utils.Utils
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.MaterialParameterPrecision
 import dev.nstv.practicalfilament.filament.material.MaterialParameterType
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.sin
 
 class AndroidFilamentEngine(
@@ -49,6 +58,9 @@ class AndroidFilamentEngine(
     private var swapChain: SwapChain? = null
     private var uiHelper: UiHelper? = null
     private var choreographer: Choreographer? = null
+    private var assetLoader: AssetLoader? = null
+    private var resourceLoader: ResourceLoader? = null
+    private var materialProvider: UbershaderProvider? = null
 
     private val lights = mutableMapOf<Int, Int>()
     private val renderables = mutableMapOf<Int, Int>()
@@ -62,10 +74,18 @@ class AndroidFilamentEngine(
     private val skyboxes = mutableMapOf<Int, EnvironmentSkybox>()
     private val vertexBuffers = mutableListOf<VertexBuffer>()
     private val indexBuffers = mutableListOf<IndexBuffer>()
+    private val additionalViews = mutableMapOf<Int, AuxiliaryView>()
+    private val renderableBuffers = mutableMapOf<Int, RenderableBuffers>()
+    private val gltfAssets = mutableMapOf<Int, ManagedGltfAsset>()
 
     private var nextHandle = 1
     private var _isInitialized = false
     private var rendering = false
+    private var viewportWidth = 1
+    private var viewportHeight = 1
+    private var currentCameraConfig = CameraConfig()
+
+    override val supportsMaterialBuilder: Boolean = true
 
     override val isInitialized: Boolean get() = _isInitialized
 
@@ -84,10 +104,16 @@ class AndroidFilamentEngine(
             if (uiHelper?.isReadyToRender == true) {
                 val sc = swapChain ?: return
                 val r = renderer ?: return
-                val v = filamentView ?: return
+                val baseView = filamentView ?: return
 
                 if (r.beginFrame(sc, frameTimeNanos)) {
-                    r.render(v)
+                    if (additionalViews.isEmpty()) {
+                        r.render(baseView)
+                    } else {
+                        additionalViews.values.forEach { auxiliaryView ->
+                            r.render(auxiliaryView.view)
+                        }
+                    }
                     r.endFrame()
                 }
             }
@@ -108,8 +134,12 @@ class AndroidFilamentEngine(
             camera = eng.createCamera(cameraEntity).also {
                 filamentView?.camera = it
             }
+            materialProvider = UbershaderProvider(eng)
+            assetLoader = AssetLoader(eng, materialProvider!!, EntityManager.get())
+            resourceLoader = ResourceLoader(eng, true)
         }
         choreographer = Choreographer.getInstance()
+        MaterialBuilder.init()
         _isInitialized = true
     }
 
@@ -119,11 +149,18 @@ class AndroidFilamentEngine(
         scene?.setIndirectLight(null)
         scene?.setSkybox(null)
 
+        gltfAssets.values.forEach { managedAsset ->
+            scene?.removeEntities(managedAsset.asset.entities)
+            assetLoader?.destroyAsset(managedAsset.asset)
+        }
+        gltfAssets.clear()
+
         renderables.values.forEach { entity ->
             eng.destroyEntity(entity)
             EntityManager.get().destroy(entity)
         }
         renderables.clear()
+        renderableBuffers.clear()
         morphTargetBuffers.values.forEach { eng.destroyMorphTargetBuffer(it) }
         morphTargetBuffers.clear()
 
@@ -161,11 +198,24 @@ class AndroidFilamentEngine(
         indexBuffers.forEach { eng.destroyIndexBuffer(it) }
         indexBuffers.clear()
 
+        additionalViews.values.forEach { auxiliaryView ->
+            eng.destroyCameraComponent(auxiliaryView.cameraEntity)
+            eng.destroyView(auxiliaryView.view)
+            EntityManager.get().destroy(auxiliaryView.cameraEntity)
+        }
+        additionalViews.clear()
+
         filamentView?.let { eng.destroyView(it) }
         scene?.let { eng.destroyScene(it) }
         camera?.let { eng.destroyCameraComponent(cameraEntity) }
         renderer?.let { eng.destroyRenderer(it) }
         swapChain?.let { eng.destroySwapChain(it) }
+        resourceLoader?.destroy()
+        resourceLoader = null
+        assetLoader?.destroy()
+        assetLoader = null
+        materialProvider?.destroyMaterials()
+        materialProvider = null
 
         eng.destroy()
         engine = null
@@ -183,15 +233,10 @@ class AndroidFilamentEngine(
     }
 
     fun updateViewport(width: Int, height: Int) {
+        viewportWidth = width.coerceAtLeast(1)
+        viewportHeight = height.coerceAtLeast(1)
         filamentView?.viewport = Viewport(0, 0, width, height)
-        val aspect = width.toDouble() / height.toDouble()
-        camera?.setProjection(
-            45.0,
-            aspect,
-            0.1,
-            100.0,
-            Camera.Fov.VERTICAL
-        )
+        applyCameraConfig(camera ?: return, currentCameraConfig, viewportWidth, viewportHeight)
     }
 
     fun setUiHelper(helper: UiHelper) {
@@ -213,18 +258,17 @@ class AndroidFilamentEngine(
     }
 
     override fun updateCamera(config: CameraConfig) {
+        currentCameraConfig = config
         camera?.lookAt(
             config.position.x.toDouble(), config.position.y.toDouble(), config.position.z.toDouble(),
             config.lookAt.x.toDouble(), config.lookAt.y.toDouble(), config.lookAt.z.toDouble(),
             config.up.x.toDouble(), config.up.y.toDouble(), config.up.z.toDouble()
         )
-        camera?.setProjection(
-            config.fovDegrees,
-            1.0,
-            config.near,
-            config.far,
-            Camera.Fov.VERTICAL
-        )
+        applyCameraConfig(camera ?: return, config, viewportWidth, viewportHeight)
+    }
+
+    override fun setCameraExposure(aperture: Float, shutterSpeed: Float, sensitivity: Float) {
+        camera?.setExposure(aperture, shutterSpeed, sensitivity)
     }
 
     override fun addLight(config: LightConfig): Int {
@@ -255,6 +299,7 @@ class AndroidFilamentEngine(
                     sunHaloSize(config.sunHaloSize)
                     sunHaloFalloff(config.sunHaloFalloff)
                 }
+                castShadows(config.castShadows)
             }
             .build(eng, entity)
 
@@ -322,6 +367,43 @@ class AndroidFilamentEngine(
             .payload(buffer, buffer.remaining())
             .build(eng)
 
+        val handle = nextHandle++
+        materials[handle] = material
+        return handle
+    }
+
+    override fun buildMaterial(materialSource: String, shadingModel: String): Int {
+        val eng = engine ?: return -1
+        val shading = when (shadingModel.lowercase()) {
+            "unlit" -> MaterialBuilder.Shading.UNLIT
+            "cloth" -> MaterialBuilder.Shading.CLOTH
+            "subsurface" -> MaterialBuilder.Shading.SUBSURFACE
+            "specular_glossiness" -> MaterialBuilder.Shading.SPECULAR_GLOSSINESS
+            else -> MaterialBuilder.Shading.LIT
+        }
+        val materialPackage = MaterialBuilder()
+            .name("RuntimeMaterial${nextHandle}")
+            .platform(MaterialBuilder.Platform.MOBILE)
+            .targetApi(MaterialBuilder.TargetApi.ALL)
+            .shading(shading)
+            .require(MaterialBuilder.VertexAttribute.POSITION)
+            .apply {
+                if (shading != MaterialBuilder.Shading.UNLIT) {
+                    require(MaterialBuilder.VertexAttribute.TANGENTS)
+                }
+            }
+            .material(materialSource)
+            .build(eng)
+        if (!materialPackage.isValid) {
+            return -1
+        }
+        val material = runCatching {
+            Material.Builder()
+                .payload(materialPackage.buffer, materialPackage.buffer.remaining())
+                .build(eng)
+        }.getOrElse {
+            return -1
+        }
         val handle = nextHandle++
         materials[handle] = material
         return handle
@@ -545,6 +627,45 @@ class AndroidFilamentEngine(
         return handle
     }
 
+    override fun loadTexture(path: String): Int {
+        val eng = engine ?: return -1
+        if (path.endsWith(".ktx", ignoreCase = true) || path.endsWith(".ktx1", ignoreCase = true)) {
+            val buffer = loadAssetBuffer(path) ?: return -1
+            val texture = KTX1Loader.createTexture(eng, buffer)
+            val handle = nextHandle++
+            textures[handle] = texture
+            return handle
+        }
+
+        val bytes = loadAssetBytes(path) ?: return -1
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return -1
+        val pixelBuffer = ByteBuffer.allocateDirect(bitmap.byteCount)
+        bitmap.copyPixelsToBuffer(pixelBuffer)
+        pixelBuffer.flip()
+
+        val texture = Texture.Builder()
+            .width(bitmap.width)
+            .height(bitmap.height)
+            .sampler(Texture.Sampler.SAMPLER_2D)
+            .format(Texture.InternalFormat.RGBA8)
+            .levels(1)
+            .build(eng)
+        texture.setImage(
+            eng,
+            0,
+            Texture.PixelBufferDescriptor(
+                pixelBuffer,
+                Texture.Format.RGBA,
+                Texture.Type.UBYTE,
+            )
+        )
+        bitmap.recycle()
+
+        val handle = nextHandle++
+        textures[handle] = texture
+        return handle
+    }
+
     override fun setTextureParameter(instanceHandle: Int, paramName: String, textureHandle: Int) {
         val instance = materialInstances[instanceHandle] ?: return
         val texture = textures[textureHandle] ?: return
@@ -579,21 +700,14 @@ class AndroidFilamentEngine(
         val indexBuffer = buildIndexBuffer(eng, indices)
 
         val entity = EntityManager.get().create()
-        RenderableManager.Builder(1)
-            .geometry(0, RenderableManager.PrimitiveType.TRIANGLES, vertexBuffer, indexBuffer)
-            .material(0, instance)
-            .boundingBox(
-                com.google.android.filament.Box(
-                    0f, 0f, 0f,
-                    hw, hh, 0.01f
-                )
-            )
-            .build(eng, entity)
-
-        scene?.addEntity(entity)
-        val handle = nextHandle++
-        renderables[handle] = entity
-        return handle
+        return createRenderable(
+            entity = entity,
+            primitiveType = RenderableManager.PrimitiveType.TRIANGLES,
+            vertexBuffer = vertexBuffer,
+            indexBuffer = indexBuffer,
+            materialInstance = instance,
+            boundingBox = com.google.android.filament.Box(0f, 0f, 0f, hw, hh, 0.01f),
+        )
     }
 
     override fun createSphereRenderable(materialInstanceHandle: Int, radius: Float): Int {
@@ -683,21 +797,116 @@ class AndroidFilamentEngine(
         val indexBuffer = buildIndexBuffer(eng, indexData)
 
         val entity = EntityManager.get().create()
-        RenderableManager.Builder(1)
-            .geometry(0, RenderableManager.PrimitiveType.TRIANGLES, vertexBuffer, indexBuffer)
-            .material(0, instance)
-            .boundingBox(
-                com.google.android.filament.Box(
-                    0f, 0f, 0f,
-                    radius, radius, radius
-                )
-            )
-            .build(eng, entity)
+        return createRenderable(
+            entity = entity,
+            primitiveType = RenderableManager.PrimitiveType.TRIANGLES,
+            vertexBuffer = vertexBuffer,
+            indexBuffer = indexBuffer,
+            materialInstance = instance,
+            boundingBox = com.google.android.filament.Box(0f, 0f, 0f, radius, radius, radius),
+        )
+    }
 
-        scene?.addEntity(entity)
-        val handle = nextHandle++
-        renderables[handle] = entity
-        return handle
+    override fun createCubeRenderable(materialInstanceHandle: Int, size: Float): Int {
+        val eng = engine ?: return -1
+        val instance = materialInstances[materialInstanceHandle] ?: return -1
+        val half = size / 2f
+
+        val positions = floatArrayOf(
+            -half, -half, half, half, -half, half, half, half, half, -half, half, half,
+            half, -half, -half, -half, -half, -half, -half, half, -half, half, half, -half,
+            -half, -half, -half, -half, -half, half, -half, half, half, -half, half, -half,
+            half, -half, half, half, -half, -half, half, half, -half, half, half, half,
+            -half, half, half, half, half, half, half, half, -half, -half, half, -half,
+            -half, -half, -half, half, -half, -half, half, -half, half, -half, -half, half,
+        )
+        val normals = floatArrayOf(
+            0f, 0f, 1f, 0f, 0f, 1f, 0f, 0f, 1f, 0f, 0f, 1f,
+            0f, 0f, -1f, 0f, 0f, -1f, 0f, 0f, -1f, 0f, 0f, -1f,
+            -1f, 0f, 0f, -1f, 0f, 0f, -1f, 0f, 0f, -1f, 0f, 0f,
+            1f, 0f, 0f, 1f, 0f, 0f, 1f, 0f, 0f, 1f, 0f, 0f,
+            0f, 1f, 0f, 0f, 1f, 0f, 0f, 1f, 0f, 0f, 1f, 0f,
+            0f, -1f, 0f, 0f, -1f, 0f, 0f, -1f, 0f, 0f, -1f, 0f,
+        )
+        val uvs = floatArrayOf(
+            0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f,
+            0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f,
+            0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f,
+            0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f,
+            0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f,
+            0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f,
+        )
+        val indices = shortArrayOf(
+            0, 1, 2, 0, 2, 3,
+            4, 5, 6, 4, 6, 7,
+            8, 9, 10, 8, 10, 11,
+            12, 13, 14, 12, 14, 15,
+            16, 17, 18, 16, 18, 19,
+            20, 21, 22, 20, 22, 23,
+        )
+
+        val tangents = buildSurfaceOrientationQuaternions(
+            vertexCount = 24,
+            positions = positions,
+            normals = normals,
+            uvs = uvs,
+            indices = indices,
+        )
+        val vertexData = FloatArray(24 * 9)
+        var positionIndex = 0
+        var tangentIndex = 0
+        var uvIndex = 0
+        var vertexDataIndex = 0
+        repeat(24) {
+            vertexData[vertexDataIndex++] = positions[positionIndex++]
+            vertexData[vertexDataIndex++] = positions[positionIndex++]
+            vertexData[vertexDataIndex++] = positions[positionIndex++]
+            vertexData[vertexDataIndex++] = tangents[tangentIndex++]
+            vertexData[vertexDataIndex++] = tangents[tangentIndex++]
+            vertexData[vertexDataIndex++] = tangents[tangentIndex++]
+            vertexData[vertexDataIndex++] = tangents[tangentIndex++]
+            vertexData[vertexDataIndex++] = uvs[uvIndex++]
+            vertexData[vertexDataIndex++] = uvs[uvIndex++]
+        }
+
+        val vertexBuffer = buildVertexBuffer(eng, vertexData, 24)
+        val indexBuffer = buildIndexBuffer(eng, indices)
+        return createRenderable(
+            entity = EntityManager.get().create(),
+            primitiveType = RenderableManager.PrimitiveType.TRIANGLES,
+            vertexBuffer = vertexBuffer,
+            indexBuffer = indexBuffer,
+            materialInstance = instance,
+            boundingBox = com.google.android.filament.Box(0f, 0f, 0f, half, half, half),
+        )
+    }
+
+    override fun createCustomRenderable(config: CustomRenderableConfig): Int {
+        val eng = engine ?: return -1
+        val instance = materialInstances[config.materialInstanceHandle] ?: return -1
+        val vertexBuffer = buildCustomVertexBuffer(
+            eng = eng,
+            vertexData = config.vertexData,
+            vertexCount = config.vertexCount,
+            strideBytes = config.strideBytes,
+            attributes = config.attributes,
+        )
+        val indexBuffer = buildIndexBuffer(eng, config.indices)
+        return createRenderable(
+            entity = EntityManager.get().create(),
+            primitiveType = config.primitiveType.toFilamentPrimitiveType(),
+            vertexBuffer = vertexBuffer,
+            indexBuffer = indexBuffer,
+            materialInstance = instance,
+            boundingBox = com.google.android.filament.Box(
+                config.boundingBox.center.x,
+                config.boundingBox.center.y,
+                config.boundingBox.center.z,
+                config.boundingBox.halfExtent.x,
+                config.boundingBox.halfExtent.y,
+                config.boundingBox.halfExtent.z,
+            ),
+        )
     }
 
     override fun createMorphRenderable(
@@ -751,25 +960,22 @@ class AndroidFilamentEngine(
         val bounds = geometry.calculateMorphBounds()
 
         val entity = EntityManager.get().create()
-        RenderableManager.Builder(1)
-            .geometry(0, RenderableManager.PrimitiveType.TRIANGLES, vertexBuffer, indexBuffer)
-            .material(0, instance)
-            .morphing(morphTargetBuffer)
-            .boundingBox(
-                com.google.android.filament.Box(
-                    bounds.center.x,
-                    bounds.center.y,
-                    bounds.center.z,
-                    bounds.halfExtent.x,
-                    bounds.halfExtent.y,
-                    bounds.halfExtent.z,
-                )
-            )
-            .build(eng, entity)
-
-        scene?.addEntity(entity)
-        val handle = nextHandle++
-        renderables[handle] = entity
+        val handle = createRenderable(
+            entity = entity,
+            primitiveType = RenderableManager.PrimitiveType.TRIANGLES,
+            vertexBuffer = vertexBuffer,
+            indexBuffer = indexBuffer,
+            materialInstance = instance,
+            boundingBox = com.google.android.filament.Box(
+                bounds.center.x,
+                bounds.center.y,
+                bounds.center.z,
+                bounds.halfExtent.x,
+                bounds.halfExtent.y,
+                bounds.halfExtent.z,
+            ),
+            morphTargetBuffer = morphTargetBuffer,
+        )
         morphTargetBuffers[handle] = morphTargetBuffer
         return handle
     }
@@ -798,6 +1004,26 @@ class AndroidFilamentEngine(
         transformManager.setTransform(instance, transform)
     }
 
+    override fun setShadowsEnabled(renderableHandle: Int, castShadows: Boolean, receiveShadows: Boolean) {
+        val eng = engine ?: return
+        val entity = renderables[renderableHandle] ?: return
+        val instance = eng.renderableManager.getInstance(entity)
+        if (instance == 0) return
+        eng.renderableManager.setCastShadows(instance, castShadows)
+        eng.renderableManager.setReceiveShadows(instance, receiveShadows)
+    }
+
+    override fun updateVertexData(renderableHandle: Int, vertexData: ByteArray) {
+        val eng = engine ?: return
+        val renderableBuffer = renderableBuffers[renderableHandle] ?: return
+        val byteBuffer = ByteBuffer.allocateDirect(vertexData.size).apply {
+            order(ByteOrder.nativeOrder())
+            put(vertexData)
+            flip()
+        }
+        renderableBuffer.vertexBuffer.setBufferAt(eng, 0, byteBuffer)
+    }
+
     override fun setMorphWeights(handle: Int, weights: FloatArray) {
         val eng = engine ?: return
         val entity = renderables[handle] ?: return
@@ -810,19 +1036,184 @@ class AndroidFilamentEngine(
         destroyRenderableEntity(handle)
     }
 
+    override fun createView(viewport: ViewportConfig): Int {
+        val eng = engine ?: return -1
+        val scene = scene ?: return -1
+        val handle = nextHandle++
+        val cameraEntity = EntityManager.get().create()
+        val camera = eng.createCamera(cameraEntity)
+        applyCameraLookAt(camera, currentCameraConfig)
+        applyCameraConfig(camera, currentCameraConfig, viewport.width, viewport.height)
+        val view = eng.createView().apply {
+            this.scene = scene
+            this.camera = camera
+            this.viewport = Viewport(viewport.x, viewport.y, viewport.width, viewport.height)
+        }
+        additionalViews[handle] = AuxiliaryView(
+            view = view,
+            camera = camera,
+            cameraEntity = cameraEntity,
+            viewport = viewport,
+        )
+        return handle
+    }
+
+    override fun removeView(handle: Int) {
+        val eng = engine ?: return
+        val auxiliaryView = additionalViews.remove(handle) ?: return
+        eng.destroyCameraComponent(auxiliaryView.cameraEntity)
+        eng.destroyView(auxiliaryView.view)
+        EntityManager.get().destroy(auxiliaryView.cameraEntity)
+    }
+
+    override fun setViewViewport(handle: Int, viewport: ViewportConfig) {
+        val auxiliaryView = additionalViews[handle] ?: return
+        auxiliaryView.viewport = viewport
+        auxiliaryView.view.viewport = Viewport(viewport.x, viewport.y, viewport.width, viewport.height)
+        applyCameraConfig(auxiliaryView.camera, auxiliaryView.cameraConfig, viewport.width, viewport.height)
+    }
+
+    override fun setViewCamera(handle: Int, config: CameraConfig) {
+        val auxiliaryView = additionalViews[handle] ?: return
+        auxiliaryView.cameraConfig = config
+        applyCameraLookAt(auxiliaryView.camera, config)
+        applyCameraConfig(auxiliaryView.camera, config, auxiliaryView.viewport.width, auxiliaryView.viewport.height)
+    }
+
+    override fun setViewBlendMode(handle: Int, translucent: Boolean) {
+        val auxiliaryView = additionalViews[handle] ?: return
+        auxiliaryView.view.blendMode = if (translucent) View.BlendMode.TRANSLUCENT else View.BlendMode.OPAQUE
+    }
+
+    override fun setViewPostProcessing(handle: Int, enabled: Boolean) {
+        additionalViews[handle]?.view?.isPostProcessingEnabled = enabled
+    }
+
+    override fun loadGltfAsset(path: String): Int {
+        val loader = assetLoader ?: return -1
+        val resourceLoader = resourceLoader ?: return -1
+        val buffer = loadAssetBuffer(path) ?: return -1
+        val asset = loader.createAsset(buffer) ?: return -1
+        if (path.endsWith(".gltf", ignoreCase = true)) {
+            val basePath = path.substringBeforeLast('/', "")
+            asset.resourceUris.forEach { resourceUri ->
+                val resourceBuffer = loadAssetBuffer(resolveRelativeAssetPath(basePath, resourceUri)) ?: return -1
+                resourceLoader.addResourceData(resourceUri, resourceBuffer)
+            }
+        }
+        resourceLoader.loadResources(asset)
+        asset.releaseSourceData()
+        val handle = nextHandle++
+        gltfAssets[handle] = ManagedGltfAsset(
+            asset = asset,
+            animator = asset.instance.animator,
+            addedToScene = false,
+        )
+        return handle
+    }
+
+    override fun destroyGltfAsset(handle: Int) {
+        val loader = assetLoader ?: return
+        val managedAsset = gltfAssets.remove(handle) ?: return
+        if (managedAsset.addedToScene) {
+            scene?.removeEntities(managedAsset.asset.entities)
+        }
+        loader.destroyAsset(managedAsset.asset)
+    }
+
+    override fun getGltfAnimationCount(handle: Int): Int {
+        return gltfAssets[handle]?.animator?.animationCount ?: 0
+    }
+
+    override fun getGltfAnimationDuration(handle: Int, animationIndex: Int): Float {
+        return gltfAssets[handle]?.animator?.getAnimationDuration(animationIndex) ?: 0f
+    }
+
+    override fun applyGltfAnimation(handle: Int, animationIndex: Int, timeSeconds: Float) {
+        gltfAssets[handle]?.animator?.applyAnimation(animationIndex, timeSeconds)
+    }
+
+    override fun updateGltfBoneMatrices(handle: Int) {
+        gltfAssets[handle]?.animator?.updateBoneMatrices()
+    }
+
+    override fun transformGltfToUnitCube(handle: Int) {
+        val eng = engine ?: return
+        val managedAsset = gltfAssets[handle] ?: return
+        val boundingBox = managedAsset.asset.boundingBox
+        val center = boundingBox.center
+        val halfExtent = boundingBox.halfExtent
+        val maxExtent = max(max(halfExtent[0], halfExtent[1]), halfExtent[2]) * 2f
+        if (maxExtent <= 0f) return
+        val scale = 2f / maxExtent
+        val transform = FloatArray(16)
+        Matrix.setIdentityM(transform, 0)
+        Matrix.scaleM(transform, 0, scale, scale, scale)
+        Matrix.translateM(transform, 0, -center[0], -center[1], -center[2])
+        val root = managedAsset.asset.root
+        val transformManager = eng.transformManager
+        val instance = transformManager.getInstance(root)
+        if (instance != 0) {
+            transformManager.setTransform(instance, transform)
+        }
+    }
+
+    override fun addGltfToScene(handle: Int) {
+        val managedAsset = gltfAssets[handle] ?: return
+        if (managedAsset.addedToScene) return
+        scene?.addEntities(managedAsset.asset.entities)
+        managedAsset.addedToScene = true
+    }
+
+    override fun removeGltfFromScene(handle: Int) {
+        val managedAsset = gltfAssets[handle] ?: return
+        if (!managedAsset.addedToScene) return
+        scene?.removeEntities(managedAsset.asset.entities)
+        managedAsset.addedToScene = false
+    }
+
     override fun requestFrame() {
         // The choreographer-driven render loop handles continuous rendering.
         // This is a no-op since we render every frame.
     }
 
     private fun loadAssetBuffer(path: String): ByteBuffer? {
-        val assetPath = path.removePrefix("file:///android_asset/")
-        val bytes = runCatching { context.assets.open(assetPath).readBytes() }.getOrNull() ?: return null
+        val bytes = loadAssetBytes(path) ?: return null
         return ByteBuffer.allocateDirect(bytes.size).apply {
             order(ByteOrder.nativeOrder())
             put(bytes)
             flip()
         }
+    }
+
+    private fun loadAssetBytes(path: String): ByteArray? {
+        return runCatching {
+            val normalizedAssetPath = path.toAndroidAssetPath()
+            when {
+                normalizedAssetPath != null -> context.assets.open(normalizedAssetPath).readBytes()
+                path.startsWith("file://") -> File(path.removePrefix("file://")).readBytes()
+                else -> context.assets.open(path).readBytes()
+            }
+        }.getOrNull()
+    }
+
+    private fun String.toAndroidAssetPath(): String? {
+        val trimmed = trim()
+        val candidates = listOf(
+            "file:///android_asset/",
+            "file:/android_asset/",
+            "/android_asset/",
+            "android_asset/",
+        ).firstNotNullOfOrNull { prefix ->
+            trimmed.takeIf { it.startsWith(prefix) }?.removePrefix(prefix)
+        } ?: trimmed.substringAfter("android_asset/", missingDelimiterValue = trimmed)
+            .takeIf { it != trimmed }
+
+        return candidates
+            ?.substringBefore('?')
+            ?.substringBefore('#')
+            ?.trimStart('/')
+            ?.takeIf { it.isNotEmpty() }
     }
 
     private fun buildVertexBuffer(eng: Engine, data: FloatArray, vertexCount: Int): VertexBuffer {
@@ -842,6 +1233,39 @@ class AndroidFilamentEngine(
         vb.setBufferAt(eng, 0, byteBuffer)
         vertexBuffers.add(vb)
         return vb
+    }
+
+    private fun buildCustomVertexBuffer(
+        eng: Engine,
+        vertexData: ByteArray,
+        vertexCount: Int,
+        strideBytes: Int,
+        attributes: List<VertexAttributeLayout>,
+    ): VertexBuffer {
+        val byteBuffer = ByteBuffer.allocateDirect(vertexData.size).apply {
+            order(ByteOrder.nativeOrder())
+            put(vertexData)
+            flip()
+        }
+        val builder = VertexBuffer.Builder()
+            .vertexCount(vertexCount)
+            .bufferCount(1)
+        attributes.forEach { attribute ->
+            builder.attribute(
+                attribute.attribute.toFilamentVertexAttribute(),
+                0,
+                attribute.type.toFilamentAttributeType(),
+                attribute.offsetBytes,
+                strideBytes,
+            )
+            if (attribute.normalized) {
+                builder.normalized(attribute.attribute.toFilamentVertexAttribute())
+            }
+        }
+        return builder.build(eng).also { vertexBuffer ->
+            vertexBuffer.setBufferAt(eng, 0, byteBuffer)
+            vertexBuffers.add(vertexBuffer)
+        }
     }
 
     private fun buildShortTangentVertexBuffer(
@@ -1008,13 +1432,80 @@ class AndroidFilamentEngine(
         return ib
     }
 
+    private fun createRenderable(
+        entity: Int,
+        primitiveType: RenderableManager.PrimitiveType,
+        vertexBuffer: VertexBuffer,
+        indexBuffer: IndexBuffer,
+        materialInstance: MaterialInstance,
+        boundingBox: com.google.android.filament.Box,
+        morphTargetBuffer: MorphTargetBuffer? = null,
+    ): Int {
+        val eng = engine ?: return -1
+        val builder = RenderableManager.Builder(1)
+            .geometry(0, primitiveType, vertexBuffer, indexBuffer)
+            .material(0, materialInstance)
+            .boundingBox(boundingBox)
+        if (morphTargetBuffer != null) {
+            builder.morphing(morphTargetBuffer)
+        }
+        builder.build(eng, entity)
+        scene?.addEntity(entity)
+        val handle = nextHandle++
+        renderables[handle] = entity
+        renderableBuffers[handle] = RenderableBuffers(vertexBuffer)
+        return handle
+    }
+
+    private fun applyCameraLookAt(camera: Camera, config: CameraConfig) {
+        camera.lookAt(
+            config.position.x.toDouble(), config.position.y.toDouble(), config.position.z.toDouble(),
+            config.lookAt.x.toDouble(), config.lookAt.y.toDouble(), config.lookAt.z.toDouble(),
+            config.up.x.toDouble(), config.up.y.toDouble(), config.up.z.toDouble(),
+        )
+    }
+
+    private fun applyCameraConfig(camera: Camera, config: CameraConfig, width: Int, height: Int) {
+        val aspect = width.toDouble() / height.coerceAtLeast(1).toDouble()
+        when (config.projectionType) {
+            ProjectionType.PERSPECTIVE -> camera.setProjection(
+                config.fovDegrees,
+                aspect,
+                config.near,
+                config.far,
+                Camera.Fov.VERTICAL,
+            )
+
+            ProjectionType.ORTHO -> {
+                val orthoHeight = config.orthoZoom
+                val orthoWidth = orthoHeight * aspect
+                camera.setProjection(
+                    Camera.Projection.ORTHO,
+                    -orthoWidth,
+                    orthoWidth,
+                    -orthoHeight,
+                    orthoHeight,
+                    config.near,
+                    config.far,
+                )
+            }
+        }
+    }
+
     private fun destroyRenderableEntity(handle: Int) {
         val eng = engine ?: return
         val entity = renderables.remove(handle) ?: return
         scene?.removeEntity(entity)
+        renderableBuffers.remove(handle)
         morphTargetBuffers.remove(handle)?.let(eng::destroyMorphTargetBuffer)
         eng.destroyEntity(entity)
         EntityManager.get().destroy(entity)
+    }
+
+    private fun resolveRelativeAssetPath(basePath: String, relativePath: String): String {
+        if (relativePath.startsWith("file://")) return relativePath
+        if (relativePath.startsWith("/")) return relativePath
+        return if (basePath.isEmpty()) relativePath else "$basePath/$relativePath"
     }
 
     private data class EnvironmentIndirectLight(
@@ -1025,6 +1516,24 @@ class AndroidFilamentEngine(
     private data class EnvironmentSkybox(
         val skybox: com.google.android.filament.Skybox,
         val cubemap: Texture,
+    )
+
+    private data class RenderableBuffers(
+        val vertexBuffer: VertexBuffer,
+    )
+
+    private data class AuxiliaryView(
+        val view: View,
+        val camera: Camera,
+        val cameraEntity: Int,
+        var viewport: ViewportConfig,
+        var cameraConfig: CameraConfig = CameraConfig(),
+    )
+
+    private data class ManagedGltfAsset(
+        val asset: FilamentAsset,
+        val animator: Animator,
+        var addedToScene: Boolean,
     )
 
 }
@@ -1085,4 +1594,24 @@ private fun MorphRenderableGeometry.calculateMorphBounds(): MorphBounds {
             z = (maxZ - minZ) * 0.5f,
         ),
     )
+}
+
+private fun VertexAttribute.toFilamentVertexAttribute(): VertexBuffer.VertexAttribute = when (this) {
+    VertexAttribute.POSITION -> VertexBuffer.VertexAttribute.POSITION
+    VertexAttribute.TANGENTS -> VertexBuffer.VertexAttribute.TANGENTS
+    VertexAttribute.UV0 -> VertexBuffer.VertexAttribute.UV0
+    VertexAttribute.COLOR -> VertexBuffer.VertexAttribute.COLOR
+}
+
+private fun AttributeDataType.toFilamentAttributeType(): VertexBuffer.AttributeType = when (this) {
+    AttributeDataType.FLOAT2 -> VertexBuffer.AttributeType.FLOAT2
+    AttributeDataType.FLOAT3 -> VertexBuffer.AttributeType.FLOAT3
+    AttributeDataType.FLOAT4 -> VertexBuffer.AttributeType.FLOAT4
+    AttributeDataType.UBYTE4 -> VertexBuffer.AttributeType.UBYTE4
+}
+
+private fun PrimitiveType.toFilamentPrimitiveType(): RenderableManager.PrimitiveType = when (this) {
+    PrimitiveType.TRIANGLES -> RenderableManager.PrimitiveType.TRIANGLES
+    PrimitiveType.LINES -> RenderableManager.PrimitiveType.LINES
+    PrimitiveType.POINTS -> RenderableManager.PrimitiveType.POINTS
 }

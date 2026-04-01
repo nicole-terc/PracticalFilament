@@ -14,6 +14,7 @@ data class LightConfig(
     val sunAngularRadius: Float = 1.9f,
     val sunHaloSize: Float = 10f,
     val sunHaloFalloff: Float = 80f,
+    val castShadows: Boolean = false,
 )
 
 data class CameraConfig(
@@ -23,4 +24,6 @@ data class CameraConfig(
     val fovDegrees: Double = 45.0,
     val near: Double = 0.1,
     val far: Double = 100.0,
+    val projectionType: ProjectionType = ProjectionType.PERSPECTIVE,
+    val orthoZoom: Double = 1.5,
 )
