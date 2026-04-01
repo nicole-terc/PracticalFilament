@@ -82,6 +82,19 @@ class ParticleSystem(
         }
     }
 
+    fun snapToTargets(resetVelocity: Boolean = true) {
+        particles.forEach { particle ->
+            particle.px = particle.tx
+            particle.py = particle.ty
+            particle.pz = particle.tz
+            if (resetVelocity) {
+                particle.vx = 0f
+                particle.vy = 0f
+                particle.vz = 0f
+            }
+        }
+    }
+
     fun step(
         dt: Float,
         spring: Float,
