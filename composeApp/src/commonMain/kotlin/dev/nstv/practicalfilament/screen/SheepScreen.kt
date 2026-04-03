@@ -1,6 +1,7 @@
 package dev.nstv.practicalfilament.screen
 
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,7 +50,9 @@ import dev.nstv.practicalfilament.filament.toByteArray
 import dev.nstv.practicalfilament.theme.Grid
 import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -72,6 +75,13 @@ private const val SheepHeadRadiusZ = SheepHeadRadiusX * 0.75f
 private const val SheepDefaultCameraDistance = 4f
 private const val SheepMinCameraDistance = 2f
 private const val SheepMaxCameraDistance = 8f
+private const val SheepExplosionDistance = 5.2f
+private const val SheepExplosionUpBias = 0.55f
+private const val SheepExplosionResponse = 9.5f
+private const val SheepExplosionDistanceMin = 0f
+private const val SheepExplosionDistanceMax = 4f
+private const val SheepExplosionProgressMin = 0f
+private const val SheepExplosionProgressMax = 1f
 
 private data class FluffChunk(
     val center: Float3,
@@ -99,7 +109,41 @@ private val SheepBaseLights = listOf(
 private data class SheepRenderable(
     val handle: Int,
     val baseTransform: FloatArray,
+    val explosionOffset: Float3,
 )
+
+private class SheepExplosionState {
+    var targetProgress = 0f
+    var progress = 0f
+
+    fun reset() {
+        targetProgress = 0f
+        progress = 0f
+    }
+
+    fun animateTo(value: Float) {
+        targetProgress = value.coerceIn(SheepExplosionProgressMin, SheepExplosionProgressMax)
+    }
+
+    fun snapTo(value: Float) {
+        val clamped = value.coerceIn(SheepExplosionProgressMin, SheepExplosionProgressMax)
+        targetProgress = clamped
+        progress = clamped
+    }
+
+    fun toggle() {
+        animateTo(if (progress >= 0.5f) 0f else 1f)
+    }
+
+    fun step(deltaSeconds: Float) {
+        if (deltaSeconds <= 0f) return
+        val smoothing = 1f - exp(-SheepExplosionResponse * deltaSeconds)
+        progress += (targetProgress - progress) * smoothing
+        if (abs(targetProgress - progress) <= 0.0015f) {
+            progress = targetProgress
+        }
+    }
+}
 
 private data class SheepQuaternion(
     val x: Float,
@@ -144,6 +188,8 @@ fun SheepScreen(
     var orientation by remember { mutableStateOf(initialSheepOrientation()) }
     var cameraDistance by remember { mutableFloatStateOf(SheepDefaultCameraDistance) }
     var animationSpeed by remember { mutableFloatStateOf(0.5f) }
+    var explosionDistanceScale by remember { mutableFloatStateOf(1f) }
+    var explosionProgressControl by remember { mutableFloatStateOf(0f) }
     var renderables by remember { mutableStateOf<List<SheepRenderable>>(emptyList()) }
     var fluffMaterialInstanceHandle by remember { mutableStateOf(0) }
     var materialParameterDefinitions by remember {
@@ -151,6 +197,7 @@ fun SheepScreen(
     }
     var materialParameters by remember { mutableStateOf<Map<String, MaterialParameter>>(emptyMap()) }
     var supportNotice by remember { mutableStateOf<String?>(null) }
+    val explosionState = remember { SheepExplosionState() }
 
     SideEffect {
         val currentEngine = filamentEngine ?: return@SideEffect
@@ -176,12 +223,22 @@ fun SheepScreen(
         filamentEngine,
         renderables,
         animationSpeed,
+        explosionDistanceScale,
     ) {
         val currentEngine = filamentEngine ?: return@LaunchedEffect
         if (renderables.isEmpty()) return@LaunchedEffect
 
+        var previousFrameNanos = 0L
         while (true) {
-            val seconds = withFrameNanos { it } / 1_000_000_000f
+            val frameNanos = withFrameNanos { it }
+            val seconds = frameNanos / 1_000_000_000f
+            val deltaSeconds = if (previousFrameNanos == 0L) {
+                1f / 60f
+            } else {
+                ((frameNanos - previousFrameNanos) / 1_000_000_000f).coerceAtMost(0.1f)
+            }
+            previousFrameNanos = frameNanos
+            explosionState.step(deltaSeconds)
             val bobOffset = if (animationSpeed <= 0.01f) {
                 0f
             } else {
@@ -196,10 +253,16 @@ fun SheepScreen(
                 translationMatrix(0f, bobOffset, 0f),
                 rotationZMatrix(swayDegrees),
             )
+            val explosionProgress = smoothStep(explosionState.progress)
             renderables.forEach { renderable ->
                 currentEngine.setRenderableTransform(
                     renderable.handle,
-                    multiplyMatrix4(rootTransform, renderable.baseTransform),
+                    sheepTransformForProgress(
+                        rootTransform = rootTransform,
+                        renderable = renderable,
+                        explosionProgress = explosionProgress,
+                        explosionDistanceScale = explosionDistanceScale,
+                    ),
                 )
             }
             currentEngine.requestFrame()
@@ -218,6 +281,16 @@ fun SheepScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .onSizeChanged { viewportSize = it }
+                    .pointerInput(renderables.size) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                if (renderables.isNotEmpty()) {
+                                    explosionState.toggle()
+                                    explosionProgressControl = explosionState.targetProgress
+                                }
+                            },
+                        )
+                    }
                     .pointerInput(renderables.size, viewportSize) {
                         detectTransformGestures(
                             panZoomLock = true,
@@ -264,6 +337,8 @@ fun SheepScreen(
                     filamentEngine = engine
                     orientation = initialSheepOrientation()
                     cameraDistance = SheepDefaultCameraDistance
+                    explosionState.reset()
+                    explosionProgressControl = 0f
                     supportNotice = null
                     fluffMaterialInstanceHandle = fluffInstanceHandle
                     materialParameterDefinitions = definitions
@@ -316,7 +391,15 @@ fun SheepScreen(
                         null
                     }
                     renderables.forEach { renderable ->
-                        engine.setRenderableTransform(renderable.handle, renderable.baseTransform)
+                        engine.setRenderableTransform(
+                            renderable.handle,
+                            sheepTransformForProgress(
+                                rootTransform = identityMatrix4(),
+                                renderable = renderable,
+                                explosionProgress = explosionState.progress,
+                                explosionDistanceScale = explosionDistanceScale,
+                            ),
+                        )
                     }
                     engine.requestFrame()
                 },
@@ -353,6 +436,29 @@ fun SheepScreen(
                 value = animationSpeed,
                 valueRange = 0f..2f,
                 onValueChange = { animationSpeed = it },
+            )
+
+            Text(
+                modifier = Modifier.padding(top = Grid.Two),
+                text = "Explosion Distance",
+            )
+            Slider(
+                value = explosionDistanceScale,
+                valueRange = SheepExplosionDistanceMin..SheepExplosionDistanceMax,
+                onValueChange = { explosionDistanceScale = it },
+            )
+
+            Text(
+                modifier = Modifier.padding(top = Grid.Two),
+                text = "Explosion Separation",
+            )
+            Slider(
+                value = explosionProgressControl,
+                valueRange = SheepExplosionProgressMin..SheepExplosionProgressMax,
+                onValueChange = { value ->
+                    explosionProgressControl = value
+                    explosionState.snapTo(value)
+                },
             )
         }
     }
@@ -398,6 +504,7 @@ private fun buildSheepRenderables(
     renderables += SheepRenderable(
         handle = fluffCoreHandle,
         baseTransform = identityMatrix4(),
+        explosionOffset = Float3(0f, 0f, 0f),
     )
 
     fluffSphereSpecs(FluffStyle.Uniform(10), SheepFluffRadius).forEach { chunk ->
@@ -408,6 +515,7 @@ private fun buildSheepRenderables(
         renderables += SheepRenderable(
             handle = handle,
             baseTransform = translationMatrix(chunk.center.x, chunk.center.y, chunk.center.z),
+            explosionOffset = Float3(0f, 0f, 0f),
         )
     }
 
@@ -425,6 +533,7 @@ private fun buildSheepRenderables(
             ),
             scaleMatrix(1f, 2f / 3f, 0.75f),
         ),
+        explosionOffset = Float3(0f, 0f, 0f),
     )
 
     listOf(
@@ -438,6 +547,7 @@ private fun buildSheepRenderables(
         renderables += SheepRenderable(
             handle = eyeHandle,
             baseTransform = translationMatrix(eyePosition.x, eyePosition.y, eyePosition.z),
+            explosionOffset = Float3(0f, 0f, 0f),
         )
         val pupilHandle = engine.createSphereRenderable(
             materialInstanceHandle = pupilInstanceHandle,
@@ -449,6 +559,7 @@ private fun buildSheepRenderables(
                 translationMatrix(pupilPosition.x, pupilPosition.y, pupilPosition.z),
                 scaleMatrix(0.28f, 0.45f, 1f),
             ),
+            explosionOffset = Float3(0f, 0f, 0f),
         )
     }
 
@@ -484,6 +595,7 @@ private fun buildSheepRenderables(
         renderables += SheepRenderable(
             handle = handle,
             baseTransform = translationMatrix(legAttachment.x, legAttachment.y, legAttachment.z),
+            explosionOffset = Float3(0f, 0f, 0f),
         )
     }
 
@@ -517,6 +629,7 @@ private fun buildSheepRenderables(
                     rotationYMatrix(90f),
                 ),
             ),
+            explosionOffset = Float3(0f, 0f, 0f),
         )
     }
 
@@ -552,9 +665,12 @@ private fun buildSheepRenderables(
             translationMatrix(bridgeMidpoint.x, bridgeMidpoint.y, bridgeMidpoint.z),
             rotationXMatrix(90f),
         ),
+        explosionOffset = Float3(0f, 0f, 0f),
     )
 
-    return renderables
+    return renderables.mapIndexed { index, renderable ->
+        renderable.copy(explosionOffset = sheepExplosionOffset(renderable.baseTransform, index))
+    }
 }
 
 private data class HeadLayout(
@@ -1155,6 +1271,59 @@ private fun multiplyMatrix4(left: FloatArray, right: FloatArray): FloatArray {
         }
     }
     return result
+}
+
+private fun sheepTransformForProgress(
+    rootTransform: FloatArray,
+    renderable: SheepRenderable,
+    explosionProgress: Float,
+    explosionDistanceScale: Float,
+): FloatArray {
+    if (explosionProgress <= 1e-4f) {
+        return multiplyMatrix4(rootTransform, renderable.baseTransform)
+    }
+    val scaledProgress = explosionProgress * explosionDistanceScale
+    val explosionTransform = translationMatrix(
+        x = renderable.explosionOffset.x * scaledProgress,
+        y = renderable.explosionOffset.y * scaledProgress,
+        z = renderable.explosionOffset.z * scaledProgress,
+    )
+    return multiplyMatrix4(
+        rootTransform,
+        multiplyMatrix4(explosionTransform, renderable.baseTransform),
+    )
+}
+
+private fun sheepExplosionOffset(baseTransform: FloatArray, index: Int): Float3 {
+    val center = extractTranslation(baseTransform)
+    val angle = index * 2.3999631f
+    val fallbackDirection = Float3(
+        x = cos(angle),
+        y = 0.4f + 0.2f * sin(angle * 1.7f),
+        z = sin(angle),
+    )
+    val direction = Float3(
+        x = center.x * 1.15f + fallbackDirection.x * 0.34f,
+        y = center.y + SheepExplosionUpBias + fallbackDirection.y * 0.2f,
+        z = center.z * 1.15f + fallbackDirection.z * 0.34f,
+    ).normalizedSheep()
+    val distanceScale = 1.05f + 0.5f * (0.5f + 0.5f * sin(index * 1.37f))
+    return Float3(
+        x = direction.x * SheepExplosionDistance * distanceScale,
+        y = direction.y * SheepExplosionDistance * distanceScale,
+        z = direction.z * SheepExplosionDistance * distanceScale,
+    )
+}
+
+private fun extractTranslation(matrix: FloatArray): Float3 = Float3(
+    x = matrix[12],
+    y = matrix[13],
+    z = matrix[14],
+)
+
+private fun smoothStep(value: Float): Float {
+    val clamped = value.coerceIn(0f, 1f)
+    return clamped * clamped * (3f - 2f * clamped)
 }
 
 private fun distance(from: Float3, to: Float3): Float {
