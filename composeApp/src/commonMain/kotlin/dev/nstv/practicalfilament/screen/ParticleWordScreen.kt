@@ -94,19 +94,15 @@ private enum class ParticleWordPhase {
 
 private enum class ParticleAnimationMode(
     val label: String,
-    val description: String,
 ) {
     FORM(
         label = "Form",
-        description = "Scatter, then assemble the active word.",
     ),
     PULSE(
         label = "Pulse",
-        description = "Keep the word formed and pulse the particles.",
     ),
     DRAW(
         label = "Draw",
-        description = "Sketch on the screen, then form and pulse your drawing.",
     ),
 }
 
@@ -301,15 +297,6 @@ fun ParticleWordScreen(
         ParticleAnimationMode.DRAW -> if (customDrawTargets.isEmpty()) "Draw On Screen" else "Custom Sketch"
         else -> DefaultParticleWords[currentWordIndex]
     }
-    val subtitle = when (animationMode) {
-        ParticleAnimationMode.FORM -> "Tap the scene or Next Word to scatter and assemble another word."
-        ParticleAnimationMode.PULSE -> "The active word stays formed while the particles pulse."
-        ParticleAnimationMode.DRAW -> if (customDrawTargets.isEmpty()) {
-            "Press and drag to sketch. When you lift your finger, particles form and pulse your drawing."
-        } else {
-            "Add more strokes, or clear and redraw."
-        }
-    }
     val interactionModifier = when (animationMode) {
         ParticleAnimationMode.DRAW -> Modifier
         else -> Modifier.pointerInput(currentWordIndex, animationMode) {
@@ -411,11 +398,6 @@ fun ParticleWordScreen(
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             supportNotice?.let { notice ->
                 SampleNotice(notice)
             }
@@ -433,11 +415,6 @@ fun ParticleWordScreen(
                     )
                 }
             }
-            Text(
-                text = animationMode.description,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             ParticleControlRow(
                 label = "Speed",
                 value = animationSpeed,

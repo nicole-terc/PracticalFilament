@@ -65,7 +65,6 @@ fun IBLScreen(
     SampleScreenLayout(
         modifier = modifier,
         title = "IBL",
-        description = "A minimal image-based lighting setup with a clear-coat sphere and slow orbital presentation.",
         view = {
             FilamentView(
                 modifier = Modifier.fillMaxSize(),

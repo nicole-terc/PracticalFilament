@@ -68,7 +68,6 @@ fun MaterialBuilderScreen(
     SampleScreenLayout(
         modifier = modifier,
         title = "Material Builder",
-        description = "Android uses Filamat to compile a material package at runtime. On iOS this screen stays in a not-supported state by design.",
         view = {
             FilamentView(
                 modifier = Modifier.fillMaxSize(),

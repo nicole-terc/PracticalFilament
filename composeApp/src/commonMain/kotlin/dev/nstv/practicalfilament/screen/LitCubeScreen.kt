@@ -56,7 +56,6 @@ fun LitCubeScreen(
     SampleScreenLayout(
         modifier = modifier,
         title = "Lit Cube",
-        description = "A shadow-casting cube lit like the original Filament sample, with exposure control and a receiving plane.",
         view = {
             FilamentView(
                 modifier = Modifier.fillMaxSize().onSizeChanged { viewportSize = it },

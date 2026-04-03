@@ -16,7 +16,6 @@ import dev.nstv.practicalfilament.theme.Grid
 @Composable
 internal fun SampleScreenLayout(
     title: String,
-    description: String,
     modifier: Modifier = Modifier,
     view: @Composable () -> Unit,
     controls: @Composable () -> Unit = {},
@@ -39,11 +38,6 @@ internal fun SampleScreenLayout(
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineSmall,
-            )
-            Text(
-                modifier = Modifier.padding(top = Grid.Half, bottom = Grid.One),
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
             )
             controls()
         }

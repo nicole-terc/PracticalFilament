@@ -104,7 +104,6 @@ fun GltfViewerScreen(
     SampleScreenLayout(
         modifier = modifier,
         title = "glTF Viewer",
-        description = "This follows the Android sample asset setup more closely and now lets you switch between the sample `helmet.glb` and `scene.gltf` bundle.",
         view = {
             FilamentView(
                 modifier = Modifier
@@ -166,7 +165,6 @@ fun GltfViewerScreen(
             if (assetHandle > 0 && animationCount > 0) {
                 Text("Animation time: ${animationTime.toString().take(4)}s")
             }
-            Text("Drag to orbit the camera, matching the Android sample's touch manipulator.")
         },
     )
 }

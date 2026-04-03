@@ -55,7 +55,6 @@ fun HelloTriangleScreen(
     SampleScreenLayout(
         modifier = modifier,
         title = "Hello Triangle",
-        description = "Custom geometry with an orthographic camera. This version uses a runtime-built unlit material and a hand-authored vertex buffer.",
         view = {
             FilamentView(
                 modifier = Modifier.fillMaxSize(),

@@ -70,7 +70,6 @@ fun PageCurlScreen(
     SampleScreenLayout(
         modifier = modifier,
         title = "Page Curl",
-        description = "A closer migration of the Android page-curl sample: blue backdrop, portrait page framing, and the sample's rigid-body turn plus curl deformation.",
         view = {
             FilamentView(
                 modifier = Modifier

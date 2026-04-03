@@ -46,7 +46,6 @@ fun TexturedObjectScreen(
     SampleScreenLayout(
         modifier = modifier,
         title = "Textured Object",
-        description = "A pragmatic adaptation of the sample using a file-backed texture on a simple plane. The mesh-loader hook is part of the engine API, but the repo still lacks a bundled filamesh asset.",
         view = {
             FilamentView(
                 modifier = Modifier.fillMaxSize(),

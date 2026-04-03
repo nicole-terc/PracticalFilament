@@ -82,7 +82,6 @@ fun MultiViewScreen(
     SampleScreenLayout(
         modifier = modifier,
         title = "Multi-View",
-        description = "Four Filament views render the same scene from different cameras. The implementation currently shares one scene and one renderer, which is the main API change this migration needed.",
         view = {
             FilamentView(
                 modifier = Modifier.fillMaxSize().onSizeChanged { viewportSize = it },

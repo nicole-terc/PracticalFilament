@@ -63,7 +63,6 @@ fun StressTestScreen(
     SampleScreenLayout(
         modifier = modifier,
         title = "Stress Test",
-        description = "A dense field of independently transformed cubes with randomized materials. The sample leans on repeated material instances and transform updates rather than a special scene graph.",
         view = {
             FilamentView(
                 modifier = Modifier.fillMaxSize(),
