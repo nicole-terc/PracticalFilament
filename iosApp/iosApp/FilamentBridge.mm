@@ -34,6 +34,7 @@
 #include <cmath>
 #include <array>
 #include <cstddef>
+#include <cstring>
 #include <limits>
 #include <map>
 #include <string>
@@ -146,6 +147,24 @@ static std::vector<uint16_t> PFUInt16VectorFromTriangles(std::vector<ushort3> co
     return values;
 }
 
+static std::vector<uint16_t> PFUInt16VectorFromData(NSData *data) {
+    const size_t indexCount = data.length / sizeof(uint16_t);
+    std::vector<uint16_t> values(indexCount);
+    if (indexCount > 0) {
+        memcpy(values.data(), data.bytes, data.length);
+    }
+    return values;
+}
+
+static std::vector<int32_t> PFInt32VectorFromData(NSData *data) {
+    const size_t valueCount = data.length / sizeof(int32_t);
+    std::vector<int32_t> values(valueCount);
+    if (valueCount > 0) {
+        memcpy(values.data(), data.bytes, data.length);
+    }
+    return values;
+}
+
 static Box PFBoundsFromMorphData(
         std::vector<float3> const& positions,
         std::vector<std::vector<float3>> const& morphTargets) {
@@ -215,6 +234,34 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
         case Precision::MEDIUM: return @"MEDIUM";
         case Precision::HIGH: return @"HIGH";
         case Precision::DEFAULT: return @"DEFAULT";
+    }
+}
+
+static VertexAttribute PFVertexAttributeFromValue(int32_t value) {
+    switch (value) {
+        case 0: return VertexAttribute::POSITION;
+        case 1: return VertexAttribute::TANGENTS;
+        case 2: return VertexAttribute::UV0;
+        case 3: return VertexAttribute::COLOR;
+        default: return VertexAttribute::POSITION;
+    }
+}
+
+static VertexBuffer::AttributeType PFAttributeTypeFromValue(int32_t value) {
+    switch (value) {
+        case 0: return VertexBuffer::AttributeType::FLOAT2;
+        case 1: return VertexBuffer::AttributeType::FLOAT3;
+        case 2: return VertexBuffer::AttributeType::FLOAT4;
+        case 3: return VertexBuffer::AttributeType::UBYTE4;
+        default: return VertexBuffer::AttributeType::FLOAT3;
+    }
+}
+
+static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) {
+    switch (value) {
+        case 1: return RenderableManager::PrimitiveType::LINES;
+        case 2: return RenderableManager::PrimitiveType::POINTS;
+        default: return RenderableManager::PrimitiveType::TRIANGLES;
     }
 }
 
@@ -996,6 +1043,167 @@ static NSString *PFMaterialParameterPrecisionName(Material::ParameterInfo const&
         .material(0, it->second)
         .boundingBox({{-radius, -radius, -radius}, {radius, radius, radius}})
         .culling(false)
+        .build(*_engine, entity);
+
+    _scene->addEntity(entity);
+    int handle = _nextHandle++;
+    _renderables[handle] = entity;
+    return handle;
+}
+
+- (int)createCustomRenderableWithMaterial:(int)instanceHandle
+                               vertexData:(NSData *)vertexDataData
+                              vertexCount:(int)vertexCount
+                              strideBytes:(int)strideBytes
+                               attributes:(NSData *)attributesData
+                                  indices:(NSData *)indicesData
+                            primitiveType:(int)primitiveType
+                                  centerX:(float)centerX centerY:(float)centerY centerZ:(float)centerZ
+                              halfExtentX:(float)halfExtentX halfExtentY:(float)halfExtentY halfExtentZ:(float)halfExtentZ {
+    if (!_engine) return -1;
+    auto it = _materialInstances.find(instanceHandle);
+    if (it == _materialInstances.end()) return -1;
+    if (vertexCount <= 0 || strideBytes <= 0 || vertexDataData.length == 0 || indicesData.length == 0) {
+        return -1;
+    }
+
+    const auto rawAttributes = PFInt32VectorFromData(attributesData);
+    if (rawAttributes.empty() || rawAttributes.size() % 4 != 0) {
+        return -1;
+    }
+
+    struct AttributeSpec {
+        VertexAttribute attribute;
+        VertexBuffer::AttributeType type;
+        uint32_t offset;
+        bool normalized;
+    };
+
+    std::vector<AttributeSpec> attributeSpecs;
+    attributeSpecs.reserve(rawAttributes.size() / 4);
+    bool hasPositionFloat3 = false;
+    bool hasUvFloat2 = false;
+    bool hasTangents = false;
+    uint32_t positionOffset = 0;
+    uint32_t uvOffset = 0;
+
+    for (size_t index = 0; index < rawAttributes.size(); index += 4) {
+        const auto attribute = PFVertexAttributeFromValue(rawAttributes[index]);
+        const auto type = PFAttributeTypeFromValue(rawAttributes[index + 1]);
+        const uint32_t offset = (uint32_t)rawAttributes[index + 2];
+        const bool normalized = rawAttributes[index + 3] != 0;
+        attributeSpecs.push_back({attribute, type, offset, normalized});
+        if (attribute == VertexAttribute::POSITION && type == VertexBuffer::AttributeType::FLOAT3) {
+            hasPositionFloat3 = true;
+            positionOffset = offset;
+        }
+        if (attribute == VertexAttribute::UV0 && type == VertexBuffer::AttributeType::FLOAT2) {
+            hasUvFloat2 = true;
+            uvOffset = offset;
+        }
+        if (attribute == VertexAttribute::TANGENTS) {
+            hasTangents = true;
+        }
+    }
+
+    const auto indexData = PFUInt16VectorFromData(indicesData);
+    if (indexData.empty()) {
+        return -1;
+    }
+
+    VertexBuffer *vb = nullptr;
+
+    if (primitiveType == 0 && hasPositionFloat3 && hasUvFloat2 && !hasTangents) {
+        const auto triangles = PFUShort3VectorFromData(indicesData);
+        if (triangles.empty()) {
+            return -1;
+        }
+
+        std::vector<float3> positions((size_t)vertexCount);
+        std::vector<float2> uvs((size_t)vertexCount);
+        auto *source = static_cast<uint8_t const *>(vertexDataData.bytes);
+        for (int vertexIndex = 0; vertexIndex < vertexCount; vertexIndex++) {
+            const uint8_t *vertexBase = source + ((size_t)vertexIndex * (size_t)strideBytes);
+            memcpy(&positions[(size_t)vertexIndex], vertexBase + positionOffset, sizeof(float3));
+            memcpy(&uvs[(size_t)vertexIndex], vertexBase + uvOffset, sizeof(float2));
+        }
+
+        auto* orientation = filament::geometry::SurfaceOrientation::Builder()
+            .vertexCount((size_t)vertexCount)
+            .positions(positions.data())
+            .uvs(uvs.data())
+            .triangleCount(triangles.size())
+            .triangles(triangles.data())
+            .build();
+        std::vector<short4> tangentQuats((size_t)vertexCount);
+        orientation->getQuats(tangentQuats.data(), (size_t)vertexCount);
+        delete orientation;
+
+        struct GeneratedVertex {
+            float px, py, pz;
+            int16_t tx, ty, tz, tw;
+            float u, v;
+        };
+        static_assert(sizeof(GeneratedVertex) == 28, "GeneratedVertex must be 28 bytes");
+
+        std::vector<GeneratedVertex> generatedVertices((size_t)vertexCount);
+        for (int vertexIndex = 0; vertexIndex < vertexCount; vertexIndex++) {
+            generatedVertices[(size_t)vertexIndex] = {
+                positions[(size_t)vertexIndex].x, positions[(size_t)vertexIndex].y, positions[(size_t)vertexIndex].z,
+                tangentQuats[(size_t)vertexIndex].x, tangentQuats[(size_t)vertexIndex].y, tangentQuats[(size_t)vertexIndex].z, tangentQuats[(size_t)vertexIndex].w,
+                uvs[(size_t)vertexIndex].x, uvs[(size_t)vertexIndex].y,
+            };
+        }
+
+        vb = VertexBuffer::Builder()
+            .vertexCount((uint32_t)vertexCount)
+            .bufferCount(1)
+            .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, offsetof(GeneratedVertex, px), sizeof(GeneratedVertex))
+            .attribute(VertexAttribute::TANGENTS, 0, VertexBuffer::AttributeType::SHORT4, offsetof(GeneratedVertex, tx), sizeof(GeneratedVertex))
+            .normalized(VertexAttribute::TANGENTS)
+            .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, offsetof(GeneratedVertex, u), sizeof(GeneratedVertex))
+            .build(*_engine);
+        const size_t generatedVertexDataSize = generatedVertices.size() * sizeof(GeneratedVertex);
+        vb->setBufferAt(*_engine, 0, VertexBuffer::BufferDescriptor(
+            PFMakeOwnedCopy(generatedVertices.data(), generatedVertexDataSize),
+            generatedVertexDataSize,
+            [](void *buffer, size_t, void *) { free(buffer); }
+        ));
+    } else {
+        auto builder = VertexBuffer::Builder();
+        builder.vertexCount((uint32_t)vertexCount).bufferCount(1);
+        for (auto const& spec : attributeSpecs) {
+            builder.attribute(spec.attribute, 0, spec.type, spec.offset, (uint8_t)strideBytes);
+            if (spec.normalized) {
+                builder.normalized(spec.attribute);
+            }
+        }
+        vb = builder.build(*_engine);
+        vb->setBufferAt(*_engine, 0, VertexBuffer::BufferDescriptor(
+            PFMakeOwnedCopy(vertexDataData.bytes, vertexDataData.length),
+            vertexDataData.length,
+            [](void *buffer, size_t, void *) { free(buffer); }
+        ));
+    }
+    _vertexBuffers.push_back(vb);
+
+    auto *ib = IndexBuffer::Builder()
+        .indexCount((uint32_t)indexData.size())
+        .bufferType(IndexBuffer::IndexType::USHORT)
+        .build(*_engine);
+    const size_t indexDataSize = indexData.size() * sizeof(uint16_t);
+    ib->setBuffer(*_engine, IndexBuffer::BufferDescriptor(
+        PFMakeOwnedCopy(indexData.data(), indexDataSize),
+        indexDataSize,
+        [](void *buffer, size_t, void *) { free(buffer); }
+    ));
+    _indexBuffers.push_back(ib);
+
+    Entity entity = EntityManager::get().create();
+    RenderableManager::Builder(1)
+        .geometry(0, PFPrimitiveTypeFromValue(primitiveType), vb, ib)
+        .material(0, it->second)
+        .boundingBox(Box(float3{centerX, centerY, centerZ}, float3{halfExtentX, halfExtentY, halfExtentZ}))
         .build(*_engine, entity);
 
     _scene->addEntity(entity);

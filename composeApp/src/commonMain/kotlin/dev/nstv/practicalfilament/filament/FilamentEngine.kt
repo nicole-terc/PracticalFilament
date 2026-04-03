@@ -51,6 +51,7 @@ interface FilamentEngine {
     fun createCubeRenderable(materialInstanceHandle: Int, size: Float = 1f): Int = -1
     fun createMorphRenderable(materialInstanceHandle: Int, geometry: MorphRenderableGeometry): Int
     fun createCustomRenderable(config: CustomRenderableConfig): Int = -1
+    fun createCustomRenderableWithGeneratedTangents(config: CustomRenderableConfig): Int = -1
     fun loadMesh(path: String, materialInstanceHandle: Int): Int = -1
     fun setRenderableRotation(handle: Int, rotationXDegrees: Float, rotationYDegrees: Float)
     fun setRenderableTransform(handle: Int, transform: FloatArray)

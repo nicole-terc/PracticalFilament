@@ -12,6 +12,8 @@ val MaterialFilesList = listOf(
     "materials/sandboxLitFade.filamat",
     "materials/sandboxCloth.filamat",
     "materials/mirror.filamat",
+    "materials/sheepFluff.filamat",
+    "materials/sheepBody.filamat",
 )
 
 val RedballMaterial = Material(
@@ -33,6 +35,27 @@ val MorphingMaterial = Material(
         "roughness" to 0.12f,
         "clearCoat" to 1f,
         "clearCoatRoughness" to 0.08f,
+        "metallic" to 0f,
+    ),
+)
+
+val SheepFluffMaterial = Material(
+    fileName = "materials/sheepFluff.filamat",
+    label = "sheep-fluff",
+    overrides = mapOf(
+        "baseColor" to Float3(0.85f, 0.85f, 0.85f),
+        "roughness" to 0.9f,
+        "sheenColor" to Float3(0.95f, 0.95f, 0.95f),
+        "subsurfaceColor" to Float3(0.8f, 0.8f, 0.85f),
+    ),
+)
+
+val SheepBodyMaterial = Material(
+    fileName = "materials/sheepBody.filamat",
+    label = "sheep-body",
+    overrides = mapOf(
+        "baseColor" to Float3(0.27f, 0.27f, 0.27f),
+        "roughness" to 0.6f,
         "metallic" to 0f,
     ),
 )
@@ -85,4 +108,6 @@ val MaterialOverridesList = listOf(
         label = "mirror",
         overrides = mapOf(),
     ),
+    SheepFluffMaterial,
+    SheepBodyMaterial,
 )

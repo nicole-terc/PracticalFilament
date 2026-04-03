@@ -36,6 +36,7 @@ private enum class Screen {
     MATERIAL_VIEWER,
     MARBLE,
     REDBALL,
+    SHEEP,
     MORPHING,
     PARTICLE_WORD,
 }
@@ -52,7 +53,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by remember { mutableStateOf(Screen.PARTICLE_WORD) }
+        var selectedScreen by remember { mutableStateOf(Screen.SHEEP) }
 
         Column(
             modifier = Modifier
@@ -87,6 +88,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
                     Screen.MARBLE -> MarbleScreen()
                     Screen.REDBALL -> RedballScreen()
+                    Screen.SHEEP -> SheepScreen()
                     Screen.MORPHING -> MorphingScreen()
                     Screen.PARTICLE_WORD -> ParticleWordScreen()
                 }

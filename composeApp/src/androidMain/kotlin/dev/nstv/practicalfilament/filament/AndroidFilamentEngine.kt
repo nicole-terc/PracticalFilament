@@ -923,6 +923,65 @@ class AndroidFilamentEngine(
         )
     }
 
+    override fun createCustomRenderableWithGeneratedTangents(config: CustomRenderableConfig): Int {
+        val eng = engine ?: return -1
+        val instance = materialInstances[config.materialInstanceHandle] ?: return -1
+        val positionAttribute = config.attributes.firstOrNull { it.attribute == VertexAttribute.POSITION }
+        val uvAttribute = config.attributes.firstOrNull { it.attribute == VertexAttribute.UV0 }
+        val hasTangents = config.attributes.any { it.attribute == VertexAttribute.TANGENTS }
+        if (
+            config.primitiveType == PrimitiveType.TRIANGLES &&
+            positionAttribute?.type == AttributeDataType.FLOAT3 &&
+            uvAttribute?.type == AttributeDataType.FLOAT2 &&
+            !hasTangents
+        ) {
+            val positions = extractFloatAttributeData(
+                vertexData = config.vertexData,
+                vertexCount = config.vertexCount,
+                strideBytes = config.strideBytes,
+                offsetBytes = positionAttribute.offsetBytes,
+                componentCount = 3,
+            )
+            val uvs = extractFloatAttributeData(
+                vertexData = config.vertexData,
+                vertexCount = config.vertexCount,
+                strideBytes = config.strideBytes,
+                offsetBytes = uvAttribute.offsetBytes,
+                componentCount = 2,
+            )
+            val tangentQuaternions = buildSurfaceOrientationShortQuaternions(
+                vertexCount = config.vertexCount,
+                positions = positions,
+                uvs = uvs,
+                indices = config.indices,
+            )
+            val vertexBuffer = buildShortTangentVertexBuffer(
+                eng = eng,
+                positions = positions,
+                tangentQuaternions = tangentQuaternions,
+                uvs = uvs,
+                vertexCount = config.vertexCount,
+            )
+            val indexBuffer = buildIndexBuffer(eng, config.indices)
+            return createRenderable(
+                entity = EntityManager.get().create(),
+                primitiveType = config.primitiveType.toFilamentPrimitiveType(),
+                vertexBuffer = vertexBuffer,
+                indexBuffer = indexBuffer,
+                materialInstance = instance,
+                boundingBox = com.google.android.filament.Box(
+                    config.boundingBox.center.x,
+                    config.boundingBox.center.y,
+                    config.boundingBox.center.z,
+                    config.boundingBox.halfExtent.x,
+                    config.boundingBox.halfExtent.y,
+                    config.boundingBox.halfExtent.z,
+                ),
+            )
+        }
+        return createCustomRenderable(config)
+    }
+
     override fun createMorphRenderable(
         materialInstanceHandle: Int,
         geometry: MorphRenderableGeometry,
@@ -1444,6 +1503,25 @@ class AndroidFilamentEngine(
         ib.setBuffer(eng, byteBuffer)
         indexBuffers.add(ib)
         return ib
+    }
+
+    private fun extractFloatAttributeData(
+        vertexData: ByteArray,
+        vertexCount: Int,
+        strideBytes: Int,
+        offsetBytes: Int,
+        componentCount: Int,
+    ): FloatArray {
+        val output = FloatArray(vertexCount * componentCount)
+        val buffer = ByteBuffer.wrap(vertexData).order(ByteOrder.nativeOrder())
+        var outputIndex = 0
+        repeat(vertexCount) { vertexIndex ->
+            val attributeBase = vertexIndex * strideBytes + offsetBytes
+            repeat(componentCount) { componentIndex ->
+                output[outputIndex++] = buffer.getFloat(attributeBase + componentIndex * Float.SIZE_BYTES)
+            }
+        }
+        return output
     }
 
     private fun createRenderable(

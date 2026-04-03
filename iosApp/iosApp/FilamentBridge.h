@@ -79,6 +79,15 @@
 
 - (int)createPlaneWithMaterial:(int)instanceHandle width:(float)width height:(float)height;
 - (int)createSphereWithMaterial:(int)instanceHandle radius:(float)radius;
+- (int)createCustomRenderableWithMaterial:(int)instanceHandle
+                               vertexData:(NSData * _Nonnull)vertexData
+                              vertexCount:(int)vertexCount
+                              strideBytes:(int)strideBytes
+                               attributes:(NSData * _Nonnull)attributes
+                                  indices:(NSData * _Nonnull)indices
+                            primitiveType:(int)primitiveType
+                                  centerX:(float)centerX centerY:(float)centerY centerZ:(float)centerZ
+                              halfExtentX:(float)halfExtentX halfExtentY:(float)halfExtentY halfExtentZ:(float)halfExtentZ;
 - (int)createMorphRenderableWithMaterial:(int)instanceHandle
                                positions:(NSData * _Nonnull)positions
                                       uvs:(NSData * _Nonnull)uvs

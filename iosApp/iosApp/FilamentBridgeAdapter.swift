@@ -214,6 +214,36 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
         return bridge.createSphere(withMaterial: instanceHandle, radius: radius)
     }
 
+    func createCustomRenderableWithMaterial(instanceHandle: Int32,
+                                            vertexData: KotlinByteArray,
+                                            vertexCount: Int32,
+                                            strideBytes: Int32,
+                                            attributes: KotlinIntArray,
+                                            indices: KotlinShortArray,
+                                            primitiveType: Int32,
+                                            centerX: Float,
+                                            centerY: Float,
+                                            centerZ: Float,
+                                            halfExtentX: Float,
+                                            halfExtentY: Float,
+                                            halfExtentZ: Float) -> Int32 {
+        return bridge.createCustomRenderable(
+            withMaterial: instanceHandle,
+            vertexData: vertexData.toData(),
+            vertexCount: vertexCount,
+            strideBytes: strideBytes,
+            attributes: attributes.toInt32Data(),
+            indices: indices.toShortData(),
+            primitiveType: primitiveType,
+            centerX: centerX,
+            centerY: centerY,
+            centerZ: centerZ,
+            halfExtentX: halfExtentX,
+            halfExtentY: halfExtentY,
+            halfExtentZ: halfExtentZ
+        )
+    }
+
     func createMorphRenderableWithMaterial(instanceHandle: Int32,
                                           positions: KotlinFloatArray,
                                           uvs: KotlinFloatArray,
@@ -286,6 +316,22 @@ private extension KotlinShortArray {
         let count = Int(size)
         return Data((0..<count).flatMap { index in
             withUnsafeBytes(of: UInt16(bitPattern: get(index: Int32(index))).littleEndian, Array.init)
+        })
+    }
+}
+
+private extension KotlinByteArray {
+    func toData() -> Data {
+        let count = Int(size)
+        return Data((0..<count).map { UInt8(bitPattern: get(index: Int32($0))) })
+    }
+}
+
+private extension KotlinIntArray {
+    func toInt32Data() -> Data {
+        let count = Int(size)
+        return Data((0..<count).flatMap { index in
+            withUnsafeBytes(of: Int32(get(index: Int32(index))).littleEndian, Array.init)
         })
     }
 }

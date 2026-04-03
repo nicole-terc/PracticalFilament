@@ -213,6 +213,32 @@ class IosFilamentEngine(
         return bridge.createSphereWithMaterial(materialInstanceHandle, radius = radius)
     }
 
+    override fun createCustomRenderableWithGeneratedTangents(config: CustomRenderableConfig): Int {
+        val attributeMetadata = IntArray(config.attributes.size * 4)
+        config.attributes.forEachIndexed { index, attribute ->
+            val base = index * 4
+            attributeMetadata[base] = attribute.attribute.ordinal
+            attributeMetadata[base + 1] = attribute.type.ordinal
+            attributeMetadata[base + 2] = attribute.offsetBytes
+            attributeMetadata[base + 3] = if (attribute.normalized) 1 else 0
+        }
+        return bridge.createCustomRenderableWithMaterial(
+            instanceHandle = config.materialInstanceHandle,
+            vertexData = config.vertexData,
+            vertexCount = config.vertexCount,
+            strideBytes = config.strideBytes,
+            attributes = attributeMetadata,
+            indices = config.indices,
+            primitiveType = config.primitiveType.ordinal,
+            centerX = config.boundingBox.center.x,
+            centerY = config.boundingBox.center.y,
+            centerZ = config.boundingBox.center.z,
+            halfExtentX = config.boundingBox.halfExtent.x,
+            halfExtentY = config.boundingBox.halfExtent.y,
+            halfExtentZ = config.boundingBox.halfExtent.z,
+        )
+    }
+
     override fun createMorphRenderable(
         materialInstanceHandle: Int,
         geometry: MorphRenderableGeometry,
@@ -331,6 +357,21 @@ interface FilamentBridgeProtocol {
     fun setTextureParam(instanceHandle: Int, name: String, textureHandle: Int)
     fun createPlaneWithMaterial(instanceHandle: Int, width: Float, height: Float): Int
     fun createSphereWithMaterial(instanceHandle: Int, radius: Float): Int
+    fun createCustomRenderableWithMaterial(
+        instanceHandle: Int,
+        vertexData: ByteArray,
+        vertexCount: Int,
+        strideBytes: Int,
+        attributes: IntArray,
+        indices: ShortArray,
+        primitiveType: Int,
+        centerX: Float,
+        centerY: Float,
+        centerZ: Float,
+        halfExtentX: Float,
+        halfExtentY: Float,
+        halfExtentZ: Float,
+    ): Int
     fun createMorphRenderableWithMaterial(
         instanceHandle: Int,
         positions: FloatArray,
