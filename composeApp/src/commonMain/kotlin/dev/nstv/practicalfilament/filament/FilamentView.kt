@@ -2,6 +2,7 @@ package dev.nstv.practicalfilament.filament
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 
 @Composable
 expect fun FilamentView(
@@ -9,5 +10,11 @@ expect fun FilamentView(
     camera: CameraConfig = CameraConfig(),
     lights: List<LightConfig> = listOf(LightConfig(type = LightType.DIRECTIONAL)),
     backgroundColor: Color = Color(0f, 0f, 0f, 1f),
+    clipShape: FilamentClipShape? = null,
     onEngineReady: (FilamentEngine) -> Unit = {},
 )
+
+sealed interface FilamentClipShape {
+    data object Circle : FilamentClipShape
+    data class RoundedRect(val cornerRadius: Dp) : FilamentClipShape
+}

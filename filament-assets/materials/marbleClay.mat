@@ -1,0 +1,19 @@
+material {
+    name : MarbleClay,
+    shadingModel : lit,
+    parameters : [
+        { type : float3, name : baseColor },
+        { type : float, name : roughness }
+    ],
+    specularAntiAliasing : true
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor.rgb = materialParams.baseColor;
+        material.roughness = materialParams.roughness;
+        material.metallic = 0.0;
+        material.clearCoat = 0.0;
+    }
+}

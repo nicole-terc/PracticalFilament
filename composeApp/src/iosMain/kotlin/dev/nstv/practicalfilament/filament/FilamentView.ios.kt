@@ -5,6 +5,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
+import androidx.compose.ui.platform.LocalDensity
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import platform.CoreGraphics.CGRectMake
@@ -33,11 +34,13 @@ actual fun FilamentView(
     camera: CameraConfig,
     lights: List<LightConfig>,
     backgroundColor: Color,
+    clipShape: FilamentClipShape?,
     onEngineReady: (FilamentEngine) -> Unit,
 ) {
     val bridge = FilamentBridgeHolder.bridge
         ?: error("FilamentBridgeHolder.bridge must be set from Swift before using FilamentView")
 
+    val density = LocalDensity.current
     val engine = remember { IosFilamentEngine(bridge) }
     val metalLayerRef = remember { arrayOfNulls<CAMetalLayer>(1) }
     val isAttachedRef = remember { booleanArrayOf(false) }
@@ -46,6 +49,7 @@ actual fun FilamentView(
         val scale = UIScreen.mainScreen.scale
         metalLayer.frame = view.bounds
         metalLayer.contentsScale = scale
+        applyClipShape(view, metalLayer, clipShape, density, scale)
 
         view.bounds.useContents {
             val widthPx = (size.width * scale).toInt().coerceAtLeast(1)
@@ -98,4 +102,28 @@ actual fun FilamentView(
             syncSurface(view, metalLayer)
         },
     )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun applyClipShape(
+    view: UIView,
+    metalLayer: CAMetalLayer,
+    clipShape: FilamentClipShape?,
+    density: androidx.compose.ui.unit.Density,
+    screenScale: Double,
+) {
+    val cornerRadiusPoints = when (clipShape) {
+        null -> 0.0
+        FilamentClipShape.Circle -> view.bounds.useContents { minOf(size.width, size.height) / 2.0 }
+        is FilamentClipShape.RoundedRect -> with(density) {
+            clipShape.cornerRadius.toPx().toDouble() / screenScale
+        }
+    }
+
+    val shouldClip = clipShape != null
+    view.clipsToBounds = shouldClip
+    view.layer.setMasksToBounds(shouldClip)
+    view.layer.cornerRadius = cornerRadiusPoints
+    metalLayer.cornerRadius = cornerRadiusPoints
+    metalLayer.setMasksToBounds(shouldClip)
 }

@@ -1,0 +1,23 @@
+material {
+    name : MarbleStone,
+    shadingModel : subsurface,
+    parameters : [
+        { type : float3, name : baseColor },
+        { type : float, name : roughness },
+        { type : float3, name : subsurfaceColor },
+        { type : float, name : thickness },
+        { type : float, name : subsurfacePower }
+    ],
+    specularAntiAliasing : true
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor.rgb = materialParams.baseColor;
+        material.roughness = materialParams.roughness;
+        material.subsurfaceColor = materialParams.subsurfaceColor;
+        material.thickness = materialParams.thickness;
+        material.subsurfacePower = materialParams.subsurfacePower;
+    }
+}

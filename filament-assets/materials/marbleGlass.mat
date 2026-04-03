@@ -1,0 +1,28 @@
+material {
+    name : MarbleGlass,
+    shadingModel : lit,
+    blending : transparent,
+    transparentShadow : true,
+    culling : none,
+    parameters : [
+        { type : float3, name : baseColor },
+        { type : float, name : roughness },
+        { type : float, name : reflectance },
+        { type : float, name : alpha },
+        { type : float, name : clearCoat },
+        { type : float, name : clearCoatRoughness }
+    ],
+    specularAntiAliasing : true
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor = vec4(materialParams.baseColor, materialParams.alpha);
+        material.roughness = materialParams.roughness;
+        material.reflectance = materialParams.reflectance;
+        material.clearCoat = materialParams.clearCoat;
+        material.clearCoatRoughness = materialParams.clearCoatRoughness;
+        material.metallic = 0.0;
+    }
+}
