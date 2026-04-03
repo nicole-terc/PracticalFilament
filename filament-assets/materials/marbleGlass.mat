@@ -2,6 +2,8 @@ material {
     name : MarbleGlass,
     shadingModel : lit,
     blending : transparent,
+    transparency : twoPassesTwoSides,
+    postLightingBlending : add,
     transparentShadow : true,
     culling : none,
     parameters : [
@@ -10,7 +12,9 @@ material {
         { type : float, name : reflectance },
         { type : float, name : alpha },
         { type : float, name : clearCoat },
-        { type : float, name : clearCoatRoughness }
+        { type : float, name : clearCoatRoughness },
+        { type : float, name : rimStrength },
+        { type : float, name : rimPower }
     ],
     specularAntiAliasing : true
 }
@@ -18,11 +22,15 @@ material {
 fragment {
     void material(inout MaterialInputs material) {
         prepareMaterial(material);
-        material.baseColor = vec4(materialParams.baseColor, materialParams.alpha);
+        float rim = pow(1.0 - getNdotV(), materialParams.rimPower);
+        float alpha = clamp(materialParams.alpha + rim * materialParams.rimStrength, 0.0, 1.0);
+        float3 edgeColor = materialParams.baseColor * (0.35 + rim * 0.65);
+        material.baseColor = vec4(edgeColor * alpha, alpha);
         material.roughness = materialParams.roughness;
         material.reflectance = materialParams.reflectance;
         material.clearCoat = materialParams.clearCoat;
         material.clearCoatRoughness = materialParams.clearCoatRoughness;
+        material.postLightingColor = vec4(edgeColor * rim * materialParams.rimStrength * 0.2, 0.0);
         material.metallic = 0.0;
     }
 }

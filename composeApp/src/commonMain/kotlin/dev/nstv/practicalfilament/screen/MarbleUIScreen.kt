@@ -104,8 +104,7 @@ private val MarbleUiBackground = ComposeColor(0xFF101721)
 private val MarbleUiText = ComposeColor(0xFFF4EEE4)
 private val MarbleUiMuted = ComposeColor(0xFFB6C1CD)
 private val MarbleUiAccent = ComposeColor(0xFFF6D28A)
-private val MarbleUiBackgroundFilament = Color(0.0627f, 0.0902f, 0.1294f, 1f)
-private val MarbleUiTransparentFilament = Color(0f, 0f, 0f, 0f)
+private val MarbleUiBackgroundFilament = MarbleUiBackground.toFilamentColor()
 private const val GlassMaterialPath = "materials/marbleGlass.filamat"
 
 private val SingleMarbleCamera = CameraConfig(
@@ -188,12 +187,14 @@ private val MarblePresets = listOf(
         fileName = GlassMaterialPath,
         label = "Glass",
         overrides = mapOf(
-            "baseColor" to Float3(0.97f, 0.985f, 1f),
-            "roughness" to 0.015f,
-            "reflectance" to 0.72f,
-            "alpha" to 0.18f,
+            "baseColor" to Float3(0.92f, 0.96f, 1f),
+            "roughness" to 0.04f,
+            "reflectance" to 1f,
+            "alpha" to 0.035f,
             "clearCoat" to 1f,
-            "clearCoatRoughness" to 0.015f,
+            "clearCoatRoughness" to 0.03f,
+            "rimStrength" to 0.32f,
+            "rimPower" to 2.1f,
         ),
     ),
     Material(
@@ -513,7 +514,7 @@ private fun SphereMaterialView(
         modifier = modifier,
         camera = camera,
         lights = lights,
-        backgroundColor = filamentBackgroundForMaterial(material),
+        backgroundColor = MarbleUiBackgroundFilament,
         clipShape = FilamentClipShape.Circle,
         onEngineReady = { engine ->
             val (instanceHandle, _, parameters) = loadMaterialOnEngine(engine, material)
@@ -573,7 +574,7 @@ private fun ButtonMaterialBackground(
             modifier = Modifier.fillMaxSize(),
             camera = ButtonSurfaceCamera,
             lights = ButtonSurfaceLights,
-            backgroundColor = filamentBackgroundForMaterial(preset),
+            backgroundColor = MarbleUiBackgroundFilament,
             clipShape = FilamentClipShape.RoundedRect(24.dp),
             onEngineReady = { engine ->
                 val (instanceHandle, _, parameters) = loadMaterialOnEngine(engine, preset)
@@ -587,8 +588,8 @@ private fun ButtonMaterialBackground(
     }
 }
 
-private fun filamentBackgroundForMaterial(material: Material): Color {
-    return if (material.fileName == GlassMaterialPath) MarbleUiTransparentFilament else MarbleUiBackgroundFilament
+private fun ComposeColor.toFilamentColor(): Color {
+    return Color(r = red, g = green, b = blue, a = alpha)
 }
 
 @Composable

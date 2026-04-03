@@ -13,6 +13,7 @@ import platform.CoreGraphics.CGSizeMake
 import platform.Metal.MTLCreateSystemDefaultDevice
 import platform.Metal.MTLPixelFormatBGRA8Unorm
 import platform.QuartzCore.CAMetalLayer
+import platform.UIKit.UIColor
 import platform.UIKit.UIView
 import platform.UIKit.UIScreen
 
@@ -47,6 +48,9 @@ actual fun FilamentView(
 
     val syncSurface: (UIView, CAMetalLayer) -> Unit = { view, metalLayer ->
         val scale = UIScreen.mainScreen.scale
+        val isOpaque = backgroundColor.a >= 0.999f
+        metalLayer.setOpaque(isOpaque)
+        view.setOpaque(isOpaque)
         metalLayer.frame = view.bounds
         metalLayer.contentsScale = scale
         applyClipShape(view, metalLayer, clipShape, density, scale)
@@ -79,10 +83,11 @@ actual fun FilamentView(
         modifier = modifier,
         factory = {
             val view = UIView(frame = UIScreen.mainScreen.bounds)
+            view.backgroundColor = UIColor.clearColor
             val metalLayer = CAMetalLayer()
             @Suppress("USELESS_CAST")
             metalLayer.device = MTLCreateSystemDefaultDevice() as objcnames.protocols.MTLDeviceProtocol?
-            metalLayer.setOpaque(true)
+            metalLayer.setOpaque(backgroundColor.a >= 0.999f)
             metalLayer.setFramebufferOnly(true)
             metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm
             metalLayer.contentsScale = UIScreen.mainScreen.scale
