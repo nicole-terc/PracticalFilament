@@ -35,14 +35,13 @@ private enum class Screen {
     SAMPLE_GLTF_VIEWER,
     MATERIAL_VIEWER,
     MARBLE,
+    MARBLE_UI,
     REDBALL,
     SHEEP,
     MORPHING,
     PARTICLE_WORD,
 }
 
-const val musicFileName = "nicmix.wav"
-const val musicFilePath = "files/$musicFileName"
 const val UseSlidesBackground = false
 const val HideOptions = false
 const val SheepIt = false
@@ -53,7 +52,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by remember { mutableStateOf(Screen.SHEEP) }
+        var selectedScreen by remember { mutableStateOf(Screen.MARBLE_UI) }
 
         Column(
             modifier = Modifier
@@ -87,6 +86,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.SAMPLE_GLTF_VIEWER -> GltfViewerScreen()
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
                     Screen.MARBLE -> MarbleScreen()
+                    Screen.MARBLE_UI -> MarbleUIScreen()
                     Screen.REDBALL -> RedballScreen()
                     Screen.SHEEP -> SheepScreen()
                     Screen.MORPHING -> MorphingScreen()

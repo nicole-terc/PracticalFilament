@@ -5,6 +5,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.interop.UIKitView
+import androidx.compose.ui.platform.LocalDensity
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import platform.CoreGraphics.CGRectMake
@@ -12,6 +13,7 @@ import platform.CoreGraphics.CGSizeMake
 import platform.Metal.MTLCreateSystemDefaultDevice
 import platform.Metal.MTLPixelFormatBGRA8Unorm
 import platform.QuartzCore.CAMetalLayer
+import platform.UIKit.UIColor
 import platform.UIKit.UIView
 import platform.UIKit.UIScreen
 
@@ -33,19 +35,25 @@ actual fun FilamentView(
     camera: CameraConfig,
     lights: List<LightConfig>,
     backgroundColor: Color,
+    clipShape: FilamentClipShape?,
     onEngineReady: (FilamentEngine) -> Unit,
 ) {
     val bridge = FilamentBridgeHolder.bridge
         ?: error("FilamentBridgeHolder.bridge must be set from Swift before using FilamentView")
 
+    val density = LocalDensity.current
     val engine = remember { IosFilamentEngine(bridge) }
     val metalLayerRef = remember { arrayOfNulls<CAMetalLayer>(1) }
     val isAttachedRef = remember { booleanArrayOf(false) }
 
     val syncSurface: (UIView, CAMetalLayer) -> Unit = { view, metalLayer ->
         val scale = UIScreen.mainScreen.scale
+        val isOpaque = backgroundColor.a >= 0.999f
+        metalLayer.setOpaque(isOpaque)
+        view.setOpaque(isOpaque)
         metalLayer.frame = view.bounds
         metalLayer.contentsScale = scale
+        applyClipShape(view, metalLayer, clipShape, density, scale)
 
         view.bounds.useContents {
             val widthPx = (size.width * scale).toInt().coerceAtLeast(1)
@@ -75,10 +83,11 @@ actual fun FilamentView(
         modifier = modifier,
         factory = {
             val view = UIView(frame = UIScreen.mainScreen.bounds)
+            view.backgroundColor = UIColor.clearColor
             val metalLayer = CAMetalLayer()
             @Suppress("USELESS_CAST")
             metalLayer.device = MTLCreateSystemDefaultDevice() as objcnames.protocols.MTLDeviceProtocol?
-            metalLayer.setOpaque(true)
+            metalLayer.setOpaque(backgroundColor.a >= 0.999f)
             metalLayer.setFramebufferOnly(true)
             metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm
             metalLayer.contentsScale = UIScreen.mainScreen.scale
@@ -98,4 +107,28 @@ actual fun FilamentView(
             syncSurface(view, metalLayer)
         },
     )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun applyClipShape(
+    view: UIView,
+    metalLayer: CAMetalLayer,
+    clipShape: FilamentClipShape?,
+    density: androidx.compose.ui.unit.Density,
+    screenScale: Double,
+) {
+    val cornerRadiusPoints = when (clipShape) {
+        null -> 0.0
+        FilamentClipShape.Circle -> view.bounds.useContents { minOf(size.width, size.height) / 2.0 }
+        is FilamentClipShape.RoundedRect -> with(density) {
+            clipShape.cornerRadius.toPx().toDouble() / screenScale
+        }
+    }
+
+    val shouldClip = clipShape != null
+    view.clipsToBounds = shouldClip
+    view.layer.setMasksToBounds(shouldClip)
+    view.layer.cornerRadius = cornerRadiusPoints
+    metalLayer.cornerRadius = cornerRadiusPoints
+    metalLayer.setMasksToBounds(shouldClip)
 }
