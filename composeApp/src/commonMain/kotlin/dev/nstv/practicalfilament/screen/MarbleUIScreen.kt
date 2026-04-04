@@ -833,66 +833,95 @@ private fun buildRoundedButtonGeometry(
     }
     stitchRings(rimOuterTopIndices, rimInnerTopIndices)
 
-    // 2. Inner wall: from rim inner edge (rimTopZ) curving down to the floor edge
-    //    This creates the cylindrical wall dropping into the bowl
-    val rimInnerWallTopIndices = rimInnerRing.map { p ->
-        appendVertex(p.x, p.y, innerSurfaceStartZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
-    }
-    stitchRings(rimInnerTopIndices, rimInnerWallTopIndices)
+    var prevInnerRing = rimInnerTopIndices
+    var centerSurfaceZ = floorCenterZ
 
-    var prevWallRing: List<Short> = rimInnerWallTopIndices
-    for (step in 1..wallRingCount) {
-        val t = step.toFloat() / wallRingCount.toFloat()
-        // Ease the transition: steep at top, flattening toward floor
-        val eased = easedProgress(t)
-        val ringWidth = lerp(innerWidth, floorWidth, eased)
-        val ringHeight = lerp(innerHeight, floorHeight, eased)
-        val ringRadius = lerp(innerRadius, floorRadius, eased)
-        val ringZ = lerp(innerSurfaceStartZ, floorCenterZ, eased)
-        val ring = roundedRectRing(ringWidth, ringHeight, ringRadius, arcSegments)
-        val ringIndices = ring.map { p ->
-            appendVertex(p.x, p.y, ringZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+    if (bowlAmount > 0f) {
+        val bowlRingCount = wallRingCount + floorRingCount
+        val bowlDepth = bowlAmount * depth * 0.64f
+        for (step in 1..bowlRingCount) {
+            val t = step.toFloat() / bowlRingCount.toFloat()
+            val eased = easedProgress(t)
+            val radialScale = cos(eased.toDouble() * PI * 0.5).toFloat()
+            val circularBlend = easedProgress((eased * 1.25f).coerceIn(0f, 1f))
+            val circularDiameter = floorTerminalDiameter * radialScale
+            val ringWidth = lerp(innerWidth * radialScale, circularDiameter, circularBlend)
+            val ringHeight = lerp(innerHeight * radialScale, circularDiameter, circularBlend)
+            val ringRadius = lerp(
+                (innerRadius * radialScale).coerceAtLeast(0.02f),
+                circularDiameter * 0.5f,
+                circularBlend,
+            )
+            val sink = sin(eased.toDouble() * PI * 0.5).toFloat()
+            val ringZ = rimTopZ - bowlDepth * sink
+            if (ringWidth < 0.035f || ringHeight < 0.035f) break
+            val ring = roundedRectRing(ringWidth, ringHeight, ringRadius, arcSegments)
+            val ringIndices = ring.map { p ->
+                appendVertex(p.x, p.y, ringZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+            }
+            stitchRings(prevInnerRing, ringIndices)
+            prevInnerRing = ringIndices
+            centerSurfaceZ = ringZ
         }
-        stitchRings(prevWallRing, ringIndices)
-        prevWallRing = ringIndices
-    }
-
-    // 3. Floor surface: concentric rings from floor edge to center
-    //    The center may be lower (bowl) or higher (dome) than the edge
-    val floorEdgeRing = prevWallRing
-    var prevFloorRing = floorEdgeRing
-    for (step in 1 until floorRingCount) {
-        val t = step.toFloat() / floorRingCount.toFloat()
-        val eased = easedProgress(t)
-        val scale = 1f - eased
-        val baseRingWidth = floorWidth * scale
-        val baseRingHeight = floorHeight * scale
-        val terminalDiameter = floorTerminalDiameter * scale
-        // Morph the last rings toward a circular footprint so the bowl closes cleanly.
-        val centerBlend = easedProgress(((t - 0.45f) / 0.55f).coerceIn(0f, 1f))
-        val ringWidth = lerp(baseRingWidth, terminalDiameter, centerBlend)
-        val ringHeight = lerp(baseRingHeight, terminalDiameter, centerBlend)
-        val ringRadius = lerp(floorRadius * scale, terminalDiameter * 0.5f, centerBlend)
-        // Slight additional curvature toward center for bowl depth
-        val bowlDip = signedCurvature * depth * 0.12f * eased
-        val ringZ = floorCenterZ + bowlDip
-        if (ringWidth < 0.035f || ringHeight < 0.035f) break
-        val ring = roundedRectRing(ringWidth, ringHeight, ringRadius.coerceAtLeast(0.02f), arcSegments)
-        val ringIndices = ring.map { p ->
-            appendVertex(p.x, p.y, ringZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+        centerSurfaceZ = rimTopZ - bowlDepth
+    } else {
+        // 2. Inner wall: from rim inner edge curving into the dome or flat center.
+        val rimInnerWallTopIndices = rimInnerRing.map { p ->
+            appendVertex(p.x, p.y, innerSurfaceStartZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
         }
-        stitchRings(prevFloorRing, ringIndices)
-        prevFloorRing = ringIndices
+        stitchRings(rimInnerTopIndices, rimInnerWallTopIndices)
+
+        var prevWallRing: List<Short> = rimInnerWallTopIndices
+        for (step in 1..wallRingCount) {
+            val t = step.toFloat() / wallRingCount.toFloat()
+            val eased = easedProgress(t)
+            val ringWidth = lerp(innerWidth, floorWidth, eased)
+            val ringHeight = lerp(innerHeight, floorHeight, eased)
+            val ringRadius = lerp(innerRadius, floorRadius, eased)
+            val ringZ = lerp(innerSurfaceStartZ, floorCenterZ, eased)
+            val ring = roundedRectRing(ringWidth, ringHeight, ringRadius, arcSegments)
+            val ringIndices = ring.map { p ->
+                appendVertex(p.x, p.y, ringZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+            }
+            stitchRings(prevWallRing, ringIndices)
+            prevWallRing = ringIndices
+        }
+
+        // 3. Floor surface: concentric rings from floor edge to center.
+        var prevFloorRing = prevWallRing
+        for (step in 1 until floorRingCount) {
+            val t = step.toFloat() / floorRingCount.toFloat()
+            val eased = easedProgress(t)
+            val scale = 1f - eased
+            val baseRingWidth = floorWidth * scale
+            val baseRingHeight = floorHeight * scale
+            val terminalDiameter = floorTerminalDiameter * scale
+            val centerBlend = easedProgress(((t - 0.45f) / 0.55f).coerceIn(0f, 1f))
+            val ringWidth = lerp(baseRingWidth, terminalDiameter, centerBlend)
+            val ringHeight = lerp(baseRingHeight, terminalDiameter, centerBlend)
+            val ringRadius = lerp(floorRadius * scale, terminalDiameter * 0.5f, centerBlend)
+            val domeLift = domeAmount * depth * 0.12f * eased
+            val ringZ = floorCenterZ + domeLift
+            if (ringWidth < 0.035f || ringHeight < 0.035f) break
+            val ring = roundedRectRing(ringWidth, ringHeight, ringRadius.coerceAtLeast(0.02f), arcSegments)
+            val ringIndices = ring.map { p ->
+                appendVertex(p.x, p.y, ringZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+            }
+            stitchRings(prevFloorRing, ringIndices)
+            prevFloorRing = ringIndices
+            centerSurfaceZ = ringZ
+        }
+        prevInnerRing = prevFloorRing
+        centerSurfaceZ = floorCenterZ + domeAmount * depth * 0.12f
     }
 
-    // Floor center vertex
-    val centerBowlDip = signedCurvature * depth * 0.12f
-    val floorCenter = appendVertex(0f, 0f, floorCenterZ + centerBowlDip, 0.5f, 0.5f)
-    for (i in prevFloorRing.indices) {
-        val j = (i + 1) % prevFloorRing.size
+    // Surface center vertex
+    val floorCenter = appendVertex(0f, 0f, centerSurfaceZ, 0.5f, 0.5f)
+    for (i in prevInnerRing.indices) {
+        val j = (i + 1) % prevInnerRing.size
         indices += floorCenter
-        indices += prevFloorRing[i]
-        indices += prevFloorRing[j]
+        indices += prevInnerRing[i]
+        indices += prevInnerRing[j]
     }
 
     // 4. Outer side wall: connects rim top outer edge down to back face
@@ -913,7 +942,7 @@ private fun buildRoundedButtonGeometry(
 
     val maxZ = maxOf(
         kotlin.math.abs(rimTopZ),
-        kotlin.math.abs(floorCenterZ + centerBowlDip),
+        kotlin.math.abs(centerSurfaceZ),
         depth * 0.5f,
     )
 
