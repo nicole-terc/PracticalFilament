@@ -39,7 +39,6 @@ import dev.nstv.practicalfilament.filament.FilamentHostViewMode
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.theme.Grid
-import kotlin.math.sin
 
 @Composable
 internal expect fun AndroidEffectsMarblePanel(
@@ -77,16 +76,6 @@ internal fun FilamentComparisonPanel(
                 materialInstanceHandle = instanceHandle,
                 radius = 1.16f,
             )
-            engine.setRenderableRotation(renderableHandle, -12f, 24f)
-            engine.requestFrame()
-        }
-
-        LaunchedEffect(engineReady, renderableHandle, animationTimeSeconds) {
-            val engine = engineReady ?: return@LaunchedEffect
-            if (renderableHandle == 0) return@LaunchedEffect
-            val yaw = 22f + sin(animationTimeSeconds * 0.8f) * 7f
-            val pitch = -11f + sin(animationTimeSeconds * 0.45f) * 1.5f
-            engine.setRenderableRotation(renderableHandle, pitch, yaw)
             engine.requestFrame()
         }
 

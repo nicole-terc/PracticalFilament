@@ -174,20 +174,40 @@ private fun RenderEffectMarbleStage(
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = (40.dp + (sweep * 12f).dp), y = (34.dp + (drift * 8f).dp))
+                .offset(x = (46.dp + (sweep * 5f).dp), y = (42.dp + (drift * 4f).dp))
                 .size(
-                    width = (132.dp + (preset.reflectionStrength * 24f).dp),
-                    height = (74.dp + (preset.translucency * 18f).dp),
+                    width = (84.dp + (preset.reflectionStrength * 18f).dp),
+                    height = (54.dp + (preset.translucency * 12f).dp),
                 )
-                .rotate(-18f + preset.translucency * 4f)
+                .rotate(-16f + preset.translucency * 3f)
                 .graphicsLayer {
-                    renderEffect = BlurEffect(62f, 62f, TileMode.Decal)
-                    alpha = reflectionAlpha
+                    renderEffect = BlurEffect(38f, 38f, TileMode.Decal)
+                    alpha = reflectionAlpha * 0.82f
                 }
                 .background(
                     brush = Brush.linearGradient(
                         colors = listOf(
                             preset.reflectionColor.copy(alpha = 0.92f),
+                            preset.highlightColor.copy(alpha = 0f),
+                        ),
+                    ),
+                    shape = CircleShape,
+                ),
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = (76.dp + (sweep * 2f).dp), y = (90.dp + (drift * 1.5f).dp))
+                .size(14.dp)
+                .graphicsLayer {
+                    renderEffect = BlurEffect(8f, 8f, TileMode.Decal)
+                    alpha = (0.24f + preset.reflectionStrength * 0.24f).coerceAtMost(0.56f)
+                }
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            preset.highlightColor.copy(alpha = 0.98f),
                             preset.highlightColor.copy(alpha = 0f),
                         ),
                     ),
@@ -218,12 +238,12 @@ private fun RenderEffectMarbleStage(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .offset(x = (-12).dp, y = (18).dp)
-                .size(124.dp, 164.dp)
-                .rotate(14f)
+                .offset(x = (-18).dp, y = (10).dp)
+                .size(92.dp, 152.dp)
+                .rotate(13f)
                 .graphicsLayer {
-                    renderEffect = BlurEffect(70f, 70f, TileMode.Decal)
-                    alpha = (0.1f + preset.reflectionStrength * 0.18f).coerceAtMost(0.28f)
+                    renderEffect = BlurEffect(46f, 46f, TileMode.Decal)
+                    alpha = (0.06f + preset.reflectionStrength * 0.12f).coerceAtMost(0.18f)
                 }
                 .background(
                     brush = Brush.linearGradient(
@@ -235,6 +255,30 @@ private fun RenderEffectMarbleStage(
                     shape = CircleShape,
                 ),
         )
+
+        if (preset.metallic > 0.5f) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .offset(x = (-38).dp, y = 8.dp)
+                    .size(54.dp, 172.dp)
+                    .rotate(8f)
+                    .graphicsLayer {
+                        renderEffect = BlurEffect(18f, 54f, TileMode.Decal)
+                        alpha = 0.18f + preset.reflectionStrength * 0.16f
+                    }
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                preset.highlightColor.copy(alpha = 0f),
+                                preset.reflectionColor.copy(alpha = 0.96f),
+                                preset.highlightColor.copy(alpha = 0f),
+                            ),
+                        ),
+                        shape = CircleShape,
+                    ),
+            )
+        }
     }
 }
 
@@ -351,32 +395,63 @@ uniform float translucency;
 uniform float veinStrength;
 uniform float reflectionStrength;
 
-float hash21(float2 p) {
-    p = fract(p * float2(234.34, 435.345));
-    p += dot(p, p + 34.23);
-    return fract(p.x * p.y);
+float sdCircle(float2 p, float2 center, float radius) {
+    return length(p - center) - radius;
 }
 
-float noise(float2 p) {
-    float2 i = floor(p);
-    float2 f = fract(p);
-    float a = hash21(i);
-    float b = hash21(i + float2(1.0, 0.0));
-    float c = hash21(i + float2(0.0, 1.0));
-    float d = hash21(i + float2(1.0, 1.0));
-    float2 u = f * f * (3.0 - 2.0 * f);
-    return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+float2 rot2(float angle, float2 p) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return float2(c * p.x - s * p.y, s * p.x + c * p.y);
 }
 
-float fbm(float2 p) {
+float hash31(float3 p) {
+    return fract(sin(dot(p, float3(127.1, 311.7, 74.7))) * 43758.5453123);
+}
+
+float noise3(float3 p) {
+    float3 i = floor(p);
+    float3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+
+    float n000 = hash31(i + float3(0.0, 0.0, 0.0));
+    float n100 = hash31(i + float3(1.0, 0.0, 0.0));
+    float n010 = hash31(i + float3(0.0, 1.0, 0.0));
+    float n110 = hash31(i + float3(1.0, 1.0, 0.0));
+    float n001 = hash31(i + float3(0.0, 0.0, 1.0));
+    float n101 = hash31(i + float3(1.0, 0.0, 1.0));
+    float n011 = hash31(i + float3(0.0, 1.0, 1.0));
+    float n111 = hash31(i + float3(1.0, 1.0, 1.0));
+
+    float nx00 = mix(n000, n100, f.x);
+    float nx10 = mix(n010, n110, f.x);
+    float nx01 = mix(n001, n101, f.x);
+    float nx11 = mix(n011, n111, f.x);
+    float nxy0 = mix(nx00, nx10, f.y);
+    float nxy1 = mix(nx01, nx11, f.y);
+    return mix(nxy0, nxy1, f.z);
+}
+
+float fbm3(float3 p) {
     float value = 0.0;
     float amplitude = 0.5;
     for (int i = 0; i < 4; ++i) {
-        value += noise(p) * amplitude;
-        p = p * 2.03 + float2(18.4, 12.7);
+        value += noise3(p) * amplitude;
+        p = p * 2.02 + float3(17.3, 11.2, 13.7);
         amplitude *= 0.5;
     }
     return value;
+}
+
+float marbleField(float3 p) {
+    float2 xy = rot2(p.z * 0.65 + time * 0.03, p.xy);
+    float2 xz = rot2(p.y * 0.35 - time * 0.02, float2(xy.x, p.z));
+    float3 q = float3(xz.x, xy.y, xz.y);
+    float swirl = fbm3(q * 1.6 + float3(0.0, time * 0.03, 0.0));
+    float bands = sin(q.y * 8.0 + swirl * 4.2 + q.x * 2.1);
+    float bands2 = sin(q.z * 5.4 - swirl * 3.1 + q.y * 1.4);
+    float pattern = mix(bands, bands2, 0.3);
+    return smoothstep(-0.28, 0.36, pattern);
 }
 
 half4 main(float2 fragCoord) {
@@ -398,26 +473,45 @@ half4 main(float2 fragCoord) {
     float specPower = mix(12.0, 68.0, 1.0 - roughness);
     float specular = pow(max(dot(n, h), 0.0), specPower) * mix(0.55, 1.15, reflectionStrength);
     float fresnel = pow(1.0 - max(dot(n, v), 0.0), mix(4.2, 2.0, reflectionStrength));
+    float innerStrength = smoothstep(0.42, 0.78, translucency);
 
-    float swirl = fbm(float2(atan(p.y, p.x) * 1.7 + time * 0.08, z * 3.8 - time * 0.04));
-    float veins = smoothstep(0.54, 0.76, fbm(p * 5.2 + float2(swirl * 2.2, -time * 0.03)));
-    veins *= smoothstep(0.1, 0.95, z) * veinStrength;
+    float3 innerCoord = n;
+    innerCoord.xy = rot2(0.45 + innerCoord.z * 0.7 + time * 0.04, innerCoord.xy);
+    float2 innerXZ = rot2(innerCoord.y * 0.55 - time * 0.03, float2(innerCoord.x, innerCoord.z));
+    innerCoord = float3(innerXZ.x, innerCoord.y, innerXZ.y);
+    float depth = mix(1.8, 1.1, metallic) + translucency * 1.4;
+    float3 refracted = innerCoord * depth + float3(time * 0.02, -time * 0.015, 0.0);
+    float veins = marbleField(refracted * mix(2.8, 1.55, translucency));
+    veins = mix(veins, marbleField(refracted.zxy * 0.72 + 4.2), 0.35);
+    veins *= smoothstep(0.12, 0.98, z) * veinStrength;
+    float surfacePattern = fbm3(float3(n.xy * mix(6.0, 13.0, metallic), n.z * 4.0) + float3(0.0, 0.0, time * 0.02));
+    surfacePattern = smoothstep(0.56, 0.8, surfacePattern) * (veinStrength * 0.22 + metallic * 0.18);
+    float brushed = sin((p.y * 92.0) + p.x * 18.0 + fbm3(float3(p * 8.0, time * 0.03)) * 4.0);
+    brushed = smoothstep(0.72, 0.96, brushed) * metallic * 0.12;
 
-    float reflectionBand = smoothstep(0.22, 0.0, abs(dot(p, normalize(float2(0.96, 0.28))) - 0.2 + sin(time * 0.95) * 0.06));
-    reflectionBand += smoothstep(0.28, 0.0, abs(dot(p, normalize(float2(0.85, -0.52))) + 0.58));
-    reflectionBand *= reflectionStrength;
+    float reflectionBand = smoothstep(0.16, 0.0, abs(dot(p, normalize(float2(0.95, 0.31))) - 0.34));
+    reflectionBand += smoothstep(0.18, 0.0, abs(dot(p, normalize(float2(0.9, -0.43))) + 0.72));
+    reflectionBand *= reflectionStrength * mix(0.55, 1.0, innerStrength);
+    float primaryGlint = smoothstep(0.055, 0.0, sdCircle(p, float2(-0.24, -0.27), 0.06));
+    float secondaryGlint = smoothstep(0.022, 0.0, sdCircle(p, float2(-0.27, -0.09), 0.024));
+    float glintMask = (primaryGlint * 0.82 + secondaryGlint * 0.58) * (0.22 + reflectionStrength * 0.46);
 
     float backGlow = smoothstep(-0.25, 0.85, z + translucency * 0.55 - p.x * 0.18 - p.y * 0.12) * translucency;
+    float shellMask = smoothstep(0.0, 0.18 + innerStrength * 0.22, z);
+    float absorption = exp(-(1.7 - translucency * 0.9) * (1.0 - z));
     float ambient = 0.22 + z * (0.16 + translucency * 0.2);
 
-    half3 diffuseColor = mix(shadowColor.rgb, baseColor.rgb, half(clamp(ambient + diffuse * (0.66 + translucency * 0.08), 0.0, 1.0)));
-    diffuseColor = mix(diffuseColor, veinColor.rgb, half(veins));
-    diffuseColor = mix(diffuseColor, reflectionColor.rgb, half(reflectionBand * 0.36));
-    diffuseColor = mix(diffuseColor, highlightColor.rgb, half(backGlow * 0.18));
+    half3 shellColor = mix(shadowColor.rgb, baseColor.rgb, half(clamp(ambient + diffuse * (0.66 + translucency * 0.08), 0.0, 1.0)));
+    half3 coreColor = mix(baseColor.rgb, veinColor.rgb, half(veins));
+    coreColor = mix(coreColor, highlightColor.rgb, half((1.0 - absorption) * innerStrength * 0.22));
+    coreColor = mix(coreColor, reflectionColor.rgb, half(reflectionBand * 0.12));
+    half3 diffuseColor = mix(shellColor, coreColor, half((innerStrength * 0.42) * shellMask));
+    diffuseColor = mix(diffuseColor, veinColor.rgb, half(surfacePattern + brushed));
+    diffuseColor = mix(diffuseColor, highlightColor.rgb, half(backGlow * 0.12));
 
     half3 finalColor = diffuseColor;
     finalColor = mix(finalColor, reflectionColor.rgb, half(specular * mix(0.35, 0.82, metallic)));
-    finalColor = mix(finalColor, highlightColor.rgb, half(specular * (0.55 + translucency * 0.18) + reflectionBand * 0.18));
+    finalColor = mix(finalColor, highlightColor.rgb, half(specular * (0.42 + innerStrength * 0.14) + reflectionBand * 0.12 + glintMask));
     finalColor = mix(finalColor, rimColor.rgb, half(fresnel * (0.24 + translucency * 0.34 + metallic * 0.18)));
 
     return half4(finalColor, 1.0);
