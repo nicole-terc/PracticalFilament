@@ -90,12 +90,6 @@ private enum class DemoStep(
     ),
 }
 
-private val MarbleUiBackground = ComposeColor(0xFF101721)
-private val MarbleUiText = ComposeColor(0xFFF4EEE4)
-private val MarbleUiMuted = ComposeColor(0xFFB6C1CD)
-private val MarbleUiAccent = ComposeColor(0xFFF6D28A)
-private val MarbleUiBackgroundFilament = MarbleUiBackground.toFilamentColor()
-private const val GlassMaterialPath = "materials/marbleGlass.filamat"
 private val ButtonCornerRadius = 24.dp
 private val ButtonHeight = 88.dp
 private val ButtonShape = RoundedCornerShape(ButtonCornerRadius)
@@ -108,151 +102,7 @@ private const val ButtonCurvatureRange = 1f
 private val ButtonCornerRadiusFraction = ButtonCornerRadius.value / ButtonHeight.value
 private const val DefaultButtonCurvature = -0.42f
 
-private val SingleMarbleCamera = CameraConfig(
-    position = Float3(0f, 0.1f, 4.5f),
-    lookAt = Float3(0f, 0f, 0f),
-    fovDegrees = 34.0,
-)
-
-private val PickerMarbleCamera = CameraConfig(
-    position = Float3(0f, 0.06f, 4.15f),
-    lookAt = Float3(0f, 0f, 0f),
-    fovDegrees = 32.0,
-)
-
-private val ButtonSurfaceCamera = CameraConfig(
-    position = Float3(0f, 0f, 3.35f),
-    lookAt = Float3(0f, 0f, 0f),
-    fovDegrees = 31.0,
-)
-
-private val SphereStepLights = listOf(
-    LightConfig(
-        type = LightType.DIRECTIONAL,
-        color = Color(1f, 0.97f, 0.93f),
-        intensity = 72_000f,
-        direction = Float3(-0.28f, -0.38f, -1f),
-    ),
-)
-
-private val MarbleAliveLights = listOf(
-    LightConfig(
-        type = LightType.SUN,
-        color = Color(1f, 0.95f, 0.89f),
-        intensity = 110_000f,
-        direction = Float3(0.45f, -1f, -0.72f),
-        sunAngularRadius = 1.7f,
-        sunHaloSize = 12f,
-        sunHaloFalloff = 90f,
-    ),
-    LightConfig(
-        type = LightType.POINT,
-        color = Color(0.88f, 0.94f, 1f),
-        intensity = 120_000f,
-        position = Float3(-1.6f, 1.2f, 2.6f),
-        falloffRadius = 8f,
-    ),
-)
-
-private val ThemePickerLights = listOf(
-    LightConfig(
-        type = LightType.SUN,
-        color = Color(1f, 0.95f, 0.9f),
-        intensity = 100_000f,
-        direction = Float3(0.35f, -1f, -0.9f),
-        sunAngularRadius = 1.5f,
-        sunHaloSize = 10f,
-        sunHaloFalloff = 85f,
-    ),
-    LightConfig(
-        type = LightType.POINT,
-        color = Color(0.85f, 0.9f, 1f),
-        intensity = 75_000f,
-        position = Float3(0f, 1.3f, 3.8f),
-        falloffRadius = 10f,
-    ),
-)
-
 private val ButtonSurfaceLights = MarbleAliveLights
-
-private val MarblePresets = listOf(
-    Material(
-        fileName = "materials/marbleClay.filamat",
-        label = "Clay",
-        overrides = mapOf(
-            "baseColor" to Float3(0.76f, 0.42f, 0.26f),
-            "roughness" to 0.85f,
-        ),
-    ),
-    Material(
-        fileName = GlassMaterialPath,
-        label = "Glass",
-        overrides = mapOf(
-            "baseColor" to Float3(0.92f, 0.96f, 1f),
-            "roughness" to 0.04f,
-            "reflectance" to 1f,
-            "alpha" to 0.035f,
-            "clearCoat" to 1f,
-            "clearCoatRoughness" to 0.03f,
-            "rimStrength" to 0.32f,
-            "rimPower" to 2.1f,
-        ),
-    ),
-    Material(
-        fileName = "materials/marbleStone.filamat",
-        label = "Stone",
-        overrides = mapOf(
-            "baseColor" to Float3(0.88f, 0.86f, 0.82f),
-            "roughness" to 0.35f,
-            "subsurfaceColor" to Float3(0.9f, 0.85f, 0.7f),
-            "thickness" to 0.5f,
-            "subsurfacePower" to 12f,
-        ),
-    ),
-    Material(
-        fileName = "materials/marbleMetal.filamat",
-        label = "Metal",
-        overrides = mapOf(
-            "baseColor" to Float3(0.85f, 0.85f, 0.88f),
-            "roughness" to 0.08f,
-            "metallic" to 1f,
-            "reflectance" to 0.9f,
-        ),
-    ),
-    Material(
-        fileName = "materials/marbleCeramic.filamat",
-        label = "Ceramic",
-        overrides = mapOf(
-            "baseColor" to Float3(0.22f, 0.45f, 0.72f),
-            "roughness" to 0.4f,
-            "clearCoat" to 1f,
-            "clearCoatRoughness" to 0.04f,
-        ),
-    ),
-    Material(
-        fileName = "materials/marbleVelvet.filamat",
-        label = "Velvet",
-        overrides = mapOf(
-            "baseColor" to Float3(0.55f, 0.08f, 0.22f),
-            "roughness" to 0.75f,
-            "sheenColor" to Float3(0.8f, 0.3f, 0.4f),
-            "subsurfaceColor" to Float3(0.7f, 0.15f, 0.25f),
-        ),
-    ),
-)
-
-private val NeutralSphereMaterial = Material(
-    fileName = "materials/plastic.filamat",
-    label = "Neutral Sphere",
-    overrides = mapOf(
-        "baseColor" to Float3(0.72f, 0.74f, 0.78f),
-        "roughness" to 0.28f,
-        "clearCoat" to 0.2f,
-        "clearCoatRoughness" to 0.18f,
-    ),
-)
-
-private const val CeramicPresetIndex = 4
 
 @Composable
 fun MarbleUIScreen(
@@ -657,10 +507,6 @@ private fun curvatureLabel(value: Float): String {
         value >= 0.08f -> "Dome $percent%"
         else -> "Flat"
     }
-}
-
-private fun ComposeColor.toFilamentColor(): Color {
-    return Color(r = red, g = green, b = blue, a = alpha)
 }
 
 @Composable

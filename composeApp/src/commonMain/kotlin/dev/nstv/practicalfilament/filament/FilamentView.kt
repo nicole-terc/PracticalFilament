@@ -4,6 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 
+enum class FilamentHostViewMode {
+    Auto,
+    Surface,
+    Texture,
+}
+
 @Composable
 expect fun FilamentView(
     modifier: Modifier = Modifier,
@@ -12,6 +18,7 @@ expect fun FilamentView(
     backgroundColor: Color = Color(0f, 0f, 0f, 1f),
     clipShape: FilamentClipShape? = null,
     isOpaque: Boolean = true,
+    hostViewMode: FilamentHostViewMode = FilamentHostViewMode.Auto,
     onEngineReady: (FilamentEngine) -> Unit = {},
 )
 

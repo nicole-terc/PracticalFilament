@@ -38,6 +38,7 @@ private enum class Screen {
     MATERIAL_VIEWER,
     MARBLE,
     MARBLE_UI,
+    GRAPHICS_EFFECTS_COMPARISON,
     REDBALL,
     SHEEP,
     MORPHING,
@@ -91,6 +92,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
                     Screen.MARBLE -> MarbleScreen()
                     Screen.MARBLE_UI -> MarbleUIScreen()
+                    Screen.GRAPHICS_EFFECTS_COMPARISON -> GraphicsEffectsComparisonScreen()
                     Screen.REDBALL -> RedballScreen()
                     Screen.SHEEP -> SheepScreen()
                     Screen.MORPHING -> MorphingScreen()
