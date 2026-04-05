@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +52,7 @@ fun GraphicsEffectsComparisonScreen(
     var effectMode by remember { mutableStateOf(Android2DEffectMode.AGSL) }
     var selectedPreset by remember { mutableStateOf(ComparisonMaterialPreset.Ceramic) }
     var animationEnabled by remember { mutableStateOf(true) }
+    var backgroundEnabled by remember { mutableStateOf(false) }
     var revealFraction by remember { mutableFloatStateOf(0.5f) }
     var animationTimeSeconds by remember { mutableFloatStateOf(0f) }
 
@@ -74,6 +76,7 @@ fun GraphicsEffectsComparisonScreen(
                 preset = presetSpec,
                 effectMode = effectMode,
                 animationTimeSeconds = animationTimeSeconds,
+                backgroundEnabled = backgroundEnabled,
                 revealFraction = revealFraction,
                 onRevealFractionChanged = { revealFraction = it },
             )
@@ -110,6 +113,13 @@ fun GraphicsEffectsComparisonScreen(
                     selected = animationEnabled,
                     labelFor = { if (it) "On" else "Off" },
                     onSelected = { animationEnabled = it },
+                )
+                EnumChipRow(
+                    label = "Background",
+                    options = listOf(true, false),
+                    selected = backgroundEnabled,
+                    labelFor = { if (it) "On" else "Off" },
+                    onSelected = { backgroundEnabled = it },
                 )
                 if (presentationMode == ComparisonPresentationMode.Reveal) {
                     Column(
@@ -153,6 +163,7 @@ private fun ComparisonStage(
     preset: ComparisonPresetSpec,
     effectMode: Android2DEffectMode,
     animationTimeSeconds: Float,
+    backgroundEnabled: Boolean,
     revealFraction: Float,
     onRevealFractionChanged: (Float) -> Unit,
 ) {
@@ -167,20 +178,24 @@ private fun ComparisonStage(
                 preset = preset,
                 effectMode = effectMode,
                 animationTimeSeconds = animationTimeSeconds,
+                backgroundEnabled = backgroundEnabled,
                 modifier = Modifier.fillMaxSize(),
             )
         }
         val filamentPanel: @Composable BoxScope.() -> Unit = {
-            FilamentComparisonPanel(
-                preset = preset,
-                animationTimeSeconds = animationTimeSeconds,
-                modifier = Modifier.fillMaxSize(),
-                hostViewMode = if (presentationMode == ComparisonPresentationMode.Reveal) {
-                    FilamentHostViewMode.Texture
-                } else {
-                    FilamentHostViewMode.Auto
-                },
-            )
+            key(backgroundEnabled) {
+                FilamentComparisonPanel(
+                    preset = preset,
+                    animationTimeSeconds = animationTimeSeconds,
+                    backgroundEnabled = backgroundEnabled,
+                    modifier = Modifier.fillMaxSize(),
+                    hostViewMode = if (presentationMode == ComparisonPresentationMode.Reveal) {
+                        FilamentHostViewMode.Texture
+                    } else {
+                        FilamentHostViewMode.Auto
+                    },
+                )
+            }
         }
 
         when (presentationMode) {

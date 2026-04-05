@@ -39,12 +39,16 @@ import dev.nstv.practicalfilament.filament.FilamentHostViewMode
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.theme.Grid
+import practicalfilament.composeapp.generated.resources.Res
+
+private const val ComparisonIblPath = "files/envs/studio_small_02_2k/studio_small_02_2k_ibl.ktx"
 
 @Composable
 internal expect fun AndroidEffectsMarblePanel(
     preset: ComparisonPresetSpec,
     effectMode: Android2DEffectMode,
     animationTimeSeconds: Float,
+    backgroundEnabled: Boolean,
     modifier: Modifier = Modifier,
 )
 
@@ -52,6 +56,7 @@ internal expect fun AndroidEffectsMarblePanel(
 internal fun FilamentComparisonPanel(
     preset: ComparisonPresetSpec,
     animationTimeSeconds: Float,
+    backgroundEnabled: Boolean,
     modifier: Modifier = Modifier,
     hostViewMode: FilamentHostViewMode = FilamentHostViewMode.Auto,
 ) {
@@ -62,6 +67,17 @@ internal fun FilamentComparisonPanel(
     ) {
         var engineReady by remember { mutableStateOf<FilamentEngine?>(null) }
         var renderableHandle by remember { mutableIntStateOf(0) }
+
+        LaunchedEffect(engineReady, backgroundEnabled) {
+            val engine = engineReady ?: return@LaunchedEffect
+            if (backgroundEnabled) {
+                val indirectLightHandle = engine.loadIndirectLight(Res.getUri(ComparisonIblPath))
+                if (indirectLightHandle > 0) {
+                    engine.setIndirectLight(indirectLightHandle, intensity = 35_000f)
+                    engine.requestFrame()
+                }
+            }
+        }
 
         LaunchedEffect(engineReady, preset.preset) {
             val engine = engineReady ?: return@LaunchedEffect

@@ -14,6 +14,7 @@ internal actual fun AndroidEffectsMarblePanel(
     preset: ComparisonPresetSpec,
     effectMode: Android2DEffectMode,
     animationTimeSeconds: Float,
+    backgroundEnabled: Boolean,
     modifier: Modifier,
 ) {
     ComparisonPanelCard(

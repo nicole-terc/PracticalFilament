@@ -37,6 +37,7 @@ internal actual fun AndroidEffectsMarblePanel(
     preset: ComparisonPresetSpec,
     effectMode: Android2DEffectMode,
     animationTimeSeconds: Float,
+    backgroundEnabled: Boolean,
     modifier: Modifier,
 ) {
     val agslSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -55,6 +56,7 @@ internal actual fun AndroidEffectsMarblePanel(
                 AgslMarbleStage(
                     preset = preset,
                     animationTimeSeconds = animationTimeSeconds,
+                    backgroundEnabled = backgroundEnabled,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -63,6 +65,7 @@ internal actual fun AndroidEffectsMarblePanel(
                 RenderEffectMarbleStage(
                     preset = preset,
                     animationTimeSeconds = animationTimeSeconds,
+                    backgroundEnabled = backgroundEnabled,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -74,14 +77,16 @@ internal actual fun AndroidEffectsMarblePanel(
 private fun RenderEffectMarbleStage(
     preset: ComparisonPresetSpec,
     animationTimeSeconds: Float,
+    backgroundEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val sweep = sin(animationTimeSeconds * 0.72f)
     val drift = cos(animationTimeSeconds * 0.48f)
     val shimmer = sin(animationTimeSeconds * 1.1f)
-    val reflectionAlpha = (0.18f + preset.reflectionStrength * 0.72f).coerceAtMost(0.92f)
+    val backgroundFactor = if (backgroundEnabled) 1f else 0f
+    val reflectionAlpha = (0.12f + preset.reflectionStrength * (0.32f + backgroundFactor * 0.4f)).coerceAtMost(0.92f)
     val rimAlpha = (0.14f + preset.translucency * 0.36f + preset.metallic * 0.08f).coerceAtMost(0.74f)
-    val secondaryGlowAlpha = (0.08f + preset.translucency * 0.22f + preset.reflectionStrength * 0.16f)
+    val secondaryGlowAlpha = (0.04f + preset.translucency * 0.16f + preset.reflectionStrength * (0.06f + backgroundFactor * 0.1f))
         .coerceAtMost(0.46f)
 
     CircularComparisonStage(modifier = modifier) {
@@ -279,6 +284,25 @@ private fun RenderEffectMarbleStage(
                     ),
             )
         }
+
+        if (backgroundEnabled) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                preset.reflectionColor.copy(alpha = 0f),
+                                preset.reflectionColor.copy(alpha = 0.06f),
+                                preset.reflectionColor.copy(alpha = 0f),
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(520f, 380f),
+                        ),
+                    ),
+            )
+        }
     }
 }
 
@@ -286,6 +310,7 @@ private fun RenderEffectMarbleStage(
 private fun AgslMarbleStage(
     preset: ComparisonPresetSpec,
     animationTimeSeconds: Float,
+    backgroundEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -296,7 +321,11 @@ private fun AgslMarbleStage(
             modifier = Modifier.fillMaxSize(),
             factory = { agslView },
             update = { view ->
-                view.update(preset = preset, timeSeconds = animationTimeSeconds)
+                view.update(
+                    preset = preset,
+                    timeSeconds = animationTimeSeconds,
+                    backgroundEnabled = backgroundEnabled,
+                )
             },
         )
     }
@@ -313,13 +342,16 @@ private class AgslMarbleView(
 
     private var preset: ComparisonPresetSpec = ComparisonMaterialPreset.Ceramic.toSpec()
     private var timeSeconds: Float = 0f
+    private var backgroundEnabled: Boolean = false
 
     fun update(
         preset: ComparisonPresetSpec,
         timeSeconds: Float,
+        backgroundEnabled: Boolean,
     ) {
         this.preset = preset
         this.timeSeconds = timeSeconds
+        this.backgroundEnabled = backgroundEnabled
         invalidate()
     }
 
@@ -376,6 +408,7 @@ private class AgslMarbleView(
         shader.setFloatUniform("translucency", preset.translucency)
         shader.setFloatUniform("veinStrength", preset.veinStrength)
         shader.setFloatUniform("reflectionStrength", preset.reflectionStrength)
+        shader.setFloatUniform("backgroundEnabled", if (backgroundEnabled) 1f else 0f)
         canvas.drawRect(0f, 0f, width, height, paint)
     }
 }
@@ -394,6 +427,7 @@ uniform float metallic;
 uniform float translucency;
 uniform float veinStrength;
 uniform float reflectionStrength;
+uniform float backgroundEnabled;
 
 float sdCircle(float2 p, float2 center, float radius) {
     return length(p - center) - radius;
@@ -491,10 +525,12 @@ half4 main(float2 fragCoord) {
 
     float reflectionBand = smoothstep(0.16, 0.0, abs(dot(p, normalize(float2(0.95, 0.31))) - 0.34));
     reflectionBand += smoothstep(0.18, 0.0, abs(dot(p, normalize(float2(0.9, -0.43))) + 0.72));
-    reflectionBand *= reflectionStrength * mix(0.55, 1.0, innerStrength);
+    reflectionBand *= reflectionStrength * mix(0.35, 0.55 + backgroundEnabled * 0.45, innerStrength);
     float primaryGlint = smoothstep(0.055, 0.0, sdCircle(p, float2(-0.24, -0.27), 0.06));
     float secondaryGlint = smoothstep(0.022, 0.0, sdCircle(p, float2(-0.27, -0.09), 0.024));
     float glintMask = (primaryGlint * 0.82 + secondaryGlint * 0.58) * (0.22 + reflectionStrength * 0.46);
+    float backgroundReflection = smoothstep(0.14, 0.0, abs(dot(p, normalize(float2(0.92, 0.38))) - 0.12));
+    backgroundReflection *= backgroundEnabled * reflectionStrength * 0.26;
 
     float backGlow = smoothstep(-0.25, 0.85, z + translucency * 0.55 - p.x * 0.18 - p.y * 0.12) * translucency;
     float shellMask = smoothstep(0.0, 0.18 + innerStrength * 0.22, z);
@@ -511,7 +547,7 @@ half4 main(float2 fragCoord) {
 
     half3 finalColor = diffuseColor;
     finalColor = mix(finalColor, reflectionColor.rgb, half(specular * mix(0.35, 0.82, metallic)));
-    finalColor = mix(finalColor, highlightColor.rgb, half(specular * (0.42 + innerStrength * 0.14) + reflectionBand * 0.12 + glintMask));
+    finalColor = mix(finalColor, highlightColor.rgb, half(specular * (0.42 + innerStrength * 0.14) + reflectionBand * 0.12 + glintMask + backgroundReflection));
     finalColor = mix(finalColor, rimColor.rgb, half(fresnel * (0.24 + translucency * 0.34 + metallic * 0.18)));
 
     return half4(finalColor, 1.0);
