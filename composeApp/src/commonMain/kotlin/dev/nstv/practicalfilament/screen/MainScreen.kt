@@ -34,6 +34,7 @@ private enum class Screen {
     SAMPLE_PAGE_CURL,
     SAMPLE_MULTI_VIEW,
     SAMPLE_LIVE_WALLPAPER,
+    SAMPLE_SKY,
     SAMPLE_GLTF_VIEWER,
     MATERIAL_VIEWER,
     MARBLE,
@@ -87,6 +88,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.SAMPLE_PAGE_CURL -> PageCurlScreen()
                     Screen.SAMPLE_MULTI_VIEW -> MultiViewScreen()
                     Screen.SAMPLE_LIVE_WALLPAPER -> LiveWallpaperScreen()
+                    Screen.SAMPLE_SKY -> SkyScreen()
                     Screen.SAMPLE_GLTF_VIEWER -> GltfViewerScreen()
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
                     Screen.MARBLE -> MarbleScreen()
