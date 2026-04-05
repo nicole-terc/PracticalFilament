@@ -66,6 +66,9 @@ fun LiveWallpaperScreen(
             }
             if (rainbowSkyboxHandle > 0) {
                 currentEngine.setSkybox(rainbowSkyboxHandle)
+                if (selectedPreset == LiveWallpaperPreset.CONFIGURED_SKY) {
+                    currentEngine.setSkyboxColor(rainbowSkyboxHandle, 0f, 0f, 0f, 1f)
+                }
             }
             currentEngine.updateCamera(selectedPreset.cameraAt(seconds = 0f))
             currentEngine.requestFrame()
@@ -106,6 +109,13 @@ fun LiveWallpaperScreen(
 
     LaunchedEffect(engine, selectedPreset, rainbowSkyboxHandle, assetHandle, animationCount) {
         val currentEngine = engine ?: return@LaunchedEffect
+        if (selectedPreset == LiveWallpaperPreset.CONFIGURED_SKY) {
+            if (rainbowSkyboxHandle > 0) {
+                currentEngine.setSkyboxColor(rainbowSkyboxHandle, 0f, 0f, 0f, 1f)
+                currentEngine.requestFrame()
+            }
+            return@LaunchedEffect
+        }
         if (!selectedPreset.usesModel) {
             if (rainbowSkyboxHandle <= 0) return@LaunchedEffect
             while (true) {
@@ -154,6 +164,9 @@ fun LiveWallpaperScreen(
         },
         controls = {
             notice?.let { SampleNotice(it) }
+            if (selectedPreset == LiveWallpaperPreset.CONFIGURED_SKY) {
+                SampleNotice("Configured Sky uses the saved settings from the Sky sample.")
+            }
             DropDownWithArrows(
                 options = LiveWallpaperPreset.entries.map { it.label },
                 selectedIndex = LiveWallpaperPreset.entries.indexOf(selectedPreset),
@@ -173,6 +186,12 @@ fun LiveWallpaperScreen(
 @Composable
 expect fun SetAsWallpaperButton(
     selectedPreset: LiveWallpaperPreset,
+    modifier: Modifier = Modifier,
+)
+
+@Composable
+expect fun SetSkyAsWallpaperButton(
+    config: SkyWallpaperConfig,
     modifier: Modifier = Modifier,
 )
 

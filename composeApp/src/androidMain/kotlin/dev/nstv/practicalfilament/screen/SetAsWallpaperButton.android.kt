@@ -22,15 +22,38 @@ actual fun SetAsWallpaperButton(
         modifier = modifier,
         onClick = {
             LiveWallpaperPreferences.saveSelectedPreset(context, selectedPreset)
-            val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
-                putExtra(
-                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                    ComponentName(context.packageName, LiveWallpaperServiceClassName),
-                )
-            }
-            context.startActivity(intent)
+            launchWallpaperPicker(context)
         },
     ) {
         Text("Set as Wallpaper")
     }
+}
+
+@Composable
+actual fun SetSkyAsWallpaperButton(
+    config: SkyWallpaperConfig,
+    modifier: Modifier,
+) {
+    val context = LocalContext.current
+
+    Button(
+        modifier = modifier,
+        onClick = {
+            LiveWallpaperPreferences.saveSelectedPreset(context, LiveWallpaperPreset.CONFIGURED_SKY)
+            LiveWallpaperPreferences.saveSkyConfig(context, config)
+            launchWallpaperPicker(context)
+        },
+    ) {
+        Text("Set as Wallpaper")
+    }
+}
+
+private fun launchWallpaperPicker(context: android.content.Context) {
+    val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
+        putExtra(
+            WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+            ComponentName(context.packageName, LiveWallpaperServiceClassName),
+        )
+    }
+    context.startActivity(intent)
 }
