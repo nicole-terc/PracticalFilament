@@ -1,7 +1,12 @@
 package dev.nstv.practicalfilament.filament
 
+import dev.nstv.practicalfilament.filament.material.LoadedMaterial
+import dev.nstv.practicalfilament.filament.material.Material
+import dev.nstv.practicalfilament.filament.material.Material.TextureMaterial
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
+import dev.nstv.practicalfilament.filament.material.buildMaterialParameters
+import practicalfilament.composeapp.generated.resources.Res
 
 interface FilamentEngine {
     fun initialize()
@@ -31,6 +36,48 @@ interface FilamentEngine {
 
     // Materials
     fun loadMaterial(path: String): Int
+    fun loadMaterial(material: Material): LoadedMaterial {
+        val materialHandle = loadMaterial(Res.getUri(material.materialPath))
+        if (materialHandle <= 0) {
+            return LoadedMaterial(
+                instanceHandle = -1,
+                definitions = emptyList(),
+                parameters = emptyMap(),
+            )
+        }
+
+        val definitions = getMaterialParameters(materialHandle)
+        val instanceHandle = createMaterialInstance(materialHandle)
+        if (instanceHandle <= 0) {
+            return LoadedMaterial(
+                instanceHandle = -1,
+                definitions = definitions,
+                parameters = emptyMap(),
+            )
+        }
+
+        val parameters = buildMaterialParameters(definitions, material)
+        val textureHandles = if (material is TextureMaterial) {
+            buildMap {
+                material.textureBindings.forEach { binding ->
+                    val textureHandle = loadTexture(Res.getUri(binding.texturePath))
+                    if (textureHandle > 0) {
+                        setTextureParameter(instanceHandle, binding.parameterName, textureHandle)
+                        put(binding.texturePath, textureHandle)
+                    }
+                }
+            }
+        } else {
+            emptyMap()
+        }
+
+        return LoadedMaterial(
+            instanceHandle = instanceHandle,
+            definitions = definitions,
+            parameters = parameters,
+            textureHandles = textureHandles,
+        )
+    }
     fun getMaterialParameters(materialHandle: Int): List<MaterialParameterDefinition>
     fun createMaterialInstance(materialHandle: Int): Int
     fun setMaterialParameter(instanceHandle: Int, param: MaterialParameter)

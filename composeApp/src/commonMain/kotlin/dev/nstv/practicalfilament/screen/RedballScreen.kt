@@ -27,7 +27,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import dev.nstv.practicalfilament.components.ParameterInputField
-import dev.nstv.practicalfilament.components.RedballMaterial
+import dev.nstv.practicalfilament.components.materials.redballMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.Color
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -37,7 +37,6 @@ import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
-import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.theme.Grid
 import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.sqrt
@@ -180,10 +179,7 @@ fun RedballScreen(
                 lights = RedballBaseLights,
                 backgroundColor = Color(0f, 0f, 0f, 1f),
                 onEngineReady = { engine ->
-                    val (instanceHandle, definitions, parameters) = loadMaterialOnEngine(
-                        engine,
-                        RedballMaterial,
-                    )
+                    val loaded = engine.loadMaterial(redballMaterial())
                     val indirectLightHandle =
                         engine.loadIndirectLight(Res.getUri(RedballIndirectLightPath))
                     if (indirectLightHandle > 0) {
@@ -197,9 +193,9 @@ fun RedballScreen(
                         engine.setSkybox(skyboxHandle)
                     }
                     filamentEngine = engine
-                    materialParameterDefinitions = definitions
-                    materialParameters = parameters
-                    materialInstanceHandle = instanceHandle
+                    materialParameterDefinitions = loaded.definitions
+                    materialParameters = loaded.parameters
+                    materialInstanceHandle = loaded.instanceHandle
                     orientation = initialRedballOrientation()
                     lastDragPoint = null
                     gestureLightHandle = 0
@@ -207,7 +203,7 @@ fun RedballScreen(
                     gestureLightScreenPosition = null
                     gestureLightVersion = 0L
                     renderableHandle = engine.createSphereRenderable(
-                        materialInstanceHandle = instanceHandle,
+                        materialInstanceHandle = loaded.instanceHandle,
                         radius = 1f,
                     )
                 },

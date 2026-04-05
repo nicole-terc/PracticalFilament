@@ -28,7 +28,8 @@ import androidx.compose.ui.unit.IntSize
 import dev.nstv.composablesheep.library.model.DefaultHeadRotationAngle
 import dev.nstv.composablesheep.library.model.FluffStyle
 import dev.nstv.practicalfilament.components.ParameterInputField
-import dev.nstv.practicalfilament.components.SheepFluffMaterial
+import dev.nstv.practicalfilament.components.materials.sheepBodyMaterial
+import dev.nstv.practicalfilament.components.materials.sheepFluffMaterial
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CameraConfig
@@ -45,7 +46,6 @@ import dev.nstv.practicalfilament.filament.VertexAttribute
 import dev.nstv.practicalfilament.filament.VertexAttributeLayout
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
-import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.filament.toByteArray
 import dev.nstv.practicalfilament.theme.Grid
 import practicalfilament.composeapp.generated.resources.Res
@@ -58,7 +58,6 @@ import kotlin.math.sqrt
 
 private const val SheepIndirectLightPath = "files/envs/pillars_2k/pillars_2k_ibl.ktx"
 private const val SheepSkyboxPath = "files/envs/pillars_2k/pillars_2k_skybox.ktx"
-private const val SheepBodyMaterialPath = "files/materials/sheepBody.filamat"
 private const val SheepEnvironmentIntensity = 50_000f
 private const val SheepFluffRadius = 1f
 private const val SheepFluffCoreRadius = 0.42f
@@ -318,10 +317,7 @@ fun SheepScreen(
                 lights = SheepBaseLights,
                 backgroundColor = Color(0f, 0f, 0f, 1f),
                 onEngineReady = { engine ->
-                    val (fluffInstanceHandle, definitions, parameters) = loadMaterialOnEngine(
-                        engine = engine,
-                        material = SheepFluffMaterial,
-                    )
+                    val fluffMaterial = engine.loadMaterial(sheepFluffMaterial())
                     val indirectLightHandle = engine.loadIndirectLight(Res.getUri(SheepIndirectLightPath))
                     if (indirectLightHandle > 0) {
                         engine.setIndirectLight(
@@ -340,11 +336,13 @@ fun SheepScreen(
                     explosionState.reset()
                     explosionProgressControl = 0f
                     supportNotice = null
-                    fluffMaterialInstanceHandle = fluffInstanceHandle
-                    materialParameterDefinitions = definitions
-                    materialParameters = parameters
+                    fluffMaterialInstanceHandle = fluffMaterial.instanceHandle
+                    materialParameterDefinitions = fluffMaterial.definitions
+                    materialParameters = fluffMaterial.parameters
 
-                    val bodyMaterialHandle = engine.loadMaterial(Res.getUri(SheepBodyMaterialPath))
+                    val bodyMaterialHandle = engine.loadMaterial(
+                        Res.getUri(sheepBodyMaterial().materialPath)
+                    )
                     if (bodyMaterialHandle <= 0) {
                         renderables = emptyList()
                         supportNotice = "The sheep body material could not be loaded."
@@ -378,7 +376,7 @@ fun SheepScreen(
 
                     val createdRenderables = buildSheepRenderables(
                         engine = engine,
-                        fluffInstanceHandle = fluffInstanceHandle,
+                        fluffInstanceHandle = fluffMaterial.instanceHandle,
                         bodyInstanceHandle = bodyInstance,
                         eyeInstanceHandle = eyeInstance,
                         pupilInstanceHandle = pupilInstance,

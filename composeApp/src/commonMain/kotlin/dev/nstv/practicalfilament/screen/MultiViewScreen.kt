@@ -15,7 +15,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
-import dev.nstv.practicalfilament.components.MorphingMaterial
+import dev.nstv.practicalfilament.components.materials.morphingMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.Color
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -24,7 +24,6 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.ViewportConfig
-import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 
 @Composable
 fun MultiViewScreen(
@@ -95,10 +94,12 @@ fun MultiViewScreen(
                 ),
                 backgroundColor = Color(0.03f, 0.03f, 0.03f, 1f),
                 onEngineReady = { readyEngine ->
-                    val (instanceHandle, _, parameters) = loadMaterialOnEngine(readyEngine, MorphingMaterial)
-                    parameters.values.forEach { readyEngine.setMaterialParameter(instanceHandle, it) }
+                    val loaded = readyEngine.loadMaterial(morphingMaterial())
+                    loaded.parameters.values.forEach {
+                        readyEngine.setMaterialParameter(loaded.instanceHandle, it)
+                    }
                     engine = readyEngine
-                    cubeHandle = readyEngine.createCubeRenderable(instanceHandle, size = 1.6f)
+                    cubeHandle = readyEngine.createCubeRenderable(loaded.instanceHandle, size = 1.6f)
                     if (cubeHandle <= 0) {
                         notice = "This sample currently needs both cube and multi-view engine support."
                     }

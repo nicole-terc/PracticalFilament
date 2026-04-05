@@ -27,7 +27,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
-import dev.nstv.practicalfilament.components.MorphingMaterial
+import dev.nstv.practicalfilament.components.materials.morphingMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.Color
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -36,7 +36,6 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.MorphRenderableGeometry
-import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.CheckBoxLabel
 import practicalfilament.composeapp.generated.resources.Res
@@ -144,10 +143,7 @@ fun MorphingScreen(
                 lights = MorphingBaseLights,
                 backgroundColor = Color(0.6f, 0.6f, 0.6f, 1f),
                 onEngineReady = { engine ->
-                    val (instanceHandle, _, _) = loadMaterialOnEngine(
-                        engine,
-                        MorphingMaterial,
-                    )
+                    val loaded = engine.loadMaterial(morphingMaterial())
                     val indirectLightHandle =
                         engine.loadIndirectLight(Res.getUri(MorphingIndirectLightPath))
                     if (indirectLightHandle > 0) {
@@ -164,7 +160,7 @@ fun MorphingScreen(
                     orientation = initialMorphingOrientation()
                     lastDragPoint = null
                     renderableHandle = engine.createMorphRenderable(
-                        materialInstanceHandle = instanceHandle,
+                        materialInstanceHandle = loaded.instanceHandle,
                         geometry = buildMorphingCubeGeometry(size = 0.45f),
                     )
                 },

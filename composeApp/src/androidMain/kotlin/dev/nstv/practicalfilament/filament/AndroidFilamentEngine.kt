@@ -3,6 +3,7 @@ package dev.nstv.practicalfilament.filament
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.opengl.Matrix
+import android.util.Log
 import android.view.Choreographer
 import android.view.Surface
 import com.google.android.filament.Camera
@@ -44,6 +45,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
+
+private const val MaxDecodedTextureDimension = 2048
 
 class AndroidFilamentEngine(
     private val context: Context,
@@ -704,33 +707,54 @@ class AndroidFilamentEngine(
             return handle
         }
 
-        val bytes = loadAssetBytes(path) ?: return -1
-        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return -1
-        val pixelBuffer = ByteBuffer.allocateDirect(bitmap.byteCount)
-        bitmap.copyPixelsToBuffer(pixelBuffer)
-        pixelBuffer.flip()
+        return try {
+            val bytes = loadAssetBytes(path) ?: return -1
+            val bounds = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return -1
 
-        val texture = Texture.Builder()
-            .width(bitmap.width)
-            .height(bitmap.height)
-            .sampler(Texture.Sampler.SAMPLER_2D)
-            .format(Texture.InternalFormat.RGBA8)
-            .levels(1)
-            .build(eng)
-        texture.setImage(
-            eng,
-            0,
-            Texture.PixelBufferDescriptor(
-                pixelBuffer,
-                Texture.Format.RGBA,
-                Texture.Type.UBYTE,
+            val decodeOptions = BitmapFactory.Options().apply {
+                inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+                inScaled = false
+                inSampleSize = calculateInSampleSize(
+                    width = bounds.outWidth,
+                    height = bounds.outHeight,
+                    maxDimension = MaxDecodedTextureDimension,
+                )
+            }
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions) ?: return -1
+
+            val pixelBuffer = ByteBuffer.allocateDirect(bitmap.byteCount)
+            bitmap.copyPixelsToBuffer(pixelBuffer)
+            pixelBuffer.flip()
+
+            val texture = Texture.Builder()
+                .width(bitmap.width)
+                .height(bitmap.height)
+                .sampler(Texture.Sampler.SAMPLER_2D)
+                .format(Texture.InternalFormat.RGBA8)
+                .levels(1)
+                .build(eng)
+            texture.setImage(
+                eng,
+                0,
+                Texture.PixelBufferDescriptor(
+                    pixelBuffer,
+                    Texture.Format.RGBA,
+                    Texture.Type.UBYTE,
+                )
             )
-        )
-        bitmap.recycle()
+            bitmap.recycle()
 
-        val handle = nextHandle++
-        textures[handle] = texture
-        return handle
+            val handle = nextHandle++
+            textures[handle] = texture
+            handle
+        } catch (error: OutOfMemoryError) {
+            Log.w("AndroidFilamentEngine", "Failed to load texture due to memory pressure: $path", error)
+            -1
+        }
     }
 
     override fun setTextureParameter(instanceHandle: Int, paramName: String, textureHandle: Int) {
@@ -1681,6 +1705,21 @@ class AndroidFilamentEngine(
         var addedToScene: Boolean,
     )
 
+}
+
+private fun calculateInSampleSize(
+    width: Int,
+    height: Int,
+    maxDimension: Int,
+): Int {
+    if (width <= 0 || height <= 0 || maxDimension <= 0) return 1
+    var inSampleSize = 1
+    var largestDimension = max(width, height)
+    while (largestDimension > maxDimension) {
+        largestDimension /= 2
+        inSampleSize *= 2
+    }
+    return inSampleSize
 }
 
 private fun FloatArray.toFloat4Array(): FloatArray {
