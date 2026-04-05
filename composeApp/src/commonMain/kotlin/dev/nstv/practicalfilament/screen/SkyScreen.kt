@@ -3,6 +3,7 @@ package dev.nstv.practicalfilament.screen
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.sp
 import dev.nstv.practicalfilament.filament.AttributeDataType
@@ -109,6 +111,9 @@ private const val DefaultWaterStrength = 50f
 private const val DefaultWaterSpeed = 1f
 private const val DefaultWaterOctaves = 4f
 private const val DefaultManualTimeHours = 12f
+private const val DefaultCameraAzimuth = 0f
+private const val DefaultCameraElevation = 0f
+private const val MaxCameraElevation = 89f
 
 private const val PlanetRadiusKm = 6360f
 
@@ -171,11 +176,12 @@ fun SkyScreen(
     var syncEnabled by remember { mutableStateOf(false) }
     var syncManualOverride by remember { mutableStateOf(false) }
     var manualTimeHours by remember { mutableFloatStateOf(DefaultManualTimeHours) }
-    var syncMoonPosition by remember { mutableStateOf(true) }
     var syncDeviceLocation by remember { mutableStateOf(false) }
     var syncLatitude by remember { mutableFloatStateOf(DefaultMilkyWayLatitude) }
     var syncLongitude by remember { mutableFloatStateOf(0f) }
     var syncNotice by remember { mutableStateOf<String?>(null) }
+    var cameraAzimuth by remember { mutableFloatStateOf(DefaultCameraAzimuth) }
+    var cameraElevation by remember { mutableFloatStateOf(DefaultCameraElevation) }
 
     val editableConfig = SkyWallpaperConfig(
         sunAzimuth = sunAzimuth,
@@ -227,7 +233,6 @@ fun SkyScreen(
         syncEnabled = syncEnabled,
         syncManualOverride = syncManualOverride,
         manualTimeHours = manualTimeHours,
-        syncMoonPosition = syncMoonPosition,
         syncDeviceLocation = syncDeviceLocation,
         syncLatitude = syncLatitude,
         syncLongitude = syncLongitude,
@@ -236,7 +241,6 @@ fun SkyScreen(
 
     fun clearRealtimeSync() {
         syncEnabled = false
-        syncMoonPosition = true
         syncNotice = null
     }
 
@@ -255,18 +259,11 @@ fun SkyScreen(
         change()
     }
 
-    fun applyMoonPositionOverride(change: () -> Unit) {
-        syncMoonPosition = false
-        applyMoonEdit(change)
-    }
-
     fun applyRealtimeValues(realtimeValues: SkyRealtimeValues) {
         sunAzimuth = realtimeValues.sunAzimuth
         sunHeight = realtimeValues.sunHeight
-        if (syncMoonPosition) {
-            moonAzimuth = realtimeValues.moonAzimuth
-            moonHeight = realtimeValues.moonHeight
-        }
+        moonAzimuth = realtimeValues.moonAzimuth
+        moonHeight = realtimeValues.moonHeight
         milkyWaySiderealTime = realtimeValues.siderealTimeHours
         milkyWayLatitude = syncLatitude
     }
@@ -302,13 +299,15 @@ fun SkyScreen(
         materialInstanceHandle,
         viewportHeightPx,
         editableConfig,
+        cameraAzimuth,
+        cameraElevation,
     ) {
         val currentEngine = engine ?: return@LaunchedEffect
         if (materialInstanceHandle <= 0) return@LaunchedEffect
         currentEngine.updateCamera(
             CameraConfig(
                 position = Float3(0f, 0f, 0f),
-                lookAt = Float3(1f, 0f, 0f),
+                lookAt = skyCameraLookDirection(cameraAzimuth, cameraElevation),
                 fovDegrees = computeVerticalFovDegrees(focalLength).toDouble(),
                 near = 0.1,
                 far = 5000.0,
@@ -391,10 +390,22 @@ fun SkyScreen(
             FilamentView(
                 modifier = Modifier
                     .fillMaxSize()
-                    .onSizeChanged { viewportHeightPx = it.height.coerceAtLeast(1) },
+                    .onSizeChanged { viewportHeightPx = it.height.coerceAtLeast(1) }
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            val width = size.width.toFloat().coerceAtLeast(1f)
+                            val height = size.height.toFloat().coerceAtLeast(1f)
+                            cameraAzimuth = normalizeAngleDegrees(
+                                cameraAzimuth - dragAmount.x * 180f / width,
+                            )
+                            cameraElevation = (cameraElevation + dragAmount.y * 120f / height)
+                                .coerceIn(-MaxCameraElevation, MaxCameraElevation)
+                            change.consume()
+                        }
+                    },
                 camera = CameraConfig(
                     position = Float3(0f, 0f, 0f),
-                    lookAt = Float3(1f, 0f, 0f),
+                    lookAt = skyCameraLookDirection(cameraAzimuth, cameraElevation),
                     fovDegrees = 53.13,
                     near = 0.1,
                     far = 5000.0,
@@ -518,12 +529,19 @@ fun SkyScreen(
             ExpandableSection(
                 title = "Moon",
             ) {
-                if (realtimeModeEnabled) {
-                    CheckBoxLabel("Sync Position", syncMoonPosition, { syncMoonPosition = it })
-                }
                 CheckBoxLabel("Enabled", moonEnabled, { applyMoonEdit { moonEnabled = it } })
-                SkySlider("Azimuth", moonAzimuth, 0f..360f) { applyMoonPositionOverride { moonAzimuth = it } }
-                SkySlider("Height", moonHeight, -0.2f..1f) { applyMoonPositionOverride { moonHeight = it } }
+                SkySlider(
+                    "Azimuth",
+                    moonAzimuth,
+                    0f..360f,
+                    enabled = !realtimeModeEnabled,
+                ) { applyManualEdit { moonAzimuth = it } }
+                SkySlider(
+                    "Height",
+                    moonHeight,
+                    -0.2f..1f,
+                    enabled = !realtimeModeEnabled,
+                ) { applyManualEdit { moonHeight = it } }
                 SkySlider("Intensity", moonIntensity, 0f..1000f) { applyMoonEdit { moonIntensity = it } }
                 SkySlider("Radius", moonRadius, 0.1f..5f) { applyMoonEdit { moonRadius = it } }
             }
@@ -1296,6 +1314,25 @@ private fun computeVerticalFovDegrees(
     val focal = focalLengthMm.coerceAtLeast(1f).toDouble()
     val sensor = sensorHeightMm.toDouble()
     return ((2.0 * kotlin.math.atan(sensor / (2.0 * focal))) * 180.0 / PI).toFloat()
+}
+
+private fun skyCameraLookDirection(
+    azimuthDegrees: Float,
+    elevationDegrees: Float,
+): Float3 {
+    val azimuthRadians = degreesToRadians(azimuthDegrees)
+    val elevationRadians = degreesToRadians(elevationDegrees)
+    val horizontal = cos(elevationRadians)
+    return Float3(
+        x = horizontal * cos(azimuthRadians),
+        y = sin(elevationRadians),
+        z = horizontal * sin(azimuthRadians),
+    )
+}
+
+private fun normalizeAngleDegrees(value: Float): Float {
+    val normalized = value % 360f
+    return if (normalized < 0f) normalized + 360f else normalized
 }
 
 private fun degreesToRadians(degrees: Float): Float = (degrees.toDouble() * PI / 180.0).toFloat()

@@ -50,7 +50,6 @@ data class SkyWallpaperConfig(
     val syncEnabled: Boolean = false,
     val syncManualOverride: Boolean = false,
     val manualTimeHours: Float = 12f,
-    val syncMoonPosition: Boolean = true,
     val syncDeviceLocation: Boolean = false,
     val syncLatitude: Float = 34f,
     val syncLongitude: Float = 0f,
@@ -106,14 +105,13 @@ data class SkyWallpaperConfig(
         add(if (syncEnabled) "1" else "0")
         add(if (syncManualOverride) "1" else "0")
         add(manualTimeHours.toString())
-        add(if (syncMoonPosition) "1" else "0")
         add(if (syncDeviceLocation) "1" else "0")
         add(syncLatitude.toString())
         add(syncLongitude.toString())
     }.joinToString("|")
 
     companion object {
-        private const val SerializationVersion = 6
+        private const val SerializationVersion = 7
 
         val default = SkyWallpaperConfig()
 
@@ -204,7 +202,6 @@ data class SkyWallpaperConfig(
                         syncEnabled = legacyManualOverride || legacySyncDeviceLocation,
                         syncManualOverride = legacyManualOverride,
                         manualTimeHours = legacyManualTime,
-                        syncMoonPosition = true,
                         syncDeviceLocation = legacySyncDeviceLocation,
                         syncLatitude = latitude,
                         syncLongitude = longitude,
@@ -214,7 +211,6 @@ data class SkyWallpaperConfig(
                     syncEnabled = nextBoolean(default.syncEnabled),
                     syncManualOverride = false,
                     manualTimeHours = default.manualTimeHours,
-                    syncMoonPosition = true,
                     syncDeviceLocation = nextBoolean(default.syncDeviceLocation),
                     syncLatitude = nextFloat(default.syncLatitude),
                     syncLongitude = nextFloat(default.syncLongitude),
@@ -223,16 +219,31 @@ data class SkyWallpaperConfig(
                     syncEnabled = nextBoolean(default.syncEnabled),
                     syncManualOverride = false,
                     manualTimeHours = default.manualTimeHours,
-                    syncMoonPosition = nextBoolean(default.syncMoonPosition),
                     syncDeviceLocation = nextBoolean(default.syncDeviceLocation),
                     syncLatitude = nextFloat(default.syncLatitude),
                     syncLongitude = nextFloat(default.syncLongitude),
                 )
+                6 -> {
+                    val syncEnabled = nextBoolean(default.syncEnabled)
+                    val syncManualOverride = nextBoolean(default.syncManualOverride)
+                    val manualTimeHours = nextFloat(default.manualTimeHours)
+                    nextBoolean(default.syncDeviceLocation) // legacy syncMoonPosition
+                    val syncDeviceLocation = nextBoolean(default.syncDeviceLocation)
+                    val syncLatitude = nextFloat(default.syncLatitude)
+                    val syncLongitude = nextFloat(default.syncLongitude)
+                    common.copy(
+                        syncEnabled = syncEnabled,
+                        syncManualOverride = syncManualOverride,
+                        manualTimeHours = manualTimeHours,
+                        syncDeviceLocation = syncDeviceLocation,
+                        syncLatitude = syncLatitude,
+                        syncLongitude = syncLongitude,
+                    )
+                }
                 else -> common.copy(
                     syncEnabled = nextBoolean(default.syncEnabled),
                     syncManualOverride = nextBoolean(default.syncManualOverride),
                     manualTimeHours = nextFloat(default.manualTimeHours),
-                    syncMoonPosition = nextBoolean(default.syncMoonPosition),
                     syncDeviceLocation = nextBoolean(default.syncDeviceLocation),
                     syncLatitude = nextFloat(default.syncLatitude),
                     syncLongitude = nextFloat(default.syncLongitude),

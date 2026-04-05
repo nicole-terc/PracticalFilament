@@ -18,15 +18,11 @@ fun resolveRealtimeSkyConfig(
         resolved = resolved.copy(
             sunAzimuth = sync.sunAzimuth,
             sunHeight = sync.sunHeight,
+            moonAzimuth = sync.moonAzimuth,
+            moonHeight = sync.moonHeight,
             milkyWaySiderealTime = sync.siderealTimeHours,
             milkyWayLatitude = config.syncLatitude,
         )
-        if (config.syncMoonPosition) {
-            resolved = resolved.copy(
-                moonAzimuth = sync.moonAzimuth,
-                moonHeight = sync.moonHeight,
-            )
-        }
     }
     return resolved
 }
