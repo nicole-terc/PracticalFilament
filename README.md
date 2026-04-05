@@ -3,12 +3,6 @@ Codebase for Practical Filament talk :D
 
 Sample code using Google's [Filament](https://github.com/google/filament) framework
 
-## Asset disclaimer
-
-This repo includes a bunch of materials and environment maps pulled from the upstream [google/filament](https://github.com/google/filament/tree/main) samples and third-party assets used there.
-
-They belong to their original authors and keep their original licenses. If you want to reuse or ship any of them outside this demo, check the Filament repo, `filament-assets/envs/URL.txt`, and any license files that came with the source assets first.
-
 ## Asset generation
 
 Filament's macOS SDK is vendored in `tools/filament/1.70.1` so material and environment assets can be rebuilt locally without depending on a separate desktop install.
@@ -18,6 +12,11 @@ Filament's macOS SDK is vendored in `tools/filament/1.70.1` so material and envi
 - Run `./scripts/generate-filament-assets.sh`
 
 The script compiles `.mat` files into `composeApp/src/commonMain/composeResources/files/materials/*.filamat` and generates environment KTX outputs under `composeApp/src/commonMain/composeResources/files/envs/`.
+
+### Asset disclaimer
+
+This demo includes several materials and environment resources from the [google/filament](https://github.com/google/filament/tree/main) samples and third-party assets. They belong to their original authors and keep their original licenses.
+
 
 ## Gotchas
 
