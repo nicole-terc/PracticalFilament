@@ -14,3 +14,14 @@ actual fun SetAsWallpaperButton(
         modifier = modifier,
     )
 }
+
+@Composable
+actual fun SetSkyAsWallpaperButton(
+    config: SkyWallpaperConfig,
+    modifier: Modifier,
+) {
+    Text(
+        text = "Set as Wallpaper is not supported on iOS",
+        modifier = modifier,
+    )
+}

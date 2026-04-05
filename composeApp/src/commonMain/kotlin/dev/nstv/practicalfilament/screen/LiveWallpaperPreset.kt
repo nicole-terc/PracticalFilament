@@ -18,6 +18,11 @@ enum class LiveWallpaperPreset(
         label = "Rainbow Sky",
         fieldOfViewDegrees = 45.0,
     ),
+    CONFIGURED_SKY(
+        storageKey = "configured_sky",
+        label = "Configured Sky",
+        fieldOfViewDegrees = 45.0,
+    ),
     HELMET(
         storageKey = "helmet",
         label = "Damaged Helmet",
