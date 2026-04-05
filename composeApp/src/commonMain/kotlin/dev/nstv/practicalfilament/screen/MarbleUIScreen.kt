@@ -61,7 +61,6 @@ import dev.nstv.practicalfilament.filament.PrimitiveType
 import dev.nstv.practicalfilament.filament.VertexAttribute
 import dev.nstv.practicalfilament.filament.VertexAttributeLayout
 import dev.nstv.practicalfilament.filament.material.Material
-import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.filament.toByteArray
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
@@ -287,7 +286,7 @@ private fun MarbleOption(
                 .aspectRatio(1f)
                 .clickable(onClick = onClick),
         ) {
-            key(preset.fileName) {
+            key(preset.materialPath) {
                 SphereMaterialView(
                     modifier = Modifier.fillMaxSize(),
                     material = preset,
@@ -355,11 +354,11 @@ private fun SphereMaterialView(
         backgroundColor = MarbleUiBackgroundFilament,
         clipShape = FilamentClipShape.Circle,
         onEngineReady = { engine ->
-            val (instanceHandle, _, parameters) = loadMaterialOnEngine(engine, material)
-            parameters.values.forEach { engine.setMaterialParameter(instanceHandle, it) }
+            val loaded = engine.loadMaterial(material)
+            loaded.parameters.values.forEach { engine.setMaterialParameter(loaded.instanceHandle, it) }
             engineReady = engine
             renderableHandle = engine.createSphereRenderable(
-                materialInstanceHandle = instanceHandle,
+                materialInstanceHandle = loaded.instanceHandle,
                 radius = radius,
             )
         },
@@ -386,7 +385,7 @@ private fun SampleMarbleButton(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            key(preset.fileName) {
+            key(preset.materialPath) {
                 ButtonMaterialBackground(
                     preset = preset,
                     curvature = curvature,
@@ -432,9 +431,9 @@ private fun ButtonMaterialBackground(
             backgroundColor = MarbleUiBackgroundFilament,
             clipShape = ButtonClipShape,
             onEngineReady = { engine ->
-                val (instanceHandle, _, parameters) = loadMaterialOnEngine(engine, preset)
-                parameters.values.forEach { engine.setMaterialParameter(instanceHandle, it) }
-                materialInstanceHandle = instanceHandle
+                val loaded = engine.loadMaterial(preset)
+                loaded.parameters.values.forEach { engine.setMaterialParameter(loaded.instanceHandle, it) }
+                materialInstanceHandle = loaded.instanceHandle
                 engineReady = engine
             },
         )

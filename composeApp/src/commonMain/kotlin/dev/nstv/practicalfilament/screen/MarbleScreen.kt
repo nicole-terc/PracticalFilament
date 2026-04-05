@@ -24,8 +24,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
-import dev.nstv.practicalfilament.components.MaterialOverridesList
 import dev.nstv.practicalfilament.components.ParameterInputField
+import dev.nstv.practicalfilament.components.materials.MaterialOverridesList
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.Color
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -37,7 +37,6 @@ import dev.nstv.practicalfilament.filament.material.BuiltInTexture
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.generateTexturePixels
-import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import kotlin.math.sqrt
@@ -165,18 +164,15 @@ fun MarbleScreen(
                 ),
                 backgroundColor = Color(0.16f, 0.18f, 0.27f, 1f),
                 onEngineReady = { engine ->
-                    val (instanceHandle, definitions, parameters) = loadMaterialOnEngine(
-                        engine,
-                        marbleMaterials[selectedMaterialIndex],
-                    )
+                    val loaded = engine.loadMaterial(marbleMaterials[selectedMaterialIndex])
                     filamentEngine = engine
                     textureHandles = emptyMap()
-                    materialParameterDefinitions = definitions
-                    materialParameters = parameters
-                    materialInstanceHandle = instanceHandle
+                    materialParameterDefinitions = loaded.definitions
+                    materialParameters = loaded.parameters
+                    materialInstanceHandle = loaded.instanceHandle
                     gestureLightHandle = 0
                     renderableHandle = engine.createSphereRenderable(
-                        materialInstanceHandle = instanceHandle,
+                        materialInstanceHandle = loaded.instanceHandle,
                         radius = 1f,
                     )
                 },
@@ -227,20 +223,17 @@ fun MarbleScreen(
                         renderableHandle = 0
                     }
 
-                    val (instanceHandle, definitions, parameters) = loadMaterialOnEngine(
-                        engine,
-                        marbleMaterials[index],
-                    )
+                    val loaded = engine.loadMaterial(marbleMaterials[index])
                     textureHandles = emptyMap()
-                    materialParameterDefinitions = definitions
-                    materialParameters = parameters
-                    materialInstanceHandle = instanceHandle
+                    materialParameterDefinitions = loaded.definitions
+                    materialParameters = loaded.parameters
+                    materialInstanceHandle = loaded.instanceHandle
                     if (gestureLightHandle != 0) {
                         engine.removeLight(gestureLightHandle)
                         gestureLightHandle = 0
                     }
                     renderableHandle = engine.createSphereRenderable(
-                        materialInstanceHandle = instanceHandle,
+                        materialInstanceHandle = loaded.instanceHandle,
                         radius = 1f,
                     )
                     gestureLightPosition?.let {

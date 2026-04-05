@@ -19,8 +19,7 @@ import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
-import dev.nstv.practicalfilament.components.textures.BrownMudLeavesMaterial
-import dev.nstv.practicalfilament.components.textures.createTexturedSphere
+import dev.nstv.practicalfilament.components.materials.brownMudLeavesMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.Color
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -47,7 +46,7 @@ private data class LoadedEnvironment(
 )
 
 private val MarbleTextureMaterials = listOf(
-    BrownMudLeavesMaterial,
+    brownMudLeavesMaterial(),
 )
 
 private val MarbleTextureBackgrounds = listOf(
@@ -78,7 +77,6 @@ fun MarbleTextureScreen(
     var gestureLightPosition by remember { mutableStateOf<Float3?>(null) }
     var gestureLightScreenPosition by remember { mutableStateOf<Offset?>(null) }
     var gestureLightVersion by remember { mutableLongStateOf(0L) }
-    var textureHandles by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var environmentHandles by remember { mutableStateOf<Map<String, LoadedEnvironment>>(emptyMap()) }
     var colorSkyboxHandle by remember { mutableIntStateOf(0) }
     var activeIndirectLightHandle by remember { mutableIntStateOf(0) }
@@ -200,15 +198,25 @@ fun MarbleTextureScreen(
                 backgroundColor = Color(0.16f, 0.18f, 0.27f, 1f),
                 onEngineReady = { engine ->
                     filamentEngine = engine
-                    val createdSphere = createTexturedSphere(
-                        engine = engine,
-                        material = MarbleTextureMaterials[selectedMaterialIndex],
-                        existingTextureHandles = textureHandles,
-                        radius = 1f,
-                    )
-                    textureHandles = createdSphere.textureHandles
-                    notice = createdSphere.notice
-                    renderableHandle = createdSphere.renderableHandle
+                    val material = MarbleTextureMaterials[selectedMaterialIndex]
+                    val loaded = engine.loadMaterial(material)
+                    notice = when {
+                        loaded.instanceHandle <= 0 -> "The textured material could not be loaded."
+                        loaded.textureHandles.size != material.textureBindings.size ->
+                            "Some textures could not be loaded."
+                        else -> null
+                    }
+                    renderableHandle = if (loaded.instanceHandle > 0) {
+                        engine.createSphereRenderable(
+                            materialInstanceHandle = loaded.instanceHandle,
+                            radius = 1f,
+                        )
+                    } else {
+                        -1
+                    }
+                    if (renderableHandle <= 0 && loaded.instanceHandle > 0) {
+                        notice = "The textured sphere could not be created on this platform."
+                    }
                 },
             )
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -252,18 +260,25 @@ fun MarbleTextureScreen(
                         renderableHandle = 0
                     }
 
-                    val createdSphere = createTexturedSphere(
-                        engine = engine,
-                        material = MarbleTextureMaterials[index],
-                        existingTextureHandles = textureHandles,
-                        radius = 1f,
-                    )
-                    textureHandles = createdSphere.textureHandles
-                    notice = createdSphere.notice
-                    if (createdSphere.renderableHandle <= 0) {
+                    val material = MarbleTextureMaterials[index]
+                    val loaded = engine.loadMaterial(material)
+                    notice = when {
+                        loaded.instanceHandle <= 0 -> "The textured material could not be loaded."
+                        loaded.textureHandles.size != material.textureBindings.size ->
+                            "Some textures could not be loaded."
+                        else -> null
+                    }
+                    if (loaded.instanceHandle <= 0) {
                         return@DropDownWithArrows
                     }
-                    renderableHandle = createdSphere.renderableHandle
+                    renderableHandle = engine.createSphereRenderable(
+                        materialInstanceHandle = loaded.instanceHandle,
+                        radius = 1f,
+                    )
+                    if (renderableHandle <= 0) {
+                        notice = "The textured sphere could not be created on this platform."
+                        return@DropDownWithArrows
+                    }
                     if (gestureLightHandle != 0) {
                         engine.removeLight(gestureLightHandle)
                         gestureLightHandle = 0

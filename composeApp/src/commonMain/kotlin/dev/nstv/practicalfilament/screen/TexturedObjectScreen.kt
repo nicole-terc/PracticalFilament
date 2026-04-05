@@ -19,7 +19,6 @@ import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
-import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.filament.material.MaterialParameterType
 import practicalfilament.composeapp.generated.resources.Res
 

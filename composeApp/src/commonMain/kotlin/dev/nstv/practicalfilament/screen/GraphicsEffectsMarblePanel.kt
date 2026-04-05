@@ -37,7 +37,6 @@ import dev.nstv.practicalfilament.filament.FilamentClipShape
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentHostViewMode
 import dev.nstv.practicalfilament.filament.FilamentView
-import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.theme.Grid
 import practicalfilament.composeapp.generated.resources.Res
 
@@ -86,10 +85,10 @@ internal fun FilamentComparisonPanel(
                 renderableHandle = 0
             }
 
-            val (instanceHandle, _, parameters) = loadMaterialOnEngine(engine, preset.filamentMaterial)
-            parameters.values.forEach { engine.setMaterialParameter(instanceHandle, it) }
+            val loaded = engine.loadMaterial(preset.filamentMaterial)
+            loaded.parameters.values.forEach { engine.setMaterialParameter(loaded.instanceHandle, it) }
             renderableHandle = engine.createSphereRenderable(
-                materialInstanceHandle = instanceHandle,
+                materialInstanceHandle = loaded.instanceHandle,
                 radius = 1.16f,
             )
             engine.requestFrame()

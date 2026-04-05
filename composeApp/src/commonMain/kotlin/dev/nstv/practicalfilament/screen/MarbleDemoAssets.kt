@@ -7,6 +7,7 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.Material
+import dev.nstv.practicalfilament.filament.material.SimpleMaterial
 
 internal val MarbleUiBackground = ComposeColor(0xFF101721)
 internal val MarbleUiText = ComposeColor(0xFFF4EEE4)
@@ -14,7 +15,7 @@ internal val MarbleUiMuted = ComposeColor(0xFFB6C1CD)
 internal val MarbleUiAccent = ComposeColor(0xFFF6D28A)
 internal val MarbleUiBackgroundFilament = MarbleUiBackground.toFilamentColor()
 
-private const val GlassMaterialPath = "materials/marbleGlass.filamat"
+private const val GlassMaterialPath = "files/materials/marbleGlass.filamat"
 
 internal val SingleMarbleCamera = CameraConfig(
     position = Float3(0f, 0.1f, 4.5f),
@@ -87,8 +88,8 @@ internal val ThemePickerLights = listOf(
     ),
 )
 
-internal val MarbleClayMaterial = Material(
-    fileName = "materials/marbleClay.filamat",
+internal val MarbleClayMaterial = SimpleMaterial(
+    materialPath = "files/materials/marbleClay.filamat",
     label = "Clay",
     overrides = mapOf(
         "baseColor" to Float3(0.76f, 0.42f, 0.26f),
@@ -96,8 +97,8 @@ internal val MarbleClayMaterial = Material(
     ),
 )
 
-internal val MarbleGlassMaterial = Material(
-    fileName = GlassMaterialPath,
+internal val MarbleGlassMaterial = SimpleMaterial(
+    materialPath = GlassMaterialPath,
     label = "Glass",
     overrides = mapOf(
         "baseColor" to Float3(0.92f, 0.96f, 1f),
@@ -111,8 +112,8 @@ internal val MarbleGlassMaterial = Material(
     ),
 )
 
-internal val MarbleStoneMaterial = Material(
-    fileName = "materials/marbleStone.filamat",
+internal val MarbleStoneMaterial = SimpleMaterial(
+    materialPath = "files/materials/marbleStone.filamat",
     label = "Stone",
     overrides = mapOf(
         "baseColor" to Float3(0.88f, 0.86f, 0.82f),
@@ -123,8 +124,8 @@ internal val MarbleStoneMaterial = Material(
     ),
 )
 
-internal val MarbleMetalMaterial = Material(
-    fileName = "materials/marbleMetal.filamat",
+internal val MarbleMetalMaterial = SimpleMaterial(
+    materialPath = "files/materials/marbleMetal.filamat",
     label = "Metal",
     overrides = mapOf(
         "baseColor" to Float3(0.85f, 0.85f, 0.88f),
@@ -134,8 +135,8 @@ internal val MarbleMetalMaterial = Material(
     ),
 )
 
-internal val MarbleCeramicMaterial = Material(
-    fileName = "materials/marbleCeramic.filamat",
+internal val MarbleCeramicMaterial = SimpleMaterial(
+    materialPath = "files/materials/marbleCeramic.filamat",
     label = "Ceramic",
     overrides = mapOf(
         "baseColor" to Float3(0.22f, 0.45f, 0.72f),
@@ -145,8 +146,8 @@ internal val MarbleCeramicMaterial = Material(
     ),
 )
 
-internal val MarbleVelvetMaterial = Material(
-    fileName = "materials/marbleVelvet.filamat",
+internal val MarbleVelvetMaterial = SimpleMaterial(
+    materialPath = "files/materials/marbleVelvet.filamat",
     label = "Velvet",
     overrides = mapOf(
         "baseColor" to Float3(0.55f, 0.08f, 0.22f),
@@ -165,8 +166,8 @@ internal val MarblePresets = listOf(
     MarbleVelvetMaterial,
 )
 
-internal val NeutralSphereMaterial = Material(
-    fileName = "materials/plastic.filamat",
+internal val NeutralSphereMaterial = SimpleMaterial(
+    materialPath = "files/materials/plastic.filamat",
     label = "Neutral Sphere",
     overrides = mapOf(
         "baseColor" to Float3(0.72f, 0.74f, 0.78f),

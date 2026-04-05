@@ -1,38 +1,38 @@
 package dev.nstv.practicalfilament.filament.material
 
-import dev.nstv.practicalfilament.filament.FilamentEngine
-import practicalfilament.composeapp.generated.resources.Res
+sealed interface Material {
+    val label: String
+    val materialPath: String
+    val overrides: Map<String, Any>
+}
 
-data class Material(
-    val fileName: String,
+data class SimpleMaterial(
+    override val label: String,
+    override val materialPath: String,
+    override val overrides: Map<String, Any> = emptyMap(),
+) : Material
+
+data class TextureMaterial(
+    override val label: String,
+    override val materialPath: String,
+    override val overrides: Map<String, Any> = emptyMap(),
+    val textureBindings: List<TextureBinding>,
+) : Material
+
+data class TextureBinding(
+    val parameterName: String,
+    val texturePath: String,
     val label: String,
-    val overrides: Map<String, Any>,
 )
 
-fun loadMaterialOnEngine(
-    engine: FilamentEngine,
-    fileName: String,
-): Triple<Int, List<MaterialParameterDefinition>, Map<String, MaterialParameter>> {
-    val materialHandle = engine.loadMaterial(Res.getUri("files/$fileName"))
-    val definitions = engine.getMaterialParameters(materialHandle)
-    val instanceHandle = engine.createMaterialInstance(materialHandle)
-    val parameters = definitions.associate { definition ->
-        definition.name to defaultMaterialParameter(definition)
-    }
-    return Triple(instanceHandle, definitions, parameters)
-}
+data class LoadedMaterial(
+    val instanceHandle: Int,
+    val definitions: List<MaterialParameterDefinition>,
+    val parameters: Map<String, MaterialParameter>,
+    val textureHandles: Map<String, Int> = emptyMap(),
+)
 
-fun loadMaterialOnEngine(
-    engine: FilamentEngine,
-    material: Material,
-): Triple<Int, List<MaterialParameterDefinition>, Map<String, MaterialParameter>> {
-    val materialHandle = engine.loadMaterial(Res.getUri("files/${material.fileName}"))
-    val definitions = engine.getMaterialParameters(materialHandle)
-    val instanceHandle = engine.createMaterialInstance(materialHandle)
-    return Triple(instanceHandle, definitions, buildMaterialParameters(definitions, material))
-}
-
-private fun buildMaterialParameters(
+internal fun buildMaterialParameters(
     definitions: List<MaterialParameterDefinition>,
     material: Material,
 ): Map<String, MaterialParameter> {

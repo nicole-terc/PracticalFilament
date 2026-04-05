@@ -15,7 +15,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import dev.nstv.practicalfilament.components.RedballMaterial
+import dev.nstv.practicalfilament.components.materials.redballMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.Color
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -23,7 +23,6 @@ import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
-import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.theme.Grid
 import practicalfilament.composeapp.generated.resources.Res
 
@@ -76,8 +75,10 @@ fun IBLScreen(
                 lights = IblLights,
                 backgroundColor = Color(0.02f, 0.03f, 0.05f, 1f),
                 onEngineReady = { readyEngine ->
-                    val (instanceHandle, _, parameters) = loadMaterialOnEngine(readyEngine, RedballMaterial)
-                    parameters.values.forEach { readyEngine.setMaterialParameter(instanceHandle, it) }
+                    val loaded = readyEngine.loadMaterial(redballMaterial())
+                    loaded.parameters.values.forEach {
+                        readyEngine.setMaterialParameter(loaded.instanceHandle, it)
+                    }
                     indirectLightHandle = readyEngine.loadIndirectLight(Res.getUri(IblIndirectLightPath))
                     readyEngine.setIndirectLight(
                         indirectLightHandle,
@@ -85,7 +86,7 @@ fun IBLScreen(
                     )
                     readyEngine.setSkybox(readyEngine.loadSkybox(Res.getUri(IblSkyboxPath)))
                     engine = readyEngine
-                    sphereHandle = readyEngine.createSphereRenderable(instanceHandle, radius = 1f)
+                    sphereHandle = readyEngine.createSphereRenderable(loaded.instanceHandle, radius = 1f)
                 },
             )
         },

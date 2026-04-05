@@ -15,8 +15,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import dev.nstv.practicalfilament.components.MaterialFilesList
 import dev.nstv.practicalfilament.components.ParameterInputField
+import dev.nstv.practicalfilament.components.materials.MaterialFilesList
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.Color
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -28,7 +28,6 @@ import dev.nstv.practicalfilament.filament.material.BuiltInTexture
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.generateTexturePixels
-import dev.nstv.practicalfilament.filament.material.loadMaterialOnEngine
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 
@@ -116,16 +115,13 @@ fun MaterialViewerScreen(
                     ),
                 ),
                 onEngineReady = { engine ->
-                    val (instanceHandle, definitions, parameters) = loadMaterialOnEngine(
-                        engine,
-                        availableMaterials[selectedMaterialIndex],
-                    )
+                    val loaded = engine.loadMaterial(availableMaterials[selectedMaterialIndex])
                     filamentEngine = engine
                     textureHandles = emptyMap()
-                    materialParameterDefinitions = definitions
-                    materialParameters = parameters
-                    materialInstanceHandle = instanceHandle
-                    renderableHandle = engine.createPlaneRenderable(instanceHandle)
+                    materialParameterDefinitions = loaded.definitions
+                    materialParameters = loaded.parameters
+                    materialInstanceHandle = loaded.instanceHandle
+                    renderableHandle = engine.createPlaneRenderable(loaded.instanceHandle)
                 },
             )
         }
@@ -138,7 +134,7 @@ fun MaterialViewerScreen(
                 .padding(Grid.Two)
         ) {
             DropDownWithArrows(
-                options = availableMaterials.map { it.substringAfterLast('/').removeSuffix(".filamat") },
+                options = availableMaterials.map { it.label },
                 selectedIndex = selectedMaterialIndex,
                 label = "Material",
                 onSelectionChanged = { index ->
@@ -151,15 +147,11 @@ fun MaterialViewerScreen(
                         renderableHandle = 0
                     }
 
-                    // Load new material and create renderable
-                    val (instanceHandle, definitions, parameters) = loadMaterialOnEngine(
-                        engine,
-                        availableMaterials[index],
-                    )
-                    materialParameterDefinitions = definitions
-                    materialParameters = parameters
-                    materialInstanceHandle = instanceHandle
-                    renderableHandle = engine.createPlaneRenderable(instanceHandle)
+                    val loaded = engine.loadMaterial(availableMaterials[index])
+                    materialParameterDefinitions = loaded.definitions
+                    materialParameters = loaded.parameters
+                    materialInstanceHandle = loaded.instanceHandle
+                    renderableHandle = engine.createPlaneRenderable(loaded.instanceHandle)
                 },
                 modifier = Modifier.fillMaxWidth().padding(bottom = Grid.One),
             )
