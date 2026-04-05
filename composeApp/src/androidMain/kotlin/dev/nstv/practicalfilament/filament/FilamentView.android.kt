@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewOutlineProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -25,67 +26,81 @@ actual fun FilamentView(
     backgroundColor: Color,
     clipShape: FilamentClipShape?,
     isOpaque: Boolean,
+    hostViewMode: FilamentHostViewMode,
     onEngineReady: (FilamentEngine) -> Unit,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val engine = remember { AndroidFilamentEngine(context) }
+    val resolvedHostMode = when (hostViewMode) {
+        FilamentHostViewMode.Auto -> if (clipShape == null) {
+            FilamentHostViewMode.Surface
+        } else {
+            FilamentHostViewMode.Texture
+        }
+
+        FilamentHostViewMode.Surface -> FilamentHostViewMode.Surface
+        FilamentHostViewMode.Texture -> FilamentHostViewMode.Texture
+    }
+    val engine = remember(context, resolvedHostMode) { AndroidFilamentEngine(context) }
     val effectiveOpaque = isOpaque && backgroundColor.a >= 0.999f && clipShape == null
     val swapChainFlags = if (effectiveOpaque) 0L else SwapChainFlags.CONFIG_TRANSPARENT
 
-    DisposableEffect(Unit) {
+    DisposableEffect(engine) {
         onDispose {
             engine.stopRenderLoop()
             engine.destroy()
         }
     }
 
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            val filamentHostView: View = if (clipShape == null) {
-                SurfaceView(context)
-            } else {
-                TextureView(context)
-            }
-            filamentHostView.also { hostView ->
-                engine.initialize()
-                engine.setClearColor(backgroundColor)
+    key(resolvedHostMode) {
+        AndroidView(
+            modifier = modifier,
+            factory = { context ->
+                val filamentHostView: View = when (resolvedHostMode) {
+                    FilamentHostViewMode.Auto,
+                    FilamentHostViewMode.Surface -> SurfaceView(context)
 
-                val uiHelper = UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK).apply {
-                    this.isOpaque = effectiveOpaque
-                    renderCallback = object : UiHelper.RendererCallback {
-                        override fun onNativeWindowChanged(surface: Surface) {
-                            engine.attachSurface(surface, swapChainFlags = swapChainFlags)
-                        }
-
-                        override fun onDetachedFromSurface() {
-                            engine.detachSurface()
-                        }
-
-                        override fun onResized(width: Int, height: Int) {
-                            engine.updateViewport(width, height)
-                        }
-                    }
-                    when (hostView) {
-                        is SurfaceView -> attachTo(hostView)
-                        is TextureView -> attachTo(hostView)
-                    }
+                    FilamentHostViewMode.Texture -> TextureView(context)
                 }
+                filamentHostView.also { hostView ->
+                    engine.initialize()
+                    engine.setClearColor(backgroundColor)
 
+                    val uiHelper = UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK).apply {
+                        this.isOpaque = effectiveOpaque
+                        renderCallback = object : UiHelper.RendererCallback {
+                            override fun onNativeWindowChanged(surface: Surface) {
+                                engine.attachSurface(surface, swapChainFlags = swapChainFlags)
+                            }
+
+                            override fun onDetachedFromSurface() {
+                                engine.detachSurface()
+                            }
+
+                            override fun onResized(width: Int, height: Int) {
+                                engine.updateViewport(width, height)
+                            }
+                        }
+                        when (hostView) {
+                            is SurfaceView -> attachTo(hostView)
+                            is TextureView -> attachTo(hostView)
+                        }
+                    }
+
+                    applyClipShape(hostView, clipShape, density)
+                    engine.setUiHelper(uiHelper)
+                    engine.updateCamera(camera)
+                    lights.forEach { engine.addLight(it) }
+                    onEngineReady(engine)
+                    engine.startRenderLoop()
+                }
+            },
+            update = { hostView ->
                 applyClipShape(hostView, clipShape, density)
-                engine.setUiHelper(uiHelper)
-                engine.updateCamera(camera)
-                lights.forEach { engine.addLight(it) }
-                onEngineReady(engine)
-                engine.startRenderLoop()
-            }
-        },
-        update = { hostView ->
-            applyClipShape(hostView, clipShape, density)
-            engine.setClearColor(backgroundColor)
-        },
-    )
+                engine.setClearColor(backgroundColor)
+            },
+        )
+    }
 }
 
 private fun applyClipShape(

@@ -37,6 +37,7 @@ actual fun FilamentView(
     backgroundColor: Color,
     clipShape: FilamentClipShape?,
     isOpaque: Boolean,
+    hostViewMode: FilamentHostViewMode,
     onEngineReady: (FilamentEngine) -> Unit,
 ) {
     val bridge = FilamentBridgeHolder.bridge
