@@ -61,7 +61,7 @@ fun TransparentViewScreen(
         view = {
             Box(modifier = Modifier.fillMaxSize()) {
                 Text(
-                    text = "This text is behind the transparent Filament view",
+                    text = "Compose",
                     modifier = Modifier
                         .align(Alignment.Center)
                         .padding(Grid.Two),
@@ -123,15 +123,7 @@ fun TransparentViewScreen(
             }
         },
         controls = {
-            Text(
-                text = "A rotating RGB triangle renders into a transparent Filament surface so the Compose text behind it stays visible.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
             notice?.let { SampleNotice(it) }
-            Text(
-                text = "The triangle uses a compiled unlit material and per-vertex RGBA colors.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
         },
     )
 }

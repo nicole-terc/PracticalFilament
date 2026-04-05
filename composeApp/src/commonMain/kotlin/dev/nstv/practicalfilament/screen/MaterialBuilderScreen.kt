@@ -1,7 +1,12 @@
 // Migrated sample from https://github.com/google/filament/tree/main/android/samples/sample-material-builder
 package dev.nstv.practicalfilament.screen
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -12,7 +17,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.Color
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -20,6 +27,9 @@ import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
+import dev.nstv.practicalfilament.theme.Grid
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import practicalfilament.composeapp.generated.resources.Res
 
 private const val BuilderIndirectLightPath = "files/envs/pillars_2k/pillars_2k_ibl.ktx"
@@ -44,6 +54,8 @@ fun MaterialBuilderScreen(
     var renderableHandle by remember { mutableIntStateOf(0) }
     var shaderSource by remember { mutableStateOf(DefaultBuilderShader.trimIndent()) }
     var compileVersion by remember { mutableIntStateOf(0) }
+    var environmentLoaded by remember { mutableStateOf(false) }
+    var loadingMessage by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(engine, compileVersion) {
@@ -52,9 +64,21 @@ fun MaterialBuilderScreen(
             status = "Runtime material compilation is not supported on this platform."
             return@LaunchedEffect
         }
-        val materialHandle = currentEngine.buildMaterial(shaderSource, shadingModel = "lit")
-        if (materialHandle <= 0) {
+        loadingMessage = "Compiling material..."
+        status = null
+        withFrameNanos { }
+        val materialPackage = withContext(Dispatchers.Default) {
+            currentEngine.compileMaterialPackage(shaderSource, shadingModel = "lit")
+        }
+        if (materialPackage == null) {
+            loadingMessage = null
             status = "Compilation failed. Filamat returned an invalid material package."
+            return@LaunchedEffect
+        }
+        val materialHandle = currentEngine.createMaterialFromPackage(materialPackage)
+        loadingMessage = null
+        if (materialHandle <= 0) {
+            status = "Material creation failed after compilation."
             return@LaunchedEffect
         }
         val instanceHandle = currentEngine.createMaterialInstance(materialHandle)
@@ -62,6 +86,26 @@ fun MaterialBuilderScreen(
             currentEngine.removeRenderable(renderableHandle)
         }
         renderableHandle = currentEngine.createSphereRenderable(instanceHandle, radius = 1f)
+        environmentLoaded = false
+        status = "Compiled successfully. Loading environment..."
+    }
+
+    LaunchedEffect(engine, renderableHandle, environmentLoaded) {
+        val currentEngine = engine ?: return@LaunchedEffect
+        if (renderableHandle <= 0 || environmentLoaded) return@LaunchedEffect
+
+        withFrameNanos { }
+        val indirectLightHandle = currentEngine.loadIndirectLight(Res.getUri(BuilderIndirectLightPath))
+        withFrameNanos { }
+        val skyboxHandle = currentEngine.loadSkybox(Res.getUri(BuilderSkyboxPath))
+        if (indirectLightHandle > 0) {
+            currentEngine.setIndirectLight(indirectLightHandle, intensity = 45_000f)
+        }
+        if (skyboxHandle > 0) {
+            currentEngine.setSkybox(skyboxHandle)
+        }
+        environmentLoaded = true
+        currentEngine.requestFrame()
         status = "Compiled successfully."
     }
 
@@ -69,46 +113,67 @@ fun MaterialBuilderScreen(
         modifier = modifier,
         title = "Material Builder",
         view = {
-            FilamentView(
-                modifier = Modifier.fillMaxSize(),
-                camera = CameraConfig(
-                    position = Float3(0f, 0.2f, 4f),
-                    lookAt = Float3(0f, 0f, 0f),
-                    fovDegrees = 28.0,
-                ),
-                lights = listOf(
-                    LightConfig(
-                        type = LightType.SUN,
-                        intensity = 90_000f,
-                        direction = Float3(0.5f, -1f, -0.7f),
+            Box(modifier = Modifier.fillMaxSize()) {
+                FilamentView(
+                    modifier = Modifier.fillMaxSize(),
+                    camera = CameraConfig(
+                        position = Float3(0f, 0.2f, 4f),
+                        lookAt = Float3(0f, 0f, 0f),
+                        fovDegrees = 28.0,
                     ),
-                ),
-                backgroundColor = Color(0.05f, 0.05f, 0.06f, 1f),
-                onEngineReady = { readyEngine ->
-                    readyEngine.setIndirectLight(
-                        readyEngine.loadIndirectLight(Res.getUri(BuilderIndirectLightPath)),
-                        intensity = 45_000f,
+                    lights = listOf(
+                        LightConfig(
+                            type = LightType.SUN,
+                            intensity = 90_000f,
+                            direction = Float3(0.5f, -1f, -0.7f),
+                        ),
+                    ),
+                    backgroundColor = Color(0.05f, 0.05f, 0.06f, 1f),
+                    onEngineReady = { readyEngine ->
+                        engine = readyEngine
+                        compileVersion += 1
+                    },
+                )
+                loadingMessage?.let { message ->
+                    MaterialBuilderLoadingState(
+                        modifier = Modifier.align(Alignment.Center),
+                        message = message,
                     )
-                    readyEngine.setSkybox(readyEngine.loadSkybox(Res.getUri(BuilderSkyboxPath)))
-                    engine = readyEngine
-                    compileVersion += 1
-                },
-            )
+                }
+            }
         },
         controls = {
             status?.let { SampleNotice(it) }
             OutlinedTextField(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxWidth(),
                 value = shaderSource,
                 onValueChange = { shaderSource = it },
                 minLines = 12,
                 label = { Text("Material Source") },
             )
             Button(
+                enabled = loadingMessage == null,
                 onClick = { compileVersion += 1 },
             ) {
-                Text("Recompile")
+                Text(if (loadingMessage == null) "Recompile" else "Working...")
             }
         },
     )
+}
+
+@Composable
+private fun MaterialBuilderLoadingState(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.padding(Grid.Two),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        CircularProgressIndicator()
+        Text(
+            modifier = Modifier.padding(top = Grid.One),
+            text = message,
+        )
+    }
 }

@@ -182,13 +182,8 @@ fun MorphingScreen(
                 text = "Morphing",
                 style = MaterialTheme.typography.headlineSmall,
             )
-            Text(
-                modifier = Modifier.padding(top = Grid.Half, bottom = Grid.One),
-                text = "Smaller reflective cube, stronger target deltas, and real morph-target animation. Pause autoplay if you want to scrub both targets manually.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
             CheckBoxLabel(
-                text = "Autoplay morph animation",
+                text = "Autoplay",
                 checked = autoPlay,
                 onCheckedChange = { autoPlay = it },
             )

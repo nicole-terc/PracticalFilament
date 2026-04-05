@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 
 @Composable
 actual fun SetAsWallpaperButton(
+    selectedPreset: LiveWallpaperPreset,
     modifier: Modifier,
 ) {
     Text(

@@ -392,41 +392,45 @@ class AndroidFilamentEngine(
         parameters: List<MaterialParameterDefinition>,
         blendingMode: dev.nstv.practicalfilament.filament.MaterialBlendingMode,
     ): Int {
-        val eng = engine ?: return -1
-        val shading = when (shadingModel.lowercase()) {
-            "unlit" -> MaterialBuilder.Shading.UNLIT
-            "cloth" -> MaterialBuilder.Shading.CLOTH
-            "subsurface" -> MaterialBuilder.Shading.SUBSURFACE
-            "specular_glossiness" -> MaterialBuilder.Shading.SPECULAR_GLOSSINESS
-            else -> MaterialBuilder.Shading.LIT
-        }
-        val materialBuilder = MaterialBuilder()
-            .name("RuntimeMaterial${nextHandle}")
-            .platform(MaterialBuilder.Platform.MOBILE)
-            .targetApi(MaterialBuilder.TargetApi.ALL)
-            .shading(shading)
-            .require(MaterialBuilder.VertexAttribute.POSITION)
-            .apply {
-                if (shading != MaterialBuilder.Shading.UNLIT) {
-                    require(MaterialBuilder.VertexAttribute.TANGENTS)
-                }
-            }
-            .material(materialSource)
-            .blending(blendingMode.toFilamentBlendingMode())
-        requiredAttributes
-            .map { it.toFilamatVertexAttribute() }
-            .distinct()
-            .forEach(materialBuilder::require)
-        parameters.forEach { definition ->
-            materialBuilder.addRuntimeParameter(definition)
-        }
-        val materialPackage = materialBuilder.build(eng)
+        val materialPackage = compileMaterialPackage(
+            materialSource = materialSource,
+            shadingModel = shadingModel,
+            requiredAttributes = requiredAttributes,
+            parameters = parameters,
+            blendingMode = blendingMode,
+        ) ?: return -1
+        return createMaterialFromPackage(materialPackage)
+    }
+
+    override fun compileMaterialPackage(
+        materialSource: String,
+        shadingModel: String,
+        requiredAttributes: List<dev.nstv.practicalfilament.filament.VertexAttribute>,
+        parameters: List<MaterialParameterDefinition>,
+        blendingMode: dev.nstv.practicalfilament.filament.MaterialBlendingMode,
+    ): ByteArray? {
+        val materialBuilder = createRuntimeMaterialBuilder(
+            materialSource = materialSource,
+            shadingModel = shadingModel,
+            requiredAttributes = requiredAttributes,
+            parameters = parameters,
+            blendingMode = blendingMode,
+        )
+        val materialPackage = materialBuilder.build()
         if (!materialPackage.isValid) {
-            return -1
+            return null
         }
+        val buffer = materialPackage.buffer
+        val bytes = ByteArray(buffer.remaining())
+        buffer.get(bytes)
+        return bytes
+    }
+
+    override fun createMaterialFromPackage(materialPackage: ByteArray): Int {
+        val eng = engine ?: return -1
         val material = runCatching {
             Material.Builder()
-                .payload(materialPackage.buffer, materialPackage.buffer.remaining())
+                .payload(ByteBuffer.wrap(materialPackage), materialPackage.size)
                 .build(eng)
         }.getOrElse {
             return -1
@@ -461,6 +465,42 @@ class AndroidFilamentEngine(
         }.associateBy(MaterialParameterDefinition::name)
         materialParameterDefinitions[materialHandle] = definitions
         return definitions
+    }
+
+    private fun createRuntimeMaterialBuilder(
+        materialSource: String,
+        shadingModel: String,
+        requiredAttributes: List<dev.nstv.practicalfilament.filament.VertexAttribute>,
+        parameters: List<MaterialParameterDefinition>,
+        blendingMode: dev.nstv.practicalfilament.filament.MaterialBlendingMode,
+    ): MaterialBuilder {
+        val shading = when (shadingModel.lowercase()) {
+            "unlit" -> MaterialBuilder.Shading.UNLIT
+            "cloth" -> MaterialBuilder.Shading.CLOTH
+            "subsurface" -> MaterialBuilder.Shading.SUBSURFACE
+            "specular_glossiness" -> MaterialBuilder.Shading.SPECULAR_GLOSSINESS
+            else -> MaterialBuilder.Shading.LIT
+        }
+        return MaterialBuilder()
+            .name("RuntimeMaterial${nextHandle}")
+            .platform(MaterialBuilder.Platform.MOBILE)
+            .targetApi(MaterialBuilder.TargetApi.ALL)
+            .shading(shading)
+            .require(MaterialBuilder.VertexAttribute.POSITION)
+            .apply {
+                if (shading != MaterialBuilder.Shading.UNLIT) {
+                    require(MaterialBuilder.VertexAttribute.TANGENTS)
+                }
+            }
+            .material(materialSource)
+            .blending(blendingMode.toFilamentBlendingMode())
+            .also { materialBuilder ->
+                requiredAttributes
+                    .map { it.toFilamatVertexAttribute() }
+                    .distinct()
+                    .forEach(materialBuilder::require)
+                parameters.forEach(materialBuilder::addRuntimeParameter)
+            }
     }
 
     override fun createMaterialInstance(materialHandle: Int): Int {

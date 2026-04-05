@@ -13,9 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -74,33 +72,21 @@ import kotlin.math.sin
 
 private enum class DemoStep(
     val label: String,
-    val title: String,
-    val description: String,
 ) {
     FLAT_CIRCLE(
         label = "1. Flat Circle",
-        title = "Step 1: Flat Circle",
-        description = "A plain Compose circle establishes the UI starting point before any 3D rendering is introduced.",
     ),
     FILAMENT_SPHERE(
         label = "2. Filament Sphere",
-        title = "Step 2: Filament Sphere",
-        description = "The circle becomes a circular Filament viewport. It is clearly 3D now, but the material is still generic and neutral.",
     ),
     MATERIAL_MARBLE(
         label = "3. Add Material",
-        title = "Step 3: Add Material",
-        description = "A ceramic material preset turns the neutral sphere into a tactile marble with a glazed finish.",
     ),
     LIGHTING_ALIVE(
         label = "4. Add Light",
-        title = "Step 4: Add Light",
-        description = "Richer direct lighting and subtle rotation bring out highlights and form, making the marble feel alive.",
     ),
     UI_SYSTEM(
         label = "5. UI System",
-        title = "Step 5: Add Interaction",
-        description = "Tapping a marble selects a theme and applies that material treatment to a lit Filament-backed button surface.",
     ),
 }
 
@@ -302,7 +288,7 @@ fun MarbleUIScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1.1f)
+                .weight(1f)
                 .padding(Grid.Two),
             contentAlignment = Alignment.Center,
         ) {
@@ -349,26 +335,6 @@ fun MarbleUIScreen(
                     )
                 }
             }
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.9f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = Grid.Two, vertical = Grid.One),
-            verticalArrangement = Arrangement.spacedBy(Grid.One),
-        ) {
-            Text(
-                text = selectedStep.title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MarbleUiText,
-            )
-            Text(
-                text = selectedStep.description,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MarbleUiMuted,
-            )
         }
     }
 }

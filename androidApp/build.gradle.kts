@@ -35,4 +35,5 @@ dependencies {
     implementation(libs.compose.runtime)
     implementation(libs.filament.android)
     implementation(libs.filament.utils.android)
+    implementation(libs.gltfio.android)
 }

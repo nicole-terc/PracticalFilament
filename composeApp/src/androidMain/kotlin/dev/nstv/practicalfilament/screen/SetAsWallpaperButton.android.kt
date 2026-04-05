@@ -13,6 +13,7 @@ private const val LiveWallpaperServiceClassName = "dev.nstv.practicalfilament.Fi
 
 @Composable
 actual fun SetAsWallpaperButton(
+    selectedPreset: LiveWallpaperPreset,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
@@ -20,6 +21,7 @@ actual fun SetAsWallpaperButton(
     Button(
         modifier = modifier,
         onClick = {
+            LiveWallpaperPreferences.saveSelectedPreset(context, selectedPreset)
             val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
                 putExtra(
                     WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
