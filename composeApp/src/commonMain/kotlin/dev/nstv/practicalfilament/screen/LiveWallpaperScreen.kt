@@ -166,6 +166,7 @@ fun LiveWallpaperScreen(
             notice?.let { SampleNotice(it) }
             if (selectedPreset == LiveWallpaperPreset.CONFIGURED_SKY) {
                 SampleNotice("Configured Sky uses the saved settings from the Sky sample.")
+                ConfiguredSkyRealtimeStatus()
             }
             DropDownWithArrows(
                 options = LiveWallpaperPreset.entries.map { it.label },

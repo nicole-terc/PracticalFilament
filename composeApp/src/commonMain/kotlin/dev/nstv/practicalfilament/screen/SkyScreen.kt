@@ -48,6 +48,7 @@ import dev.nstv.practicalfilament.theme.components.ExpandableSection
 import org.jetbrains.compose.resources.vectorResource
 import practicalfilament.composeapp.generated.resources.Res
 import practicalfilament.composeapp.generated.resources.ic_arrow_right
+import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.acos
 import kotlin.math.abs
@@ -57,6 +58,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.round
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -106,6 +108,7 @@ private const val DefaultShimmerMaskHeight = 0.1f
 private const val DefaultWaterStrength = 50f
 private const val DefaultWaterSpeed = 1f
 private const val DefaultWaterOctaves = 4f
+private const val DefaultManualTimeHours = 12f
 
 private const val PlanetRadiusKm = 6360f
 
@@ -165,57 +168,140 @@ fun SkyScreen(
     var shimmerStrength by remember { mutableFloatStateOf(DefaultShimmerStrength) }
     var shimmerFrequency by remember { mutableFloatStateOf(DefaultShimmerFrequency) }
     var shimmerMaskHeight by remember { mutableFloatStateOf(DefaultShimmerMaskHeight) }
+    var syncEnabled by remember { mutableStateOf(false) }
+    var syncManualOverride by remember { mutableStateOf(false) }
+    var manualTimeHours by remember { mutableFloatStateOf(DefaultManualTimeHours) }
+    var syncMoonPosition by remember { mutableStateOf(true) }
+    var syncDeviceLocation by remember { mutableStateOf(false) }
+    var syncLatitude by remember { mutableFloatStateOf(DefaultMilkyWayLatitude) }
+    var syncLongitude by remember { mutableFloatStateOf(0f) }
+    var syncNotice by remember { mutableStateOf<String?>(null) }
+
+    val editableConfig = SkyWallpaperConfig(
+        sunAzimuth = sunAzimuth,
+        sunHeight = sunHeight,
+        sunIntensity = sunIntensity,
+        sunRadius = sunRadius,
+        sunLimbDarkening = sunLimbDarkening,
+        sunDiskIntensityBoost = sunDiskIntensityBoost,
+        turbidity = turbidity,
+        rayleigh = rayleigh,
+        mieCoefficient = mieCoefficient,
+        ozone = ozone,
+        mieG = mieG,
+        cloudCoverage = cloudCoverage,
+        cloudDensity = cloudDensity,
+        cloudVolumetrics = cloudVolumetrics,
+        cloudHeightMeters = cloudHeightMeters,
+        cloudSpeed = cloudSpeed,
+        cloudEvolutionSpeed = cloudEvolutionSpeed,
+        waterDerivativeTrick = waterDerivativeTrick,
+        waterStrength = waterStrength,
+        waterSpeed = waterSpeed,
+        waterOctaves = waterOctaves,
+        aperture = aperture,
+        shutterSpeed = shutterSpeed,
+        iso = iso,
+        focalLength = focalLength,
+        moonEnabled = moonEnabled,
+        moonAzimuth = moonAzimuth,
+        moonHeight = moonHeight,
+        moonIntensity = moonIntensity,
+        moonRadius = moonRadius,
+        milkyWayEnabled = milkyWayEnabled,
+        milkyWayIntensity = milkyWayIntensity,
+        milkyWaySaturation = milkyWaySaturation,
+        milkyWayBlackPoint = milkyWayBlackPoint,
+        milkyWaySiderealTime = milkyWaySiderealTime,
+        milkyWayLatitude = milkyWayLatitude,
+        starsEnabled = starsEnabled,
+        starDensity = starDensity,
+        starIntensityExponent = starIntensityExponent,
+        msRayleigh = msRayleigh,
+        msMie = msMie,
+        horizonGlow = horizonGlow,
+        contrast = contrast,
+        shimmerStrength = shimmerStrength,
+        shimmerFrequency = shimmerFrequency,
+        shimmerMaskHeight = shimmerMaskHeight,
+        syncEnabled = syncEnabled,
+        syncManualOverride = syncManualOverride,
+        manualTimeHours = manualTimeHours,
+        syncMoonPosition = syncMoonPosition,
+        syncDeviceLocation = syncDeviceLocation,
+        syncLatitude = syncLatitude,
+        syncLongitude = syncLongitude,
+    )
+    val realtimeModeEnabled = syncEnabled || syncManualOverride
+
+    fun clearRealtimeSync() {
+        syncEnabled = false
+        syncMoonPosition = true
+        syncNotice = null
+    }
+
+    fun applyManualEdit(change: () -> Unit) {
+        clearRealtimeSync()
+        change()
+    }
+
+    fun applyCoordinateEdit(change: () -> Unit) {
+        syncNotice = null
+        change()
+    }
+
+    fun applyMoonEdit(change: () -> Unit) {
+        syncNotice = null
+        change()
+    }
+
+    fun applyMoonPositionOverride(change: () -> Unit) {
+        syncMoonPosition = false
+        applyMoonEdit(change)
+    }
+
+    fun applyRealtimeValues(realtimeValues: SkyRealtimeValues) {
+        sunAzimuth = realtimeValues.sunAzimuth
+        sunHeight = realtimeValues.sunHeight
+        if (syncMoonPosition) {
+            moonAzimuth = realtimeValues.moonAzimuth
+            moonHeight = realtimeValues.moonHeight
+        }
+        milkyWaySiderealTime = realtimeValues.siderealTimeHours
+        milkyWayLatitude = syncLatitude
+    }
+
+    LaunchedEffect(syncEnabled, syncManualOverride, manualTimeHours, syncLatitude, syncLongitude) {
+        if (!realtimeModeEnabled) return@LaunchedEffect
+        while (true) {
+            val currentTimeMillis = platformCurrentTimeMillis()
+            if (syncEnabled && !syncManualOverride) {
+                manualTimeHours = platformCurrentLocalTimeHours(currentTimeMillis)
+            }
+            val realtimeValues = if (syncManualOverride) {
+                computeManualSkyValues(
+                    currentTimeMillis = currentTimeMillis,
+                    localTimeHours = manualTimeHours,
+                    latitudeDegrees = syncLatitude,
+                    longitudeDegrees = syncLongitude,
+                )
+            } else {
+                computeRealtimeSkyValues(
+                    currentTimeMillis = currentTimeMillis,
+                    latitudeDegrees = syncLatitude,
+                    longitudeDegrees = syncLongitude,
+                )
+            }
+            applyRealtimeValues(realtimeValues)
+            delay(1000)
+        }
+    }
 
     LaunchedEffect(
         engine,
         materialInstanceHandle,
         viewportHeightPx,
-        sunAzimuth,
-        sunHeight,
-        sunIntensity,
-        sunRadius,
-        sunLimbDarkening,
-        sunDiskIntensityBoost,
-        turbidity,
-        rayleigh,
-        mieCoefficient,
-        ozone,
-        mieG,
-        cloudCoverage,
-        cloudDensity,
-        cloudVolumetrics,
-        cloudHeightMeters,
-        cloudSpeed,
-        cloudEvolutionSpeed,
-        waterDerivativeTrick,
-        waterStrength,
-        waterSpeed,
-        waterOctaves,
-        aperture,
-        shutterSpeed,
-        iso,
-        focalLength,
-        moonEnabled,
-        moonAzimuth,
-        moonHeight,
-        moonIntensity,
-        moonRadius,
-        milkyWayEnabled,
-        milkyWayIntensity,
-        milkyWaySaturation,
-        milkyWayBlackPoint,
-        milkyWaySiderealTime,
-        milkyWayLatitude,
-        starsEnabled,
-        starDensity,
-        starIntensityExponent,
-        msRayleigh,
-        msMie,
-        horizonGlow,
-        contrast,
-        shimmerStrength,
-        shimmerFrequency,
-        shimmerMaskHeight,
+        editableConfig,
     ) {
         val currentEngine = engine ?: return@LaunchedEffect
         if (materialInstanceHandle <= 0) return@LaunchedEffect
@@ -228,7 +314,11 @@ fun SkyScreen(
                 far = 5000.0,
             ),
         )
-        currentEngine.setCameraExposure(aperture, 1f / shutterSpeed.coerceAtLeast(0.05f), iso)
+        currentEngine.setCameraExposure(
+            aperture,
+            1f / shutterSpeed.coerceAtLeast(0.05f),
+            iso,
+        )
         applySkyParameters(
             engine = currentEngine,
             instanceHandle = materialInstanceHandle,
@@ -396,60 +486,90 @@ fun SkyScreen(
             ExpandableSection(
                 title = "Sun",
             ) {
-                SkySlider("Azimuth", sunAzimuth, 0f..360f) { sunAzimuth = it }
-                SkySlider("Height", sunHeight, -0.2f..1f) { sunHeight = it }
-                SkySlider("Intensity", sunIntensity, 0f..500_000f) { sunIntensity = it }
-                SkySlider("Radius", sunRadius, 0f..5f) { sunRadius = it }
-                SkySlider("Limb Darkening", sunLimbDarkening, 0f..2f) { sunLimbDarkening = it }
+                if (syncManualOverride) {
+                    SampleNotice("Manual latitude, longitude, and time are driving sun azimuth and height.")
+                } else if (syncEnabled && syncDeviceLocation) {
+                    SampleNotice("Device location and current time are driving sun azimuth and height.")
+                } else if (syncEnabled) {
+                    SampleNotice("Current time and your manual coordinates are driving sun azimuth and height.")
+                }
+                SkySlider(
+                    "Azimuth",
+                    sunAzimuth,
+                    0f..360f,
+                    enabled = !realtimeModeEnabled,
+                ) { applyManualEdit { sunAzimuth = it } }
+                SkySlider(
+                    "Height",
+                    sunHeight,
+                    -0.2f..1f,
+                    enabled = !realtimeModeEnabled,
+                ) { applyManualEdit { sunHeight = it } }
+                SkySlider("Intensity", sunIntensity, 0f..500_000f) { applyManualEdit { sunIntensity = it } }
+                SkySlider("Radius", sunRadius, 0f..5f) { applyManualEdit { sunRadius = it } }
+                SkySlider("Limb Darkening", sunLimbDarkening, 0f..2f) { applyManualEdit { sunLimbDarkening = it } }
                 SkySlider(
                     "Disk Intensity Boost",
                     sunDiskIntensityBoost,
                     0f..100f
-                ) { sunDiskIntensityBoost = it }
+                ) { applyManualEdit { sunDiskIntensityBoost = it } }
             }
 
             ExpandableSection(
                 title = "Moon",
             ) {
-                CheckBoxLabel("Enabled", moonEnabled, { moonEnabled = it })
-                SkySlider("Azimuth", moonAzimuth, 0f..360f) { moonAzimuth = it }
-                SkySlider("Height", moonHeight, -0.2f..1f) { moonHeight = it }
-                SkySlider("Intensity", moonIntensity, 0f..1000f) { moonIntensity = it }
-                SkySlider("Radius", moonRadius, 0.1f..5f) { moonRadius = it }
+                if (realtimeModeEnabled) {
+                    CheckBoxLabel("Sync Position", syncMoonPosition, { syncMoonPosition = it })
+                }
+                CheckBoxLabel("Enabled", moonEnabled, { applyMoonEdit { moonEnabled = it } })
+                SkySlider("Azimuth", moonAzimuth, 0f..360f) { applyMoonPositionOverride { moonAzimuth = it } }
+                SkySlider("Height", moonHeight, -0.2f..1f) { applyMoonPositionOverride { moonHeight = it } }
+                SkySlider("Intensity", moonIntensity, 0f..1000f) { applyMoonEdit { moonIntensity = it } }
+                SkySlider("Radius", moonRadius, 0.1f..5f) { applyMoonEdit { moonRadius = it } }
             }
 
             ExpandableSection(
                 title = "Milky Way",
             ) {
-                CheckBoxLabel("Enabled", milkyWayEnabled, { milkyWayEnabled = it })
-                SkySlider("Intensity", milkyWayIntensity, 0f..100f) { milkyWayIntensity = it }
-                SkySlider("Saturation", milkyWaySaturation, 0f..2f) { milkyWaySaturation = it }
-                SkySlider("Black Point", milkyWayBlackPoint, 0f..0.5f) { milkyWayBlackPoint = it }
-                SkySlider("Sidereal Time", milkyWaySiderealTime, 0f..24f) {
-                    milkyWaySiderealTime = it
+                CheckBoxLabel("Enabled", milkyWayEnabled, { applyManualEdit { milkyWayEnabled = it } })
+                SkySlider("Intensity", milkyWayIntensity, 0f..100f) { applyManualEdit { milkyWayIntensity = it } }
+                SkySlider("Saturation", milkyWaySaturation, 0f..2f) { applyManualEdit { milkyWaySaturation = it } }
+                SkySlider("Black Point", milkyWayBlackPoint, 0f..0.5f) { applyManualEdit { milkyWayBlackPoint = it } }
+                SkySlider(
+                    "Sidereal Time",
+                    milkyWaySiderealTime,
+                    0f..24f,
+                    enabled = !realtimeModeEnabled,
+                ) {
+                    applyManualEdit { milkyWaySiderealTime = it }
                 }
-                SkySlider("Latitude", milkyWayLatitude, -90f..90f) { milkyWayLatitude = it }
+                SkySlider(
+                    "Latitude",
+                    milkyWayLatitude,
+                    -90f..90f,
+                    enabled = !realtimeModeEnabled,
+                ) { applyManualEdit { milkyWayLatitude = it } }
             }
 
             ExpandableSection(
                 title = "Atmosphere",
             ) {
-                SkySlider("Turbidity", turbidity, 1f..10f) { turbidity = it }
-                SkySlider("Rayleigh", rayleigh, 0f..10f) { rayleigh = it }
-                SkySlider("Mie Coefficient", mieCoefficient, 0f..10f) { mieCoefficient = it }
-                SkySlider("Ozone", ozone, 0f..1f) { ozone = it }
-                SkySlider("Mie G", mieG, 0f..0.999f) { mieG = it }
+                SkySlider("Turbidity", turbidity, 1f..10f) { applyManualEdit { turbidity = it } }
+                SkySlider("Rayleigh", rayleigh, 0f..10f) { applyManualEdit { rayleigh = it } }
+                SkySlider("Mie Coefficient", mieCoefficient, 0f..10f) { applyManualEdit { mieCoefficient = it } }
+                SkySlider("Ozone", ozone, 0f..1f) { applyManualEdit { ozone = it } }
+                SkySlider("Mie G", mieG, 0f..0.999f) { applyManualEdit { mieG = it } }
             }
 
             ExpandableSection(
                 title = "Clouds",
             ) {
-                CheckBoxLabel("Volumetrics", cloudVolumetrics, { cloudVolumetrics = it })
-                SkySlider("Coverage", cloudCoverage, 0f..1f) { cloudCoverage = it }
-                SkySlider("Density", cloudDensity, 0f..1f) { cloudDensity = it }
-                SkySlider("Height", cloudHeightMeters, 2000f..20_000f) { cloudHeightMeters = it }
-                SkySlider("Speed", cloudSpeed, 0f..200f) { cloudSpeed = it }
-                SkySlider("Evolution", cloudEvolutionSpeed, 0f..2f) { cloudEvolutionSpeed = it }
+                CheckBoxLabel("Volumetrics", cloudVolumetrics, { applyManualEdit { cloudVolumetrics = it } })
+                SkySlider("Coverage", cloudCoverage, 0f..1f) { applyManualEdit { cloudCoverage = it } }
+                SkySlider("Density", cloudDensity, 0f..1f) { applyManualEdit { cloudDensity = it } }
+                SkySlider("Height", cloudHeightMeters, 2000f..20_000f) { applyManualEdit { cloudHeightMeters = it } }
+                SkySlider("Speed", cloudSpeed, 0f..200f) { applyManualEdit { cloudSpeed = it } }
+                SkySlider("Evolution", cloudEvolutionSpeed, 0f..2f) { applyManualEdit { cloudEvolutionSpeed = it } }
             }
 
             ExpandableSection(
@@ -458,103 +578,109 @@ fun SkyScreen(
                 CheckBoxLabel(
                     "Derivative Trick",
                     waterDerivativeTrick,
-                    { waterDerivativeTrick = it })
-                SkySlider("Strength", waterStrength, 10f..100f) { waterStrength = it }
-                SkySlider("Speed", waterSpeed, 0f..5f) { waterSpeed = it }
-                SkySlider("Octaves", waterOctaves, 1f..8f) { waterOctaves = it }
+                    { applyManualEdit { waterDerivativeTrick = it } })
+                SkySlider("Strength", waterStrength, 10f..100f) { applyManualEdit { waterStrength = it } }
+                SkySlider("Speed", waterSpeed, 0f..5f) { applyManualEdit { waterSpeed = it } }
+                SkySlider("Octaves", waterOctaves, 1f..8f) { applyManualEdit { waterOctaves = it } }
             }
 
             ExpandableSection(
                 title = "Stars",
             ) {
-                CheckBoxLabel("Enabled", starsEnabled, { starsEnabled = it })
-                SkySlider("Density", starDensity, 0f..0.01f) { starDensity = it }
+                CheckBoxLabel("Enabled", starsEnabled, { applyManualEdit { starsEnabled = it } })
+                SkySlider("Density", starDensity, 0f..0.01f) { applyManualEdit { starDensity = it } }
                 SkySlider(
                     "Intensity (Exp)",
                     starIntensityExponent,
                     0f..24f
-                ) { starIntensityExponent = it }
+                ) { applyManualEdit { starIntensityExponent = it } }
             }
 
             ExpandableSection(
                 title = "Artistic",
             ) {
-                SkySlider("MS Rayleigh", msRayleigh, 0f..2f) { msRayleigh = it }
-                SkySlider("MS Mie", msMie, 0f..2f) { msMie = it }
-                SkySlider("Horizon Glow", horizonGlow, 0f..1f) { horizonGlow = it }
-                SkySlider("Contrast", contrast, 0.1f..2f) { contrast = it }
-                SkySlider("Shimmer Strength", shimmerStrength, 0f..0.1f) { shimmerStrength = it }
-                SkySlider("Shimmer Frequency", shimmerFrequency, 1f..100f) { shimmerFrequency = it }
+                SkySlider("MS Rayleigh", msRayleigh, 0f..2f) { applyManualEdit { msRayleigh = it } }
+                SkySlider("MS Mie", msMie, 0f..2f) { applyManualEdit { msMie = it } }
+                SkySlider("Horizon Glow", horizonGlow, 0f..1f) { applyManualEdit { horizonGlow = it } }
+                SkySlider("Contrast", contrast, 0.1f..2f) { applyManualEdit { contrast = it } }
+                SkySlider("Shimmer Strength", shimmerStrength, 0f..0.1f) { applyManualEdit { shimmerStrength = it } }
+                SkySlider("Shimmer Frequency", shimmerFrequency, 1f..100f) { applyManualEdit { shimmerFrequency = it } }
                 SkySlider(
                     "Shimmer Mask Height",
                     shimmerMaskHeight,
                     0.01f..0.5f
-                ) { shimmerMaskHeight = it }
+                ) { applyManualEdit { shimmerMaskHeight = it } }
             }
 
             ExpandableSection(
                 title = "Camera",
             ) {
-                SkySlider("Focal Length", focalLength, 8f..300f) { focalLength = it }
-                SkySlider("Aperture", aperture, 1.4f..32f) { aperture = it }
-                SkySlider("Shutter Speed (1/x s)", shutterSpeed, 0.05f..1000f) { shutterSpeed = it }
-                SkySlider("ISO", iso, 50f..3200f) { iso = it }
+                SkySlider("Focal Length", focalLength, 8f..300f) { applyManualEdit { focalLength = it } }
+                SkySlider("Aperture", aperture, 1.4f..32f) { applyManualEdit { aperture = it } }
+                SkySlider("Shutter Speed (1/x s)", shutterSpeed, 0.05f..1000f) { applyManualEdit { shutterSpeed = it } }
+                SkySlider("ISO", iso, 50f..3200f) { applyManualEdit { iso = it } }
             }
 
             ExpandableSection(
-                title = "Real-Time Sync",
+                title = "Location and Time",
             ) {
-                SampleNotice("Not yet wired in the native app. Use Sun and Milky Way controls manually.")
+                CheckBoxLabel("Enable Sync", syncEnabled, {
+                    syncEnabled = it
+                    if (it) syncManualOverride = false
+                    if (!it) syncNotice = null
+                })
+                CheckBoxLabel("Use Device Location", syncDeviceLocation, {
+                    syncDeviceLocation = it
+                    if (it) syncManualOverride = false
+                    if (!it) syncNotice = null
+                })
+                CheckBoxLabel("Manual Override", syncManualOverride, {
+                    syncManualOverride = it
+                    if (it) syncNotice = null
+                }, enabled = !syncEnabled && !syncDeviceLocation)
+                SkySlider(
+                    "Latitude",
+                    syncLatitude,
+                    -90f..90f,
+                    enabled = syncManualOverride && !syncEnabled && !syncDeviceLocation,
+                ) { applyCoordinateEdit { syncLatitude = it } }
+                SkySlider(
+                    "Longitude",
+                    syncLongitude,
+                    -180f..180f,
+                    enabled = syncManualOverride && !syncEnabled && !syncDeviceLocation,
+                ) { applyCoordinateEdit { syncLongitude = it } }
+                SkySlider(
+                    "Time",
+                    manualTimeHours,
+                    0f..24f,
+                    enabled = syncManualOverride && !syncEnabled && !syncDeviceLocation,
+                    valueFormatter = ::formatTimeOfDay,
+                ) {
+                    syncNotice = null
+                    manualTimeHours = it
+                }
+                SkyLocationSyncEffect(
+                    enabled = syncDeviceLocation && !syncManualOverride,
+                    onLocationUpdated = { latitude, longitude ->
+                        syncLatitude = latitude
+                        syncLongitude = longitude
+                    },
+                    onStatusChanged = { syncNotice = it },
+                )
+                syncNotice?.let { SampleNotice(it) }
+                if (realtimeModeEnabled) {
+                    SampleNotice(
+                        "Synced sun ${formatSliderValue(sunAzimuth)} deg, " +
+                            "height ${formatSliderValue(sunHeight)}, " +
+                            "sidereal ${formatSliderValue(milkyWaySiderealTime)} h."
+                    )
+                } else {
+                    SampleNotice("Enable Sync to drive the sky. Use Manual Override to test latitude, longitude, and time explicitly.")
+                }
             }
             SetSkyAsWallpaperButton(
-                config = SkyWallpaperConfig(
-                    sunAzimuth = sunAzimuth,
-                    sunHeight = sunHeight,
-                    sunIntensity = sunIntensity,
-                    sunRadius = sunRadius,
-                    sunLimbDarkening = sunLimbDarkening,
-                    sunDiskIntensityBoost = sunDiskIntensityBoost,
-                    turbidity = turbidity,
-                    rayleigh = rayleigh,
-                    mieCoefficient = mieCoefficient,
-                    ozone = ozone,
-                    mieG = mieG,
-                    cloudCoverage = cloudCoverage,
-                    cloudDensity = cloudDensity,
-                    cloudVolumetrics = cloudVolumetrics,
-                    cloudHeightMeters = cloudHeightMeters,
-                    cloudSpeed = cloudSpeed,
-                    cloudEvolutionSpeed = cloudEvolutionSpeed,
-                    waterDerivativeTrick = waterDerivativeTrick,
-                    waterStrength = waterStrength,
-                    waterSpeed = waterSpeed,
-                    waterOctaves = waterOctaves,
-                    aperture = aperture,
-                    shutterSpeed = shutterSpeed,
-                    iso = iso,
-                    focalLength = focalLength,
-                    moonEnabled = moonEnabled,
-                    moonAzimuth = moonAzimuth,
-                    moonHeight = moonHeight,
-                    moonIntensity = moonIntensity,
-                    moonRadius = moonRadius,
-                    milkyWayEnabled = milkyWayEnabled,
-                    milkyWayIntensity = milkyWayIntensity,
-                    milkyWaySaturation = milkyWaySaturation,
-                    milkyWayBlackPoint = milkyWayBlackPoint,
-                    milkyWaySiderealTime = milkyWaySiderealTime,
-                    milkyWayLatitude = milkyWayLatitude,
-                    starsEnabled = starsEnabled,
-                    starDensity = starDensity,
-                    starIntensityExponent = starIntensityExponent,
-                    msRayleigh = msRayleigh,
-                    msMie = msMie,
-                    horizonGlow = horizonGlow,
-                    contrast = contrast,
-                    shimmerStrength = shimmerStrength,
-                    shimmerFrequency = shimmerFrequency,
-                    shimmerMaskHeight = shimmerMaskHeight,
-                ),
+                config = editableConfig,
                 modifier = Modifier.fillMaxWidth().padding(top = Grid.One),
             )
         },
@@ -566,16 +692,19 @@ private fun SkySlider(
     label: String,
     value: Float,
     valueRange: ClosedFloatingPointRange<Float>,
+    enabled: Boolean = true,
+    valueFormatter: (Float) -> String = ::formatSliderValue,
     onValueChange: (Float) -> Unit,
 ) {
     Text(
-        text = "$label: ${formatSliderValue(value)}",
+        text = "$label: ${valueFormatter(value)}",
         modifier = Modifier.padding(top = Grid.One),
         style = MaterialTheme.typography.bodyMedium,
     )
     Slider(
         value = value,
         valueRange = valueRange,
+        enabled = enabled,
         onValueChange = onValueChange,
     )
 }
@@ -1177,6 +1306,13 @@ private fun formatSliderValue(value: Float): String = when {
     abs(value) >= 100f -> value.toInt().toString()
     abs(value) >= 1f -> formatWithDecimals(value, decimals = 2)
     else -> formatWithDecimals(value, decimals = 3)
+}
+
+private fun formatTimeOfDay(value: Float): String {
+    val totalMinutes = (((value % 24f) + 24f) % 24f * 60f).roundToInt() % (24 * 60)
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}"
 }
 
 private fun formatWithDecimals(

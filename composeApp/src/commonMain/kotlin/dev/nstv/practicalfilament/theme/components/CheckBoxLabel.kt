@@ -16,10 +16,15 @@ fun CheckBoxLabel(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
-        Text(modifier = Modifier.clickable { onCheckedChange(!checked) }, text = text, style = textStyle)
+        Checkbox(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        Text(
+            modifier = Modifier.clickable(enabled = enabled) { onCheckedChange(!checked) },
+            text = text,
+            style = textStyle,
+        )
     }
 }

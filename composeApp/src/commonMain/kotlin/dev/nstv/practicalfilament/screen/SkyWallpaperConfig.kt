@@ -47,6 +47,13 @@ data class SkyWallpaperConfig(
     val shimmerStrength: Float = 0f,
     val shimmerFrequency: Float = 20f,
     val shimmerMaskHeight: Float = 0.1f,
+    val syncEnabled: Boolean = false,
+    val syncManualOverride: Boolean = false,
+    val manualTimeHours: Float = 12f,
+    val syncMoonPosition: Boolean = true,
+    val syncDeviceLocation: Boolean = false,
+    val syncLatitude: Float = 34f,
+    val syncLongitude: Float = 0f,
 ) {
     fun serialize(): String = buildList {
         add(SerializationVersion.toString())
@@ -96,17 +103,25 @@ data class SkyWallpaperConfig(
         add(shimmerStrength.toString())
         add(shimmerFrequency.toString())
         add(shimmerMaskHeight.toString())
+        add(if (syncEnabled) "1" else "0")
+        add(if (syncManualOverride) "1" else "0")
+        add(manualTimeHours.toString())
+        add(if (syncMoonPosition) "1" else "0")
+        add(if (syncDeviceLocation) "1" else "0")
+        add(syncLatitude.toString())
+        add(syncLongitude.toString())
     }.joinToString("|")
 
     companion object {
-        private const val SerializationVersion = 1
+        private const val SerializationVersion = 6
 
         val default = SkyWallpaperConfig()
 
         fun deserialize(raw: String?): SkyWallpaperConfig {
             if (raw.isNullOrBlank()) return default
             val parts = raw.split('|')
-            if (parts.firstOrNull()?.toIntOrNull() != SerializationVersion) return default
+            val version = parts.firstOrNull()?.toIntOrNull() ?: return default
+            if (version !in 1..SerializationVersion) return default
             var index = 1
             fun nextFloat(defaultValue: Float): Float = parts.getOrNull(index++)?.toFloatOrNull() ?: defaultValue
             fun nextBoolean(defaultValue: Boolean): Boolean = when (parts.getOrNull(index++)) {
@@ -114,7 +129,7 @@ data class SkyWallpaperConfig(
                 "0" -> false
                 else -> defaultValue
             }
-            return default.copy(
+            val common = default.copy(
                 sunAzimuth = nextFloat(default.sunAzimuth),
                 sunHeight = nextFloat(default.sunHeight),
                 sunIntensity = nextFloat(default.sunIntensity),
@@ -162,6 +177,67 @@ data class SkyWallpaperConfig(
                 shimmerFrequency = nextFloat(default.shimmerFrequency),
                 shimmerMaskHeight = nextFloat(default.shimmerMaskHeight),
             )
+
+            return when (version) {
+                1 -> common
+                2 -> {
+                    val legacySyncTimeOfDay = nextBoolean(false)
+                    val legacySyncDeviceLocation = nextBoolean(default.syncDeviceLocation)
+                    val latitude = nextFloat(default.syncLatitude)
+                    val longitude = nextFloat(default.syncLongitude)
+                    common.copy(
+                        syncEnabled = legacySyncTimeOfDay || legacySyncDeviceLocation,
+                        syncManualOverride = legacySyncTimeOfDay && !legacySyncDeviceLocation,
+                        manualTimeHours = default.manualTimeHours,
+                        syncDeviceLocation = legacySyncDeviceLocation,
+                        syncLatitude = latitude,
+                        syncLongitude = longitude,
+                    )
+                }
+                3 -> {
+                    val legacyManualOverride = nextBoolean(false)
+                    val legacyManualTime = nextFloat(default.manualTimeHours)
+                    val legacySyncDeviceLocation = nextBoolean(default.syncDeviceLocation)
+                    val latitude = nextFloat(default.syncLatitude)
+                    val longitude = nextFloat(default.syncLongitude)
+                    common.copy(
+                        syncEnabled = legacyManualOverride || legacySyncDeviceLocation,
+                        syncManualOverride = legacyManualOverride,
+                        manualTimeHours = legacyManualTime,
+                        syncMoonPosition = true,
+                        syncDeviceLocation = legacySyncDeviceLocation,
+                        syncLatitude = latitude,
+                        syncLongitude = longitude,
+                    )
+                }
+                4 -> common.copy(
+                    syncEnabled = nextBoolean(default.syncEnabled),
+                    syncManualOverride = false,
+                    manualTimeHours = default.manualTimeHours,
+                    syncMoonPosition = true,
+                    syncDeviceLocation = nextBoolean(default.syncDeviceLocation),
+                    syncLatitude = nextFloat(default.syncLatitude),
+                    syncLongitude = nextFloat(default.syncLongitude),
+                )
+                5 -> common.copy(
+                    syncEnabled = nextBoolean(default.syncEnabled),
+                    syncManualOverride = false,
+                    manualTimeHours = default.manualTimeHours,
+                    syncMoonPosition = nextBoolean(default.syncMoonPosition),
+                    syncDeviceLocation = nextBoolean(default.syncDeviceLocation),
+                    syncLatitude = nextFloat(default.syncLatitude),
+                    syncLongitude = nextFloat(default.syncLongitude),
+                )
+                else -> common.copy(
+                    syncEnabled = nextBoolean(default.syncEnabled),
+                    syncManualOverride = nextBoolean(default.syncManualOverride),
+                    manualTimeHours = nextFloat(default.manualTimeHours),
+                    syncMoonPosition = nextBoolean(default.syncMoonPosition),
+                    syncDeviceLocation = nextBoolean(default.syncDeviceLocation),
+                    syncLatitude = nextFloat(default.syncLatitude),
+                    syncLongitude = nextFloat(default.syncLongitude),
+                )
+            }
         }
     }
 }

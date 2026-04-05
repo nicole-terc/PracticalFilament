@@ -45,6 +45,7 @@ import dev.nstv.practicalfilament.screen.LiveWallpaperPreferences
 import dev.nstv.practicalfilament.screen.LiveWallpaperPreset
 import dev.nstv.practicalfilament.screen.SkyWallpaperConfig
 import dev.nstv.practicalfilament.screen.liveWallpaperHueAt
+import dev.nstv.practicalfilament.screen.resolveRealtimeSkyConfig
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.max
@@ -103,6 +104,7 @@ class FilamentLiveWallpaperService : WallpaperService() {
         private var currentAsset: ManagedGltfAsset? = null
         private var currentPreset = LiveWallpaperPreset.default
         private var configuredSky: ManagedConfiguredSky? = null
+        private var configuredSkyConfig = SkyWallpaperConfig.default
 
         override fun onCreate(surfaceHolder: SurfaceHolder) {
             super.onCreate(surfaceHolder)
@@ -165,9 +167,9 @@ class FilamentLiveWallpaperService : WallpaperService() {
             destroyConfiguredSky()
 
             if (preset == LiveWallpaperPreset.CONFIGURED_SKY) {
-                val config = LiveWallpaperPreferences.loadSkyConfig(this@FilamentLiveWallpaperService)
-                ensureConfiguredSky(config)
-                applyConfiguredSky(config)
+                configuredSkyConfig = LiveWallpaperPreferences.loadSkyConfig(this@FilamentLiveWallpaperService)
+                ensureConfiguredSky()
+                applyConfiguredSky(configuredSkyConfig, System.currentTimeMillis())
                 return
             }
 
@@ -229,6 +231,9 @@ class FilamentLiveWallpaperService : WallpaperService() {
         private fun updatePresetFrame(frameTimeNanos: Long) {
             val seconds = frameTimeNanos / 1_000_000_000f
             if (currentPreset == LiveWallpaperPreset.CONFIGURED_SKY) {
+                if (configuredSkyConfig.syncEnabled || configuredSkyConfig.syncManualOverride) {
+                    applyConfiguredSky(configuredSkyConfig, System.currentTimeMillis())
+                }
                 return
             }
             if (!currentPreset.usesModel) {
@@ -345,7 +350,7 @@ class FilamentLiveWallpaperService : WallpaperService() {
             currentAsset = null
         }
 
-        private fun ensureConfiguredSky(config: SkyWallpaperConfig) {
+        private fun ensureConfiguredSky() {
             if (configuredSky != null) return
             val materialBuffer = loadAssetBuffer(WallpaperSkyMaterialPath) ?: return
             val material = Material.Builder()
@@ -428,22 +433,30 @@ class FilamentLiveWallpaperService : WallpaperService() {
             )
         }
 
-        private fun applyConfiguredSky(config: SkyWallpaperConfig) {
+        private fun applyConfiguredSky(
+            config: SkyWallpaperConfig,
+            currentTimeMillis: Long,
+        ) {
             val sky = configuredSky ?: return
+            val resolvedConfig = resolveRealtimeSkyConfig(config, currentTimeMillis)
             scene.setIndirectLight(null)
             scene.setSkybox(null)
-            camera.setExposure(config.aperture, 1f / config.shutterSpeed.coerceAtLeast(0.05f), config.iso)
+            camera.setExposure(
+                resolvedConfig.aperture,
+                1f / resolvedConfig.shutterSpeed.coerceAtLeast(0.05f),
+                resolvedConfig.iso,
+            )
             applyCameraPose(
                 CameraConfig(
                     position = dev.nstv.practicalfilament.filament.Float3(0f, 0f, 0f),
                     lookAt = dev.nstv.practicalfilament.filament.Float3(1f, 0f, 0f),
                     up = dev.nstv.practicalfilament.filament.Float3(0f, 1f, 0f),
-                    fovDegrees = computeVerticalFovDegrees(config.focalLength).toDouble(),
+                    fovDegrees = computeVerticalFovDegrees(resolvedConfig.focalLength).toDouble(),
                     near = 0.1,
                     far = 5000.0,
                 ),
             )
-            applySkyConfigToMaterial(sky.materialInstance, config, viewportHeight = viewportHeight)
+            applySkyConfigToMaterial(sky.materialInstance, resolvedConfig, viewportHeight = viewportHeight)
         }
 
         private fun destroyConfiguredSky() {
@@ -585,7 +598,7 @@ class FilamentLiveWallpaperService : WallpaperService() {
                 viewportWidth = width.coerceAtLeast(1)
                 viewportHeight = height.coerceAtLeast(1)
                 if (currentPreset == LiveWallpaperPreset.CONFIGURED_SKY) {
-                    applyConfiguredSky(LiveWallpaperPreferences.loadSkyConfig(this@FilamentLiveWallpaperService))
+                    applyConfiguredSky(configuredSkyConfig, System.currentTimeMillis())
                 } else {
                     applyCameraProjection(currentPreset.cameraAt(0f))
                 }
