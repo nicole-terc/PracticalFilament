@@ -1,7 +1,8 @@
 package dev.nstv.practicalfilament.components.materials
 
-import dev.nstv.practicalfilament.filament.material.TextureBinding
-import dev.nstv.practicalfilament.filament.material.TextureMaterial
+import dev.nstv.practicalfilament.filament.material.Material.TextureMaterial
+import dev.nstv.practicalfilament.filament.material.Material.TextureMaterial.TextureBinding
+
 
 private const val TextureMaterialPath = "files/materials/textureMaterial.filamat"
 private const val BrownMudLeavesTextureRoot = "files/textures/brown_mud_leaves_01"

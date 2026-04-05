@@ -2,9 +2,9 @@ package dev.nstv.practicalfilament.filament
 
 import dev.nstv.practicalfilament.filament.material.LoadedMaterial
 import dev.nstv.practicalfilament.filament.material.Material
+import dev.nstv.practicalfilament.filament.material.Material.TextureMaterial
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
-import dev.nstv.practicalfilament.filament.material.TextureMaterial
 import dev.nstv.practicalfilament.filament.material.buildMaterialParameters
 import practicalfilament.composeapp.generated.resources.Res
 

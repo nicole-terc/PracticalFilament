@@ -1,7 +1,7 @@
 package dev.nstv.practicalfilament.components.materials
 
 import dev.nstv.practicalfilament.filament.Float3
-import dev.nstv.practicalfilament.filament.material.SimpleMaterial
+import dev.nstv.practicalfilament.filament.material.Material.SimpleMaterial
 
 fun morphingMaterial(
     baseColor: Float3 = Float3(0.16f, 0.69f, 0.92f),

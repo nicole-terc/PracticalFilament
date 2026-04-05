@@ -4,26 +4,26 @@ sealed interface Material {
     val label: String
     val materialPath: String
     val overrides: Map<String, Any>
+
+    data class SimpleMaterial(
+        override val label: String,
+        override val materialPath: String,
+        override val overrides: Map<String, Any> = emptyMap(),
+    ) : Material
+
+    data class TextureMaterial(
+        override val label: String,
+        override val materialPath: String,
+        override val overrides: Map<String, Any> = emptyMap(),
+        val textureBindings: List<TextureBinding>,
+    ) : Material {
+        data class TextureBinding(
+            val parameterName: String,
+            val texturePath: String,
+            val label: String,
+        )
+    }
 }
-
-data class SimpleMaterial(
-    override val label: String,
-    override val materialPath: String,
-    override val overrides: Map<String, Any> = emptyMap(),
-) : Material
-
-data class TextureMaterial(
-    override val label: String,
-    override val materialPath: String,
-    override val overrides: Map<String, Any> = emptyMap(),
-    val textureBindings: List<TextureBinding>,
-) : Material
-
-data class TextureBinding(
-    val parameterName: String,
-    val texturePath: String,
-    val label: String,
-)
 
 data class LoadedMaterial(
     val instanceHandle: Int,
@@ -42,6 +42,7 @@ internal fun buildMaterialParameters(
                 definition = definition,
                 value = material.overrides.getValue(definition.name),
             ) ?: defaultMaterialParameter(definition).value
+
             definition.type is MaterialParameterType.Sampler2d ||
                     definition.type is MaterialParameterType.Sampler2dArray ||
                     definition.type is MaterialParameterType.SamplerCubemap ||
@@ -86,14 +87,25 @@ internal fun coerceOverrideValue(
 private fun coerceFloat3(value: Any): dev.nstv.practicalfilament.filament.Float3? {
     return when (value) {
         is dev.nstv.practicalfilament.filament.Float3 -> value
-        is dev.nstv.practicalfilament.filament.Float4 -> dev.nstv.practicalfilament.filament.Float3(value.x, value.y, value.z)
+        is dev.nstv.practicalfilament.filament.Float4 -> dev.nstv.practicalfilament.filament.Float3(
+            value.x,
+            value.y,
+            value.z
+        )
+
         else -> null
     }
 }
 
 private fun coerceFloat4(value: Any): dev.nstv.practicalfilament.filament.Float4? {
     return when (value) {
-        is dev.nstv.practicalfilament.filament.Float3 -> dev.nstv.practicalfilament.filament.Float4(value.x, value.y, value.z, 1f)
+        is dev.nstv.practicalfilament.filament.Float3 -> dev.nstv.practicalfilament.filament.Float4(
+            value.x,
+            value.y,
+            value.z,
+            1f
+        )
+
         is dev.nstv.practicalfilament.filament.Float4 -> value
         else -> null
     }

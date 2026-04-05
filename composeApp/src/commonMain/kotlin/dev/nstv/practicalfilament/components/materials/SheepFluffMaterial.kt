@@ -1,7 +1,7 @@
 package dev.nstv.practicalfilament.components.materials
 
 import dev.nstv.practicalfilament.filament.Float3
-import dev.nstv.practicalfilament.filament.material.SimpleMaterial
+import dev.nstv.practicalfilament.filament.material.Material.SimpleMaterial
 
 fun sheepFluffMaterial(
     baseColor: Float3 = Float3(0.21f, 0.1f, 0.61f),

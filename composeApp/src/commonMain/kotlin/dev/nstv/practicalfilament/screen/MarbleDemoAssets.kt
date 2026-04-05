@@ -7,7 +7,7 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.Material
-import dev.nstv.practicalfilament.filament.material.SimpleMaterial
+import dev.nstv.practicalfilament.filament.material.Material.SimpleMaterial
 
 internal val MarbleUiBackground = ComposeColor(0xFF101721)
 internal val MarbleUiText = ComposeColor(0xFFF4EEE4)

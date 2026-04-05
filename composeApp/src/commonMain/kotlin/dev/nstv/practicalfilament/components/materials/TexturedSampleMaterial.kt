@@ -1,6 +1,6 @@
 package dev.nstv.practicalfilament.components.materials
 
-import dev.nstv.practicalfilament.filament.material.SimpleMaterial
+import dev.nstv.practicalfilament.filament.material.Material.SimpleMaterial
 
 fun texturedSampleMaterial() = SimpleMaterial(
     label = "texturedSample",
