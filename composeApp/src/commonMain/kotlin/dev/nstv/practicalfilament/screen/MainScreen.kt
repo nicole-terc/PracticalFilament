@@ -39,6 +39,7 @@ private enum class Screen {
     MATERIAL_VIEWER,
     MARBLE,
     MARBLE_UI,
+    MARBLE_TEXTURE,
     GRAPHICS_EFFECTS_COMPARISON,
     REDBALL,
     SHEEP,
@@ -56,7 +57,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by remember { mutableStateOf(Screen.SAMPLE_SKY) }
+        var selectedScreen by remember { mutableStateOf(Screen.MARBLE_TEXTURE) }
 
         Column(
             modifier = Modifier
@@ -94,6 +95,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
                     Screen.MARBLE -> MarbleScreen()
                     Screen.MARBLE_UI -> MarbleUIScreen()
+                    Screen.MARBLE_TEXTURE -> MarbleTextureScreen()
                     Screen.GRAPHICS_EFFECTS_COMPARISON -> GraphicsEffectsComparisonScreen()
                     Screen.REDBALL -> RedballScreen()
                     Screen.SHEEP -> SheepScreen()
