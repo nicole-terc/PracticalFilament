@@ -1,8 +1,16 @@
 // Migrated sample from https://github.com/google/filament/tree/main/web/examples/sky
 package dev.nstv.practicalfilament.screen
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,7 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.sp
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CameraConfig
@@ -30,17 +40,23 @@ import dev.nstv.practicalfilament.filament.PrimitiveType
 import dev.nstv.practicalfilament.filament.VertexAttribute
 import dev.nstv.practicalfilament.filament.VertexAttributeLayout
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
+import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.toByteArray
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.CheckBoxLabel
+import dev.nstv.practicalfilament.theme.components.ExpandableSection
+import org.jetbrains.compose.resources.vectorResource
 import practicalfilament.composeapp.generated.resources.Res
+import practicalfilament.composeapp.generated.resources.ic_arrow_right
 import kotlin.math.PI
 import kotlin.math.acos
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.round
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -51,42 +67,47 @@ private const val MilkyWayTexturePath = "files/textures/milkyway.png"
 
 private const val DefaultSunAzimuth = 0f
 private const val DefaultSunHeight = 0f
+private const val DefaultSunIntensity = 100_000f
+private const val DefaultSunRadius = 1.2f
+private const val DefaultSunLimbDarkening = 0.5f
+private const val DefaultSunDiskIntensityBoost = 1f
 private const val DefaultTurbidity = 2f
 private const val DefaultRayleigh = 1f
+private const val DefaultMieCoefficient = 1f
+private const val DefaultOzone = 0.25f
+private const val DefaultMieG = 0.8f
 private const val DefaultCloudCoverage = 0.4f
 private const val DefaultCloudDensity = 0.02f
+private const val DefaultCloudHeightMeters = 8000f
+private const val DefaultCloudSpeed = 50f
+private const val DefaultCloudEvolutionSpeed = 0.02f
 private const val DefaultAperture = 16f
 private const val DefaultShutterSpeed = 125f
 private const val DefaultIso = 100f
+private const val DefaultFocalLength = 24f
 private const val DefaultMoonAzimuth = 180f
 private const val DefaultMoonHeight = 0.70710677f
+private const val DefaultMoonIntensity = 6f
+private const val DefaultMoonRadius = 1.2f
+private const val DefaultMilkyWayIntensity = 1f
+private const val DefaultMilkyWaySaturation = 1f
+private const val DefaultMilkyWayBlackPoint = 0.07f
+private const val DefaultMilkyWayLatitude = 34f
+private const val DefaultMilkyWaySiderealTime = 0f
 private const val DefaultStarDensity = 0.001f
+private const val DefaultStarIntensityExponent = 0f
+private const val DefaultMsRayleigh = 0.1f
+private const val DefaultMsMie = 0.5f
+private const val DefaultHorizonGlow = 0f
+private const val DefaultContrast = 1f
+private const val DefaultShimmerStrength = 0f
+private const val DefaultShimmerFrequency = 20f
+private const val DefaultShimmerMaskHeight = 0.1f
+private const val DefaultWaterStrength = 50f
+private const val DefaultWaterSpeed = 1f
+private const val DefaultWaterOctaves = 4f
 
-private const val FixedFocalLengthMm = 24f
 private const val PlanetRadiusKm = 6360f
-private const val CloudHeightMeters = 8000f
-private const val CloudSpeed = 50f
-private const val CloudEvolutionSpeed = 0.02f
-private const val MieCoefficient = 1f
-private const val MieG = 0.8f
-private const val OzoneStrength = 0.25f
-private const val MultiScatterRayleigh = 0.1f
-private const val MultiScatterMie = 0.5f
-private const val HorizonGlow = 0f
-private const val StarIntensity = 1f
-private const val SunAngularRadiusDegrees = 1.2f
-private const val SunLimbDarkening = 0.5f
-private const val SunDiskIntensityBoost = 1f
-private const val MoonAngularRadiusDegrees = 1.2f
-private const val MoonIntensity = 6f
-private const val MilkyWayIntensity = 1f
-private const val MilkyWaySaturation = 1f
-private const val MilkyWayBlackPoint = 0.07f
-private const val MilkyWayLatitude = 34f
-private const val MilkyWaySiderealTime = 0f
-
-private val NightColor = Float3(0f, 3.0e-9f, 7.5e-9f)
-private val ShimmerControl = Float3(0f, 20f, 0.1f)
 
 @Composable
 fun SkyScreen(
@@ -95,22 +116,55 @@ fun SkyScreen(
     var engine by remember { mutableStateOf<FilamentEngine?>(null) }
     var materialInstanceHandle by remember { mutableIntStateOf(0) }
     var viewportHeightPx by remember { mutableIntStateOf(1) }
+    var supportedParameters by remember { mutableStateOf<Set<String>>(emptySet()) }
     var notice by remember { mutableStateOf<String?>(null) }
 
     var sunAzimuth by remember { mutableFloatStateOf(DefaultSunAzimuth) }
     var sunHeight by remember { mutableFloatStateOf(DefaultSunHeight) }
+    var sunIntensity by remember { mutableFloatStateOf(DefaultSunIntensity) }
+    var sunRadius by remember { mutableFloatStateOf(DefaultSunRadius) }
+    var sunLimbDarkening by remember { mutableFloatStateOf(DefaultSunLimbDarkening) }
+    var sunDiskIntensityBoost by remember { mutableFloatStateOf(DefaultSunDiskIntensityBoost) }
     var turbidity by remember { mutableFloatStateOf(DefaultTurbidity) }
     var rayleigh by remember { mutableFloatStateOf(DefaultRayleigh) }
+    var mieCoefficient by remember { mutableFloatStateOf(DefaultMieCoefficient) }
+    var ozone by remember { mutableFloatStateOf(DefaultOzone) }
+    var mieG by remember { mutableFloatStateOf(DefaultMieG) }
     var cloudCoverage by remember { mutableFloatStateOf(DefaultCloudCoverage) }
     var cloudDensity by remember { mutableFloatStateOf(DefaultCloudDensity) }
+    var cloudVolumetrics by remember { mutableStateOf(false) }
+    var cloudHeightMeters by remember { mutableFloatStateOf(DefaultCloudHeightMeters) }
+    var cloudSpeed by remember { mutableFloatStateOf(DefaultCloudSpeed) }
+    var cloudEvolutionSpeed by remember { mutableFloatStateOf(DefaultCloudEvolutionSpeed) }
+    var waterDerivativeTrick by remember { mutableStateOf(true) }
+    var waterStrength by remember { mutableFloatStateOf(DefaultWaterStrength) }
+    var waterSpeed by remember { mutableFloatStateOf(DefaultWaterSpeed) }
+    var waterOctaves by remember { mutableFloatStateOf(DefaultWaterOctaves) }
     var aperture by remember { mutableFloatStateOf(DefaultAperture) }
     var shutterSpeed by remember { mutableFloatStateOf(DefaultShutterSpeed) }
     var iso by remember { mutableFloatStateOf(DefaultIso) }
+    var focalLength by remember { mutableFloatStateOf(DefaultFocalLength) }
     var moonEnabled by remember { mutableStateOf(true) }
     var moonAzimuth by remember { mutableFloatStateOf(DefaultMoonAzimuth) }
     var moonHeight by remember { mutableFloatStateOf(DefaultMoonHeight) }
+    var moonIntensity by remember { mutableFloatStateOf(DefaultMoonIntensity) }
+    var moonRadius by remember { mutableFloatStateOf(DefaultMoonRadius) }
+    var milkyWayEnabled by remember { mutableStateOf(true) }
+    var milkyWayIntensity by remember { mutableFloatStateOf(DefaultMilkyWayIntensity) }
+    var milkyWaySaturation by remember { mutableFloatStateOf(DefaultMilkyWaySaturation) }
+    var milkyWayBlackPoint by remember { mutableFloatStateOf(DefaultMilkyWayBlackPoint) }
+    var milkyWaySiderealTime by remember { mutableFloatStateOf(DefaultMilkyWaySiderealTime) }
+    var milkyWayLatitude by remember { mutableFloatStateOf(DefaultMilkyWayLatitude) }
     var starsEnabled by remember { mutableStateOf(true) }
     var starDensity by remember { mutableFloatStateOf(DefaultStarDensity) }
+    var starIntensityExponent by remember { mutableFloatStateOf(DefaultStarIntensityExponent) }
+    var msRayleigh by remember { mutableFloatStateOf(DefaultMsRayleigh) }
+    var msMie by remember { mutableFloatStateOf(DefaultMsMie) }
+    var horizonGlow by remember { mutableFloatStateOf(DefaultHorizonGlow) }
+    var contrast by remember { mutableFloatStateOf(DefaultContrast) }
+    var shimmerStrength by remember { mutableFloatStateOf(DefaultShimmerStrength) }
+    var shimmerFrequency by remember { mutableFloatStateOf(DefaultShimmerFrequency) }
+    var shimmerMaskHeight by remember { mutableFloatStateOf(DefaultShimmerMaskHeight) }
 
     LaunchedEffect(
         engine,
@@ -118,21 +172,62 @@ fun SkyScreen(
         viewportHeightPx,
         sunAzimuth,
         sunHeight,
+        sunIntensity,
+        sunRadius,
+        sunLimbDarkening,
+        sunDiskIntensityBoost,
         turbidity,
         rayleigh,
+        mieCoefficient,
+        ozone,
+        mieG,
         cloudCoverage,
         cloudDensity,
+        cloudVolumetrics,
+        cloudHeightMeters,
+        cloudSpeed,
+        cloudEvolutionSpeed,
+        waterDerivativeTrick,
+        waterStrength,
+        waterSpeed,
+        waterOctaves,
         aperture,
         shutterSpeed,
         iso,
+        focalLength,
         moonEnabled,
         moonAzimuth,
         moonHeight,
+        moonIntensity,
+        moonRadius,
+        milkyWayEnabled,
+        milkyWayIntensity,
+        milkyWaySaturation,
+        milkyWayBlackPoint,
+        milkyWaySiderealTime,
+        milkyWayLatitude,
         starsEnabled,
         starDensity,
+        starIntensityExponent,
+        msRayleigh,
+        msMie,
+        horizonGlow,
+        contrast,
+        shimmerStrength,
+        shimmerFrequency,
+        shimmerMaskHeight,
     ) {
         val currentEngine = engine ?: return@LaunchedEffect
         if (materialInstanceHandle <= 0) return@LaunchedEffect
+        currentEngine.updateCamera(
+            CameraConfig(
+                position = Float3(0f, 0f, 0f),
+                lookAt = Float3(1f, 0f, 0f),
+                fovDegrees = computeVerticalFovDegrees(focalLength).toDouble(),
+                near = 0.1,
+                far = 5000.0,
+            ),
+        )
         currentEngine.setCameraExposure(aperture, 1f / shutterSpeed.coerceAtLeast(0.05f), iso)
         applySkyParameters(
             engine = currentEngine,
@@ -140,18 +235,52 @@ fun SkyScreen(
             viewportHeightPx = viewportHeightPx,
             sunAzimuth = sunAzimuth,
             sunHeight = sunHeight,
+            sunIntensity = sunIntensity,
+            sunRadius = sunRadius,
+            sunLimbDarkening = sunLimbDarkening,
+            sunDiskIntensityBoost = sunDiskIntensityBoost,
             turbidity = turbidity,
             rayleigh = rayleigh,
+            mieCoefficient = mieCoefficient,
+            ozone = ozone,
+            mieG = mieG,
             cloudCoverage = cloudCoverage,
             cloudDensity = cloudDensity,
+            cloudVolumetrics = cloudVolumetrics,
+            cloudHeightMeters = cloudHeightMeters,
+            cloudSpeed = cloudSpeed,
+            cloudEvolutionSpeed = cloudEvolutionSpeed,
+            waterDerivativeTrick = waterDerivativeTrick,
+            waterStrength = waterStrength,
+            waterSpeed = waterSpeed,
+            waterOctaves = waterOctaves,
             aperture = aperture,
             shutterSpeed = shutterSpeed,
             iso = iso,
+            focalLength = focalLength,
+            supportedParameters = supportedParameters,
             moonEnabled = moonEnabled,
             moonAzimuth = moonAzimuth,
             moonHeight = moonHeight,
+            moonIntensity = moonIntensity,
+            moonRadius = moonRadius,
+            milkyWayEnabled = milkyWayEnabled,
+            milkyWayIntensity = milkyWayIntensity,
+            milkyWaySaturation = milkyWaySaturation,
+            milkyWayBlackPoint = milkyWayBlackPoint,
+            milkyWaySiderealTime = milkyWaySiderealTime,
+            milkyWayLatitude = milkyWayLatitude,
             starsEnabled = starsEnabled,
             starDensity = starDensity,
+            starIntensityExponent = starIntensityExponent,
+            msRayleigh = msRayleigh,
+            msMie = msMie,
+            horizonGlow = horizonGlow,
+            contrast = contrast,
+            shimmerStrength = shimmerStrength,
+            shimmerFrequency = shimmerFrequency,
+            shimmerMaskHeight = shimmerMaskHeight,
+            onError = { notice = it },
         )
         currentEngine.requestFrame()
     }
@@ -198,9 +327,14 @@ fun SkyScreen(
                         return@FilamentView
                     }
 
+                    val parameterNames = readyEngine.getMaterialParameters(materialHandle)
+                        .mapTo(linkedSetOf(), MaterialParameterDefinition::name)
+                    supportedParameters = parameterNames
+
                     bindTexture(
                         engine = readyEngine,
                         instanceHandle = instanceHandle,
+                        supportedParameters = parameterNames,
                         parameterName = "moonTexture",
                         path = MoonDiskTexturePath,
                         onFailure = { notice = it },
@@ -208,6 +342,7 @@ fun SkyScreen(
                     bindTexture(
                         engine = readyEngine,
                         instanceHandle = instanceHandle,
+                        supportedParameters = parameterNames,
                         parameterName = "moonNormal",
                         path = MoonNormalTexturePath,
                         onFailure = { notice = it },
@@ -215,6 +350,7 @@ fun SkyScreen(
                     bindTexture(
                         engine = readyEngine,
                         instanceHandle = instanceHandle,
+                        supportedParameters = parameterNames,
                         parameterName = "milkyWayTexture",
                         path = MilkyWayTexturePath,
                         onFailure = { notice = it },
@@ -257,93 +393,119 @@ fun SkyScreen(
         },
         controls = {
             notice?.let { SampleNotice(it) }
+            ExpandableSection(
+                title = "Sun",
+            ) {
+                SkySlider("Azimuth", sunAzimuth, 0f..360f) { sunAzimuth = it }
+                SkySlider("Height", sunHeight, -0.2f..1f) { sunHeight = it }
+                SkySlider("Intensity", sunIntensity, 0f..500_000f) { sunIntensity = it }
+                SkySlider("Radius", sunRadius, 0f..5f) { sunRadius = it }
+                SkySlider("Limb Darkening", sunLimbDarkening, 0f..2f) { sunLimbDarkening = it }
+                SkySlider(
+                    "Disk Intensity Boost",
+                    sunDiskIntensityBoost,
+                    0f..100f
+                ) { sunDiskIntensityBoost = it }
+            }
 
-            SkySlider(
-                label = "Sun Azimuth",
-                value = sunAzimuth,
-                valueRange = 0f..360f,
-                onValueChange = { sunAzimuth = it },
-            )
-            SkySlider(
-                label = "Sun Height",
-                value = sunHeight,
-                valueRange = -0.2f..1f,
-                onValueChange = { sunHeight = it },
-            )
-            SkySlider(
-                label = "Turbidity",
-                value = turbidity,
-                valueRange = 1f..10f,
-                onValueChange = { turbidity = it },
-            )
-            SkySlider(
-                label = "Rayleigh",
-                value = rayleigh,
-                valueRange = 0f..10f,
-                onValueChange = { rayleigh = it },
-            )
-            SkySlider(
-                label = "Cloud Coverage",
-                value = cloudCoverage,
-                valueRange = 0f..1f,
-                onValueChange = { cloudCoverage = it },
-            )
-            SkySlider(
-                label = "Cloud Density",
-                value = cloudDensity,
-                valueRange = 0f..1f,
-                onValueChange = { cloudDensity = it },
-            )
-            SkySlider(
-                label = "Aperture",
-                value = aperture,
-                valueRange = 1.4f..32f,
-                onValueChange = { aperture = it },
-            )
-            SkySlider(
-                label = "Shutter Speed (1/x s)",
-                value = shutterSpeed,
-                valueRange = 1f..1000f,
-                onValueChange = { shutterSpeed = it },
-            )
-            SkySlider(
-                label = "ISO",
-                value = iso,
-                valueRange = 50f..3200f,
-                onValueChange = { iso = it },
-            )
+            ExpandableSection(
+                title = "Moon",
+            ) {
+                CheckBoxLabel("Enabled", moonEnabled, { moonEnabled = it })
+                SkySlider("Azimuth", moonAzimuth, 0f..360f) { moonAzimuth = it }
+                SkySlider("Height", moonHeight, -0.2f..1f) { moonHeight = it }
+                SkySlider("Intensity", moonIntensity, 0f..1000f) { moonIntensity = it }
+                SkySlider("Radius", moonRadius, 0.1f..5f) { moonRadius = it }
+            }
 
-            CheckBoxLabel(
-                modifier = Modifier.padding(top = Grid.One),
-                text = "Moon Enabled",
-                checked = moonEnabled,
-                onCheckedChange = { moonEnabled = it },
-            )
-            SkySlider(
-                label = "Moon Azimuth",
-                value = moonAzimuth,
-                valueRange = 0f..360f,
-                onValueChange = { moonAzimuth = it },
-            )
-            SkySlider(
-                label = "Moon Height",
-                value = moonHeight,
-                valueRange = -0.2f..1f,
-                onValueChange = { moonHeight = it },
-            )
+            ExpandableSection(
+                title = "Milky Way",
+            ) {
+                CheckBoxLabel("Enabled", milkyWayEnabled, { milkyWayEnabled = it })
+                SkySlider("Intensity", milkyWayIntensity, 0f..100f) { milkyWayIntensity = it }
+                SkySlider("Saturation", milkyWaySaturation, 0f..2f) { milkyWaySaturation = it }
+                SkySlider("Black Point", milkyWayBlackPoint, 0f..0.5f) { milkyWayBlackPoint = it }
+                SkySlider("Sidereal Time", milkyWaySiderealTime, 0f..24f) {
+                    milkyWaySiderealTime = it
+                }
+                SkySlider("Latitude", milkyWayLatitude, -90f..90f) { milkyWayLatitude = it }
+            }
 
-            CheckBoxLabel(
-                modifier = Modifier.padding(top = Grid.One),
-                text = "Stars Enabled",
-                checked = starsEnabled,
-                onCheckedChange = { starsEnabled = it },
-            )
-            SkySlider(
-                label = "Star Density",
-                value = starDensity,
-                valueRange = 0f..0.01f,
-                onValueChange = { starDensity = it },
-            )
+            ExpandableSection(
+                title = "Atmosphere",
+            ) {
+                SkySlider("Turbidity", turbidity, 1f..10f) { turbidity = it }
+                SkySlider("Rayleigh", rayleigh, 0f..10f) { rayleigh = it }
+                SkySlider("Mie Coefficient", mieCoefficient, 0f..10f) { mieCoefficient = it }
+                SkySlider("Ozone", ozone, 0f..1f) { ozone = it }
+                SkySlider("Mie G", mieG, 0f..0.999f) { mieG = it }
+            }
+
+            ExpandableSection(
+                title = "Clouds",
+            ) {
+                CheckBoxLabel("Volumetrics", cloudVolumetrics, { cloudVolumetrics = it })
+                SkySlider("Coverage", cloudCoverage, 0f..1f) { cloudCoverage = it }
+                SkySlider("Density", cloudDensity, 0f..1f) { cloudDensity = it }
+                SkySlider("Height", cloudHeightMeters, 2000f..20_000f) { cloudHeightMeters = it }
+                SkySlider("Speed", cloudSpeed, 0f..200f) { cloudSpeed = it }
+                SkySlider("Evolution", cloudEvolutionSpeed, 0f..2f) { cloudEvolutionSpeed = it }
+            }
+
+            ExpandableSection(
+                title = "Water",
+            ) {
+                CheckBoxLabel(
+                    "Derivative Trick",
+                    waterDerivativeTrick,
+                    { waterDerivativeTrick = it })
+                SkySlider("Strength", waterStrength, 10f..100f) { waterStrength = it }
+                SkySlider("Speed", waterSpeed, 0f..5f) { waterSpeed = it }
+                SkySlider("Octaves", waterOctaves, 1f..8f) { waterOctaves = it }
+            }
+
+            ExpandableSection(
+                title = "Stars",
+            ) {
+                CheckBoxLabel("Enabled", starsEnabled, { starsEnabled = it })
+                SkySlider("Density", starDensity, 0f..0.01f) { starDensity = it }
+                SkySlider(
+                    "Intensity (Exp)",
+                    starIntensityExponent,
+                    0f..24f
+                ) { starIntensityExponent = it }
+            }
+
+            ExpandableSection(
+                title = "Artistic",
+            ) {
+                SkySlider("MS Rayleigh", msRayleigh, 0f..2f) { msRayleigh = it }
+                SkySlider("MS Mie", msMie, 0f..2f) { msMie = it }
+                SkySlider("Horizon Glow", horizonGlow, 0f..1f) { horizonGlow = it }
+                SkySlider("Contrast", contrast, 0.1f..2f) { contrast = it }
+                SkySlider("Shimmer Strength", shimmerStrength, 0f..0.1f) { shimmerStrength = it }
+                SkySlider("Shimmer Frequency", shimmerFrequency, 1f..100f) { shimmerFrequency = it }
+                SkySlider(
+                    "Shimmer Mask Height",
+                    shimmerMaskHeight,
+                    0.01f..0.5f
+                ) { shimmerMaskHeight = it }
+            }
+
+            ExpandableSection(
+                title = "Camera",
+            ) {
+                SkySlider("Focal Length", focalLength, 8f..300f) { focalLength = it }
+                SkySlider("Aperture", aperture, 1.4f..32f) { aperture = it }
+                SkySlider("Shutter Speed (1/x s)", shutterSpeed, 0.05f..1000f) { shutterSpeed = it }
+                SkySlider("ISO", iso, 50f..3200f) { iso = it }
+            }
+
+            ExpandableSection(
+                title = "Real-Time Sync",
+            ) {
+                SampleNotice("Not yet wired in the native app. Use Sun and Milky Way controls manually.")
+            }
         },
     )
 }
@@ -356,8 +518,9 @@ private fun SkySlider(
     onValueChange: (Float) -> Unit,
 ) {
     Text(
-        text = label,
+        text = "$label: ${formatSliderValue(value)}",
         modifier = Modifier.padding(top = Grid.One),
+        style = MaterialTheme.typography.bodyMedium,
     )
     Slider(
         value = value,
@@ -366,13 +529,17 @@ private fun SkySlider(
     )
 }
 
+
+
 private fun bindTexture(
     engine: FilamentEngine,
     instanceHandle: Int,
+    supportedParameters: Set<String>,
     parameterName: String,
     path: String,
     onFailure: (String) -> Unit,
 ) {
+    if (parameterName !in supportedParameters) return
     val textureHandle = engine.loadTexture(Res.getUri(path))
     if (textureHandle <= 0) {
         onFailure("The texture $path could not be loaded.")
@@ -387,24 +554,58 @@ private fun applySkyParameters(
     viewportHeightPx: Int,
     sunAzimuth: Float,
     sunHeight: Float,
+    sunIntensity: Float,
+    sunRadius: Float,
+    sunLimbDarkening: Float,
+    sunDiskIntensityBoost: Float,
     turbidity: Float,
     rayleigh: Float,
+    mieCoefficient: Float,
+    ozone: Float,
+    mieG: Float,
     cloudCoverage: Float,
     cloudDensity: Float,
+    cloudVolumetrics: Boolean,
+    cloudHeightMeters: Float,
+    cloudSpeed: Float,
+    cloudEvolutionSpeed: Float,
+    waterDerivativeTrick: Boolean,
+    waterStrength: Float,
+    waterSpeed: Float,
+    waterOctaves: Float,
     aperture: Float,
     shutterSpeed: Float,
     iso: Float,
+    focalLength: Float,
+    supportedParameters: Set<String>,
     moonEnabled: Boolean,
     moonAzimuth: Float,
     moonHeight: Float,
+    moonIntensity: Float,
+    moonRadius: Float,
+    milkyWayEnabled: Boolean,
+    milkyWayIntensity: Float,
+    milkyWaySaturation: Float,
+    milkyWayBlackPoint: Float,
+    milkyWaySiderealTime: Float,
+    milkyWayLatitude: Float,
     starsEnabled: Boolean,
     starDensity: Float,
+    starIntensityExponent: Float,
+    msRayleigh: Float,
+    msMie: Float,
+    horizonGlow: Float,
+    contrast: Float,
+    shimmerStrength: Float,
+    shimmerFrequency: Float,
+    shimmerMaskHeight: Float,
+    onError: (String) -> Unit,
 ) {
     val sunDirection = directionFromAzimuthHeight(sunAzimuth, sunHeight)
     val moonDirection = directionFromAzimuthHeight(moonAzimuth, moonHeight)
     val exposure = computeExposure(aperture, shutterSpeed, iso)
-    val preExposedSunIntensity = 100_000f * exposure
-    val preExposedMoonIntensity = MoonIntensity * exposure
+    val preExposedSunIntensity = sunIntensity * exposure
+    val shaderExposure = 1f
 
     val lambda = doubleArrayOf(680e-9, 550e-9, 440e-9)
     val n = 1.0003
@@ -418,11 +619,11 @@ private fun applySkyParameters(
     val mieBase = 2.0e-5 * turbidity
     val depthM = FloatArray(3) { index ->
         (
-            mieBase *
-                (550e-9 / lambda[index]).pow(mieAlpha) *
-                1200.0 *
-                MieCoefficient
-            ).toFloat()
+                mieBase *
+                        (550e-9 / lambda[index]).pow(mieAlpha) *
+                        1200.0 *
+                        mieCoefficient
+                ).toFloat()
     }
 
     val cutoffAngle = degreesToRadians(96.0)
@@ -430,116 +631,270 @@ private fun applySkyParameters(
     val zenithFade = 1.0 - exp(-(cutoffAngle / steepness))
     val zenithAngle = acos(sunDirection.y.coerceIn(-1f, 1f).toDouble())
     val sunFade = (
-        max(0.0, 1.0 - exp(-((cutoffAngle - zenithAngle) / steepness))) /
-            zenithFade
-        ).toFloat()
+            max(0.0, 1.0 - exp(-((cutoffAngle - zenithAngle) / steepness))) /
+                    zenithFade
+            ).toFloat()
     val physicalSunIntensity = preExposedSunIntensity * sunFade
 
     val sunHalo = buildHaloUniform(
-        angularRadiusDegrees = SunAngularRadiusDegrees,
-        limbDarkening = SunLimbDarkening,
-        intensity = SunDiskIntensityBoost,
+        angularRadiusDegrees = sunRadius,
+        limbDarkening = sunLimbDarkening,
+        intensity = sunDiskIntensityBoost,
         enabled = true,
     )
     val moonHalo = buildMoonHaloUniform(
-        angularRadiusDegrees = MoonAngularRadiusDegrees,
+        angularRadiusDegrees = moonRadius,
         intensity = 1f,
         enabled = moonEnabled,
     )
 
-    val cloudHeightKm = CloudHeightMeters * 0.001f
+    val cloudHeightKm = cloudHeightMeters * 0.001f
     val cloudIntersectC = PlanetRadiusKm * PlanetRadiusKm -
-        (PlanetRadiusKm + cloudHeightKm) * (PlanetRadiusKm + cloudHeightKm)
+            (PlanetRadiusKm + cloudHeightKm) * (PlanetRadiusKm + cloudHeightKm)
     val cloudUniform = Float4(
         cloudCoverage.coerceIn(0f, 1f),
         cloudDensity.coerceAtLeast(0f),
         cloudIntersectC,
-        CloudSpeed * (0.05f / 72f),
+        cloudSpeed * (0.05f / 72f),
     )
     val shimmerUniform = Float4(
-        ShimmerControl.x,
-        ShimmerControl.y,
-        ShimmerControl.z,
+        shimmerStrength,
+        shimmerFrequency,
+        shimmerMaskHeight,
         PlanetRadiusKm,
     )
     val multiScatter = Float4(
-        (depthR[0] * MultiScatterRayleigh + depthM[0] * MultiScatterMie) * 0.25f,
-        (depthR[1] * MultiScatterRayleigh + depthM[1] * MultiScatterMie) * 0.25f,
-        (depthR[2] * MultiScatterRayleigh + depthM[2] * MultiScatterMie) * 0.25f,
-        HorizonGlow,
+        (depthR[0] * msRayleigh + depthM[0] * msMie) * 0.25f,
+        (depthR[1] * msRayleigh + depthM[1] * msMie) * 0.25f,
+        (depthR[2] * msRayleigh + depthM[2] * msMie) * 0.25f,
+        horizonGlow,
     )
 
-    val g2 = MieG * MieG
-    val miePhaseParams = Float2(1f + g2, -2f * MieG)
+    val g2 = mieG * mieG
+    val miePhaseParams = Float2(1f + g2, -2f * mieG)
 
     val starControl = buildStarControl(
         density = starDensity,
         enabled = starsEnabled,
         viewportHeightPx = viewportHeightPx,
+        focalLengthMm = focalLength,
     )
+    val starIntensity = 2f.pow(starIntensityExponent)
     val milkyWayControl = Float3(
-        MilkyWayIntensity * preExposedSunIntensity * 1.5e-8f,
-        MilkyWaySaturation,
-        MilkyWayBlackPoint,
+        if (milkyWayEnabled) milkyWayIntensity * 0.003f else 0f,
+        milkyWaySaturation,
+        milkyWayBlackPoint,
     )
 
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("sunDirection", sunDirection))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("sunDirection2", moonDirection))
-    engine.setMaterialParameter(
+    setMaterialParameterSafely(
+        engine,
         instanceHandle,
+        supportedParameters,
+        MaterialParameter("sunDirection", sunDirection),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("sunDirection2", moonDirection),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
         MaterialParameter("depthR", Float3(depthR[0], depthR[1], depthR[2])),
+        onError,
     )
-    engine.setMaterialParameter(
+    setMaterialParameterSafely(
+        engine,
         instanceHandle,
+        supportedParameters,
         MaterialParameter("depthM", Float3(depthM[0], depthM[1], depthM[2])),
+        onError,
     )
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("miePhaseParams", miePhaseParams))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("sunIntensity", physicalSunIntensity))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("contrast", 1f))
-    engine.setMaterialParameter(
+    setMaterialParameterSafely(
+        engine,
         instanceHandle,
+        supportedParameters,
+        MaterialParameter("miePhaseParams", miePhaseParams),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("sunIntensity", physicalSunIntensity),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("contrast", contrast),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
         MaterialParameter(
             "nightColor",
             Float3(
-                NightColor.x * preExposedSunIntensity,
-                NightColor.y * preExposedSunIntensity,
-                NightColor.z * preExposedSunIntensity,
+                0.0035f,
+                0.006f,
+                0.012f,
             ),
         ),
+        onError,
     )
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("ozone", Float3(0f, OzoneStrength * 0.1f, 0f)))
-    engine.setMaterialParameter(
+    setMaterialParameterSafely(
+        engine,
         instanceHandle,
+        supportedParameters,
+        MaterialParameter("ozone", Float3(0f, ozone * 0.1f, 0f)),
+        onError,
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
         MaterialParameter(
             "eclipseFactor",
-            computeEclipseFactor(sunDirection = sunDirection, moonDirection = moonDirection, moonEnabled = moonEnabled),
+            computeEclipseFactor(
+                sunDirection = sunDirection,
+                moonDirection = moonDirection,
+                sunRadiusDegrees = sunRadius,
+                moonRadiusDegrees = moonRadius,
+                moonEnabled = moonEnabled,
+            ),
         ),
+        onError,
     )
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("multiScatParams", multiScatter))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("sunHalo", sunHalo))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("shimmerControl", shimmerUniform))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("cloudControl", cloudUniform))
-    engine.setMaterialParameter(
+    setMaterialParameterSafely(
+        engine,
         instanceHandle,
-        MaterialParameter("cloudControl2", Float4(CloudEvolutionSpeed, 0f, 0f, 0f)),
+        supportedParameters,
+        MaterialParameter("multiScatParams", multiScatter),
+        onError
     )
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("sunIntensity2", preExposedMoonIntensity))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("sunHalo2", moonHalo))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("waterControl", Float4(50f, 1f, 1f, 4f)))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("starControl", starControl))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("starIntensity", StarIntensity))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("exposure", exposure))
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("milkyWayControl", milkyWayControl))
-    engine.setMaterialParameter(
+    setMaterialParameterSafely(
+        engine,
         instanceHandle,
+        supportedParameters,
+        MaterialParameter("sunHalo", sunHalo),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("shimmerControl", shimmerUniform),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("cloudControl", cloudUniform),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter(
+            "cloudControl2",
+            Float4(cloudEvolutionSpeed, if (cloudVolumetrics) 1f else 0f, 0f, 0f)
+        ),
+        onError,
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("sunIntensity2", moonIntensity),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("sunHalo2", moonHalo),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter(
+            "waterControl",
+            Float4(
+                waterStrength,
+                waterSpeed,
+                if (waterDerivativeTrick) 1f else 0f,
+                waterOctaves,
+            ),
+        ),
+        onError,
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("starControl", starControl),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("starIntensity", starIntensity),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("exposure", shaderExposure),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("milkyWayControl", milkyWayControl),
+        onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
         MaterialParameter(
             "milkyWayRotation",
             buildMilkyWayRotation(
-                siderealTimeHours = MilkyWaySiderealTime,
-                latitudeDegrees = MilkyWayLatitude,
+                siderealTimeHours = milkyWaySiderealTime,
+                latitudeDegrees = milkyWayLatitude,
             ),
         ),
+        onError,
     )
+}
+
+private fun setMaterialParameterSafely(
+    engine: FilamentEngine,
+    instanceHandle: Int,
+    supportedParameters: Set<String>,
+    parameter: MaterialParameter,
+    onError: (String) -> Unit,
+) {
+    if (parameter.name !in supportedParameters) return
+    runCatching {
+        engine.setMaterialParameter(instanceHandle, parameter)
+    }.onFailure { error ->
+        onError("Failed to update ${parameter.name}: ${error.message ?: "unknown error"}")
+    }
 }
 
 private fun computeExposure(
@@ -604,9 +959,11 @@ private fun buildStarControl(
     density: Float,
     enabled: Boolean,
     viewportHeightPx: Int,
+    focalLengthMm: Float,
 ): Float4 {
     val compensatedDensity = (density * 12f).coerceIn(0f, 1f)
-    val pixelScale = (1f / viewportHeightPx.coerceAtLeast(1)) * (24f / FixedFocalLengthMm)
+    val pixelScale =
+        (1f / viewportHeightPx.coerceAtLeast(1)) * (24f / focalLengthMm.coerceAtLeast(1f))
     return Float4(
         compensatedDensity,
         if (enabled) 1f else 0f,
@@ -618,17 +975,19 @@ private fun buildStarControl(
 private fun computeEclipseFactor(
     sunDirection: Float3,
     moonDirection: Float3,
+    sunRadiusDegrees: Float,
+    moonRadiusDegrees: Float,
     moonEnabled: Boolean,
 ): Float {
     if (!moonEnabled) return 1f
 
-    val sunRadius = degreesToRadians(SunAngularRadiusDegrees.toDouble())
-    val moonRadius = degreesToRadians(MoonAngularRadiusDegrees.toDouble())
+    val sunRadius = degreesToRadians(sunRadiusDegrees.toDouble())
+    val moonRadius = degreesToRadians(moonRadiusDegrees.toDouble())
     val dot = (
-        sunDirection.x * moonDirection.x +
-            sunDirection.y * moonDirection.y +
-            sunDirection.z * moonDirection.z
-        ).coerceIn(-1f, 1f)
+            sunDirection.x * moonDirection.x +
+                    sunDirection.y * moonDirection.y +
+                    sunDirection.z * moonDirection.z
+            ).coerceIn(-1f, 1f)
     val separation = acos(dot.toDouble())
     val overlap = areaIntersection(sunRadius, moonRadius, separation)
     val sunArea = PI * sunRadius * sunRadius
@@ -750,6 +1109,39 @@ private fun multiplyMat3(
     return out
 }
 
+private fun computeVerticalFovDegrees(
+    focalLengthMm: Float,
+    sensorHeightMm: Float = 24f,
+): Float {
+    val focal = focalLengthMm.coerceAtLeast(1f).toDouble()
+    val sensor = sensorHeightMm.toDouble()
+    return ((2.0 * kotlin.math.atan(sensor / (2.0 * focal))) * 180.0 / PI).toFloat()
+}
+
 private fun degreesToRadians(degrees: Float): Float = (degrees.toDouble() * PI / 180.0).toFloat()
 
 private fun degreesToRadians(degrees: Double): Double = degrees * PI / 180.0
+
+private fun formatSliderValue(value: Float): String = when {
+    abs(value) >= 100f -> value.toInt().toString()
+    abs(value) >= 1f -> formatWithDecimals(value, decimals = 2)
+    else -> formatWithDecimals(value, decimals = 3)
+}
+
+private fun formatWithDecimals(
+    value: Float,
+    decimals: Int,
+): String {
+    val factor = 10.0.pow(decimals).toFloat()
+    val roundedValue = round(value * factor) / factor
+    val sign = if (roundedValue < 0f) "-" else ""
+    val absoluteValue = abs(roundedValue)
+    val whole = absoluteValue.toInt()
+    val fraction = ((absoluteValue - whole) * factor).toInt()
+    val fractionText = fraction.toString().padStart(decimals, '0')
+    return if (decimals == 0) {
+        "$sign$whole"
+    } else {
+        "$sign$whole.$fractionText"
+    }
+}
