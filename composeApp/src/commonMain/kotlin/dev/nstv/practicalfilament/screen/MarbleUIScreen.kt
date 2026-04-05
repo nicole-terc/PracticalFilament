@@ -21,12 +21,15 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +69,7 @@ import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 private enum class DemoStep(
@@ -106,6 +110,17 @@ private val MarbleUiMuted = ComposeColor(0xFFB6C1CD)
 private val MarbleUiAccent = ComposeColor(0xFFF6D28A)
 private val MarbleUiBackgroundFilament = MarbleUiBackground.toFilamentColor()
 private const val GlassMaterialPath = "materials/marbleGlass.filamat"
+private val ButtonCornerRadius = 24.dp
+private val ButtonHeight = 88.dp
+private val ButtonShape = RoundedCornerShape(ButtonCornerRadius)
+private val ButtonClipShape = FilamentClipShape.RoundedRect(ButtonCornerRadius)
+private const val ButtonMeshWidth = 8.6f
+private const val ButtonMeshHeight = 2.2f
+private const val ButtonMeshDepth = 0.52f
+private const val ButtonRimThickness = 0.14f
+private const val ButtonCurvatureRange = 1f
+private val ButtonCornerRadiusFraction = ButtonCornerRadius.value / ButtonHeight.value
+private const val DefaultButtonCurvature = -0.42f
 
 private val SingleMarbleCamera = CameraConfig(
     position = Float3(0f, 0.1f, 4.5f),
@@ -257,8 +272,9 @@ private const val CeramicPresetIndex = 4
 fun MarbleUIScreen(
     modifier: Modifier = Modifier,
 ) {
-    var selectedStep by remember { mutableStateOf(DemoStep.FLAT_CIRCLE) }
+    var selectedStep by remember { mutableStateOf(DemoStep.UI_SYSTEM) }
     var selectedPresetIndex by remember { mutableIntStateOf(CeramicPresetIndex) }
+    var buttonCurvature by remember { mutableFloatStateOf(DefaultButtonCurvature) }
 
     Column(
         modifier = modifier
@@ -324,6 +340,12 @@ fun MarbleUIScreen(
                     SampleMarbleButton(
                         modifier = Modifier.fillMaxWidth(),
                         preset = MarblePresets[selectedPresetIndex],
+                        curvature = buttonCurvature,
+                    )
+                    CurvatureSlider(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = buttonCurvature,
+                        onValueChange = { buttonCurvature = it },
                     )
                 }
             }
@@ -531,12 +553,13 @@ private fun SphereMaterialView(
 @Composable
 private fun SampleMarbleButton(
     preset: Material,
+    curvature: Float,
     modifier: Modifier = Modifier,
 ) {
     Button(
         onClick = {},
-        modifier = modifier.height(88.dp),
-        shape = RoundedCornerShape(24.dp),
+        modifier = modifier.height(ButtonHeight),
+        shape = ButtonShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = ComposeColor.Transparent,
@@ -550,11 +573,12 @@ private fun SampleMarbleButton(
             key(preset.fileName) {
                 ButtonMaterialBackground(
                     preset = preset,
+                    curvature = curvature,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
             Text(
-                text = "Apply ${preset.label}",
+                text = preset.label,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MarbleUiText,
             )
@@ -565,9 +589,24 @@ private fun SampleMarbleButton(
 @Composable
 private fun ButtonMaterialBackground(
     preset: Material,
+    curvature: Float,
     modifier: Modifier = Modifier,
 ) {
-    val buttonGeometry = remember { buildRoundedButtonGeometry() }
+    var engineReady by remember { mutableStateOf<FilamentEngine?>(null) }
+    var materialInstanceHandle by remember { mutableIntStateOf(0) }
+    var renderableHandle by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(engineReady, materialInstanceHandle, curvature) {
+        val engine = engineReady ?: return@LaunchedEffect
+        if (materialInstanceHandle == 0) return@LaunchedEffect
+        if (renderableHandle != 0) {
+            engine.removeRenderable(renderableHandle)
+        }
+        renderableHandle = engine.createCustomRenderableWithGeneratedTangents(
+            buildRoundedButtonGeometry(curvature).copy(materialInstanceHandle = materialInstanceHandle),
+        )
+        engine.requestFrame()
+    }
 
     Box(modifier = modifier) {
         FilamentView(
@@ -575,16 +614,82 @@ private fun ButtonMaterialBackground(
             camera = ButtonSurfaceCamera,
             lights = ButtonSurfaceLights,
             backgroundColor = MarbleUiBackgroundFilament,
-            clipShape = FilamentClipShape.RoundedRect(24.dp),
+            clipShape = ButtonClipShape,
             onEngineReady = { engine ->
                 val (instanceHandle, _, parameters) = loadMaterialOnEngine(engine, preset)
                 parameters.values.forEach { engine.setMaterialParameter(instanceHandle, it) }
-                engine.createCustomRenderableWithGeneratedTangents(
-                    buttonGeometry.copy(materialInstanceHandle = instanceHandle),
-                )
-                engine.requestFrame()
+                materialInstanceHandle = instanceHandle
+                engineReady = engine
             },
         )
+    }
+}
+
+@Composable
+private fun CurvatureSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(Grid.Half),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Curvature",
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MarbleUiText,
+            )
+            Text(
+                text = curvatureLabel(value),
+                style = MaterialTheme.typography.labelMedium,
+                color = MarbleUiMuted,
+            )
+        }
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = -ButtonCurvatureRange..ButtonCurvatureRange,
+            colors = SliderDefaults.colors(
+                thumbColor = MarbleUiAccent,
+                activeTrackColor = MarbleUiAccent,
+                inactiveTrackColor = MarbleUiMuted.copy(alpha = 0.28f),
+            ),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = "Bowl",
+                style = MaterialTheme.typography.labelSmall,
+                color = MarbleUiMuted,
+            )
+            Text(
+                text = "Flat",
+                style = MaterialTheme.typography.labelSmall,
+                color = MarbleUiMuted,
+            )
+            Text(
+                text = "Dome",
+                style = MaterialTheme.typography.labelSmall,
+                color = MarbleUiMuted,
+            )
+        }
+    }
+}
+
+private fun curvatureLabel(value: Float): String {
+    val percent = (kotlin.math.abs(value) * 100f).roundToInt()
+    return when {
+        value <= -0.08f -> "Bowl $percent%"
+        value >= 0.08f -> "Dome $percent%"
+        else -> "Flat"
     }
 }
 
@@ -646,117 +751,200 @@ private fun SelectionRingOverlay(
     }
 }
 
-private fun buildRoundedButtonGeometry(): CustomRenderableConfig {
-    val width = 8.6f
-    val height = 2.2f
-    val depth = 0.4f
-    val bevel = 0.18f
-    val outerRadius = 0.72f
-    val topWidth = width - bevel * 2f
-    val topHeight = height - bevel * 2f
-    val topRadius = (outerRadius - bevel).coerceAtLeast(0.16f)
+private fun buildRoundedButtonGeometry(
+    curvature: Float,
+): CustomRenderableConfig {
+    val width = ButtonMeshWidth
+    val height = ButtonMeshHeight
+    val depth = ButtonMeshDepth
+    val rimThickness = ButtonRimThickness
+    val outerRadius = (height * ButtonCornerRadiusFraction).coerceAtMost(minOf(width, height) * 0.5f)
     val arcSegments = 18
-    val domeRingCount = 10
-    val domeDrop = depth * 0.14f
-    val outerRing = roundedRectRing(width, height, outerRadius, arcSegments)
+    val wallRingCount = 6
+    val floorRingCount = 8
+    val signedCurvature = curvature.coerceIn(-1f, 1f)
+    val bowlAmount = (-signedCurvature).coerceAtLeast(0f)
+    val domeAmount = signedCurvature.coerceAtLeast(0f)
+
+    // Z positions: rim top is the highest point, floor center is the lowest (bowl) or highest (dome)
+    val rimTopZ = depth * 0.5f
+    val rimBaseZ = rimTopZ - depth * 0.12f // slight thickness for the rim lip
+    val innerSurfaceStartZ = lerp(rimBaseZ, rimTopZ, domeAmount)
+    val floorCenterZ = if (signedCurvature >= 0f) {
+        rimTopZ + domeAmount * depth * 0.28f
+    } else {
+        rimBaseZ - bowlAmount * depth * 0.7f
+    }
+
+    // Rim: outer edge and inner edge of the raised border
+    val rimOuterRing = roundedRectRing(width, height, outerRadius, arcSegments)
+    val innerWidth = (width - rimThickness * 2f).coerceAtLeast(0.8f)
+    val innerHeight = (height - rimThickness * 2f).coerceAtLeast(0.4f)
+    val innerRadius = (outerRadius - rimThickness).coerceAtLeast(0.08f)
+    val rimInnerRing = roundedRectRing(innerWidth, innerHeight, innerRadius, arcSegments)
+
+    // Floor: the inner bowl/dome surface, scaled down from rim inner edge
+    val floorInset = innerHeight * 0.08f
+    val floorWidth = (innerWidth - floorInset * 2f).coerceAtLeast(0.4f)
+    val floorHeight = (innerHeight - floorInset * 2f).coerceAtLeast(0.2f)
+    val floorRadius = (innerRadius - floorInset).coerceAtLeast(0.06f)
+    val floorTerminalDiameter = minOf(floorWidth, floorHeight)
 
     val vertexFloats = mutableListOf<Float>()
     val indices = mutableListOf<Short>()
 
     fun appendVertex(x: Float, y: Float, z: Float, u: Float, v: Float): Short {
         val index = vertexFloats.size / 5
-        vertexFloats += x
-        vertexFloats += y
-        vertexFloats += z
-        vertexFloats += u
-        vertexFloats += v
+        vertexFloats += x; vertexFloats += y; vertexFloats += z
+        vertexFloats += u; vertexFloats += v
         return index.toShort()
     }
 
-    val frontCenter = appendVertex(0f, 0f, depth * 0.5f, 0.5f, 0.5f)
-    var previousRingIndices: List<Short>? = null
-    var topOuterIndices: List<Short> = emptyList()
-
-    for (ringStep in 1..domeRingCount) {
-        val t = ringStep.toFloat() / domeRingCount.toFloat()
-        val scale = easedProgress(t)
-        val ringZ = depth * 0.5f - domeDrop * easedProgress(t)
-        val ring = roundedRectRing(
-            width = topWidth * scale,
-            height = topHeight * scale,
-            radius = topRadius * scale,
-            arcSegments = arcSegments,
-        )
-        val ringIndices = ring.map { point ->
-            appendVertex(
-                x = point.x,
-                y = point.y,
-                z = ringZ,
-                u = (point.x / width) + 0.5f,
-                v = (point.y / height) + 0.5f,
-            )
-        }
-
-        if (previousRingIndices == null) {
-            for (index in ringIndices.indices) {
-                val next = (index + 1) % ringIndices.size
-                indices += frontCenter
-                indices += ringIndices[index]
-                indices += ringIndices[next]
-            }
-        } else {
-            for (index in ringIndices.indices) {
-                val next = (index + 1) % ringIndices.size
-                if ((ringStep + index) % 2 == 0) {
-                    indices += previousRingIndices[index]
-                    indices += ringIndices[index]
-                    indices += ringIndices[next]
-                    indices += previousRingIndices[index]
-                    indices += ringIndices[next]
-                    indices += previousRingIndices[next]
+    fun stitchRings(prevRing: List<Short>, nextRing: List<Short>, flipWinding: Boolean = false) {
+        for (i in prevRing.indices) {
+            val j = (i + 1) % prevRing.size
+            if (flipWinding) {
+                if (i % 2 == 0) {
+                    indices += prevRing[i]; indices += nextRing[i]; indices += nextRing[j]
+                    indices += prevRing[i]; indices += nextRing[j]; indices += prevRing[j]
                 } else {
-                    indices += previousRingIndices[index]
-                    indices += ringIndices[index]
-                    indices += previousRingIndices[next]
-                    indices += previousRingIndices[next]
-                    indices += ringIndices[index]
-                    indices += ringIndices[next]
+                    indices += prevRing[i]; indices += nextRing[i]; indices += prevRing[j]
+                    indices += prevRing[j]; indices += nextRing[i]; indices += nextRing[j]
+                }
+            } else {
+                // CCW winding for front-facing (+Z toward camera)
+                if (i % 2 == 0) {
+                    indices += prevRing[i]; indices += prevRing[j]; indices += nextRing[j]
+                    indices += prevRing[i]; indices += nextRing[j]; indices += nextRing[i]
+                } else {
+                    indices += prevRing[i]; indices += prevRing[j]; indices += nextRing[i]
+                    indices += prevRing[j]; indices += nextRing[j]; indices += nextRing[i]
                 }
             }
         }
-
-        previousRingIndices = ringIndices
-        topOuterIndices = ringIndices
     }
 
-    val backCenter = appendVertex(0f, 0f, -depth * 0.5f, 0.5f, 0.5f)
-    val outerIndices = outerRing.map { point ->
-        appendVertex(
-            x = point.x,
-            y = point.y,
-            z = -depth * 0.5f,
-            u = (point.x / width) + 0.5f,
-            v = (point.y / height) + 0.5f,
-        )
+    // 1. Rim top face: flat ring between outer and inner edges at rimTopZ
+    val rimOuterTopIndices = rimOuterRing.map { p ->
+        appendVertex(p.x, p.y, rimTopZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+    }
+    val rimInnerTopIndices = rimInnerRing.map { p ->
+        appendVertex(p.x, p.y, rimTopZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+    }
+    stitchRings(rimOuterTopIndices, rimInnerTopIndices)
+
+    var prevInnerRing = rimInnerTopIndices
+    var centerSurfaceZ = floorCenterZ
+
+    if (bowlAmount > 0f) {
+        val bowlRingCount = wallRingCount + floorRingCount
+        val bowlDepth = bowlAmount * depth * 0.64f
+        for (step in 1..bowlRingCount) {
+            val t = step.toFloat() / bowlRingCount.toFloat()
+            val eased = easedProgress(t)
+            val radialScale = cos(eased.toDouble() * PI * 0.5).toFloat()
+            val circularBlend = easedProgress((eased * 1.25f).coerceIn(0f, 1f))
+            val circularDiameter = floorTerminalDiameter * radialScale
+            val ringWidth = lerp(innerWidth * radialScale, circularDiameter, circularBlend)
+            val ringHeight = lerp(innerHeight * radialScale, circularDiameter, circularBlend)
+            val ringRadius = lerp(
+                (innerRadius * radialScale).coerceAtLeast(0.02f),
+                circularDiameter * 0.5f,
+                circularBlend,
+            )
+            val sink = sin(eased.toDouble() * PI * 0.5).toFloat()
+            val ringZ = rimTopZ - bowlDepth * sink
+            if (ringWidth < 0.035f || ringHeight < 0.035f) break
+            val ring = roundedRectRing(ringWidth, ringHeight, ringRadius, arcSegments)
+            val ringIndices = ring.map { p ->
+                appendVertex(p.x, p.y, ringZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+            }
+            stitchRings(prevInnerRing, ringIndices)
+            prevInnerRing = ringIndices
+            centerSurfaceZ = ringZ
+        }
+        centerSurfaceZ = rimTopZ - bowlDepth
+    } else {
+        // 2. Inner wall: from rim inner edge curving into the dome or flat center.
+        val rimInnerWallTopIndices = rimInnerRing.map { p ->
+            appendVertex(p.x, p.y, innerSurfaceStartZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+        }
+        stitchRings(rimInnerTopIndices, rimInnerWallTopIndices)
+
+        var prevWallRing: List<Short> = rimInnerWallTopIndices
+        for (step in 1..wallRingCount) {
+            val t = step.toFloat() / wallRingCount.toFloat()
+            val eased = easedProgress(t)
+            val ringWidth = lerp(innerWidth, floorWidth, eased)
+            val ringHeight = lerp(innerHeight, floorHeight, eased)
+            val ringRadius = lerp(innerRadius, floorRadius, eased)
+            val ringZ = lerp(innerSurfaceStartZ, floorCenterZ, eased)
+            val ring = roundedRectRing(ringWidth, ringHeight, ringRadius, arcSegments)
+            val ringIndices = ring.map { p ->
+                appendVertex(p.x, p.y, ringZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+            }
+            stitchRings(prevWallRing, ringIndices)
+            prevWallRing = ringIndices
+        }
+
+        // 3. Floor surface: concentric rings from floor edge to center.
+        var prevFloorRing = prevWallRing
+        for (step in 1 until floorRingCount) {
+            val t = step.toFloat() / floorRingCount.toFloat()
+            val eased = easedProgress(t)
+            val scale = 1f - eased
+            val baseRingWidth = floorWidth * scale
+            val baseRingHeight = floorHeight * scale
+            val terminalDiameter = floorTerminalDiameter * scale
+            val centerBlend = easedProgress(((t - 0.45f) / 0.55f).coerceIn(0f, 1f))
+            val ringWidth = lerp(baseRingWidth, terminalDiameter, centerBlend)
+            val ringHeight = lerp(baseRingHeight, terminalDiameter, centerBlend)
+            val ringRadius = lerp(floorRadius * scale, terminalDiameter * 0.5f, centerBlend)
+            val domeLift = domeAmount * depth * 0.12f * eased
+            val ringZ = floorCenterZ + domeLift
+            if (ringWidth < 0.035f || ringHeight < 0.035f) break
+            val ring = roundedRectRing(ringWidth, ringHeight, ringRadius.coerceAtLeast(0.02f), arcSegments)
+            val ringIndices = ring.map { p ->
+                appendVertex(p.x, p.y, ringZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+            }
+            stitchRings(prevFloorRing, ringIndices)
+            prevFloorRing = ringIndices
+            centerSurfaceZ = ringZ
+        }
+        prevInnerRing = prevFloorRing
+        centerSurfaceZ = floorCenterZ + domeAmount * depth * 0.12f
     }
 
-    val ringSize = outerRing.size
-    for (index in 0 until ringSize) {
-        val next = (index + 1) % ringSize
+    // Surface center vertex
+    val floorCenter = appendVertex(0f, 0f, centerSurfaceZ, 0.5f, 0.5f)
+    for (i in prevInnerRing.indices) {
+        val j = (i + 1) % prevInnerRing.size
+        indices += floorCenter
+        indices += prevInnerRing[i]
+        indices += prevInnerRing[j]
+    }
+
+    // 4. Outer side wall: connects rim top outer edge down to back face
+    val backZ = -depth * 0.5f
+    val outerBackIndices = rimOuterRing.map { p ->
+        appendVertex(p.x, p.y, backZ, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+    }
+    stitchRings(rimOuterTopIndices, outerBackIndices, flipWinding = true)
+
+    // 5. Back face: flat bottom
+    val backCenter = appendVertex(0f, 0f, backZ, 0.5f, 0.5f)
+    for (i in outerBackIndices.indices) {
+        val j = (i + 1) % outerBackIndices.size
         indices += backCenter
-        indices += outerIndices[next]
-        indices += outerIndices[index]
+        indices += outerBackIndices[j]
+        indices += outerBackIndices[i]
     }
 
-    for (index in 0 until ringSize) {
-        val next = (index + 1) % ringSize
-        indices += topOuterIndices[index]
-        indices += outerIndices[index]
-        indices += outerIndices[next]
-        indices += topOuterIndices[index]
-        indices += outerIndices[next]
-        indices += topOuterIndices[next]
-    }
+    val maxZ = maxOf(
+        kotlin.math.abs(rimTopZ),
+        kotlin.math.abs(centerSurfaceZ),
+        depth * 0.5f,
+    )
 
     return CustomRenderableConfig(
         vertexData = vertexFloats.toFloatArray().toByteArray(),
@@ -778,7 +966,7 @@ private fun buildRoundedButtonGeometry(): CustomRenderableConfig {
         materialInstanceHandle = 0,
         boundingBox = BoundingBox(
             center = Float3(0f, 0f, 0f),
-            halfExtent = Float3(width * 0.5f, height * 0.5f, depth * 0.5f),
+            halfExtent = Float3(width * 0.5f, height * 0.5f, maxZ),
         ),
         primitiveType = PrimitiveType.TRIANGLES,
     )
@@ -786,6 +974,14 @@ private fun buildRoundedButtonGeometry(): CustomRenderableConfig {
 
 private fun easedProgress(value: Float): Float {
     return value * value * (3f - 2f * value)
+}
+
+private fun lerp(
+    start: Float,
+    end: Float,
+    t: Float,
+): Float {
+    return start + (end - start) * t
 }
 
 private fun roundedRectRing(
