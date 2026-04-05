@@ -5,7 +5,8 @@
 
 - (void)initializeWithMetalLayer:(CAMetalLayer * _Nonnull)layer
                            width:(int)width
-                          height:(int)height;
+                          height:(int)height
+                        isOpaque:(BOOL)isOpaque;
 - (void)setClearColorR:(float)r g:(float)g b:(float)b a:(float)a;
 - (void)destroy;
 - (void)clearScene;
@@ -13,7 +14,9 @@
 - (void)updateCameraEyeX:(float)eyeX eyeY:(float)eyeY eyeZ:(float)eyeZ
                   targetX:(float)targetX targetY:(float)targetY targetZ:(float)targetZ
                       upX:(float)upX upY:(float)upY upZ:(float)upZ
-                      fov:(double)fov near:(double)near far:(double)far;
+                      fov:(double)fov near:(double)near far:(double)far
+            projectionType:(int)projectionType orthoZoom:(double)orthoZoom;
+- (void)setCameraExposure:(float)aperture shutterSpeed:(float)shutterSpeed sensitivity:(float)sensitivity;
 
 - (int)addLightWithType:(int)type
                       r:(float)r g:(float)g b:(float)b
@@ -32,7 +35,9 @@
 - (int)loadIndirectLightFromPath:(NSString * _Nonnull)path;
 - (void)setIndirectLight:(int)handle intensity:(float)intensity;
 - (int)loadSkyboxFromPath:(NSString * _Nonnull)path;
+- (int)createColorSkybox;
 - (void)setSkybox:(int)handle;
+- (void)setSkyboxColorHandle:(int)handle r:(float)r g:(float)g b:(float)b a:(float)a;
 
 - (int)loadMaterialFromPath:(NSString * _Nonnull)path;
 - (int)getMaterialParameterDefinitionCount:(int)materialHandle;
@@ -87,7 +92,19 @@
                                   indices:(NSData * _Nonnull)indices
                             primitiveType:(int)primitiveType
                                   centerX:(float)centerX centerY:(float)centerY centerZ:(float)centerZ
-                              halfExtentX:(float)halfExtentX halfExtentY:(float)halfExtentY halfExtentZ:(float)halfExtentZ;
+                                  halfExtentX:(float)halfExtentX halfExtentY:(float)halfExtentY halfExtentZ:(float)halfExtentZ;
+- (int)createCustomRenderableWithVertexData:(NSData * _Nonnull)vertexData
+                                vertexCount:(int)vertexCount
+                                strideBytes:(int)strideBytes
+                             attributeKinds:(NSArray<NSNumber *> * _Nonnull)attributeKinds
+                             attributeTypes:(NSArray<NSNumber *> * _Nonnull)attributeTypes
+                           attributeOffsets:(NSArray<NSNumber *> * _Nonnull)attributeOffsets
+                        attributeNormalized:(NSArray<NSNumber *> * _Nonnull)attributeNormalized
+                                     indices:(NSData * _Nonnull)indices
+                     materialInstanceHandle:(int)materialInstanceHandle
+                                     bboxCX:(float)bboxCX bboxCY:(float)bboxCY bboxCZ:(float)bboxCZ
+                                     bboxHX:(float)bboxHX bboxHY:(float)bboxHY bboxHZ:(float)bboxHZ
+                              primitiveType:(int)primitiveType;
 - (int)createMorphRenderableWithMaterial:(int)instanceHandle
                                positions:(NSData * _Nonnull)positions
                                       uvs:(NSData * _Nonnull)uvs

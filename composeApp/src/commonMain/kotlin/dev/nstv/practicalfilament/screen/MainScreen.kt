@@ -28,10 +28,12 @@ private enum class Screen {
     SAMPLE_LIT_CUBE,
     SAMPLE_STRESS_TEST,
     SAMPLE_HELLO_TRIANGLE,
+    SAMPLE_TRANSPARENT_VIEW,
     SAMPLE_TEXTURED_OBJECT,
     SAMPLE_MATERIAL_BUILDER,
     SAMPLE_PAGE_CURL,
     SAMPLE_MULTI_VIEW,
+    SAMPLE_LIVE_WALLPAPER,
     SAMPLE_GLTF_VIEWER,
     MATERIAL_VIEWER,
     MARBLE,
@@ -79,10 +81,12 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.SAMPLE_LIT_CUBE -> LitCubeScreen()
                     Screen.SAMPLE_STRESS_TEST -> StressTestScreen()
                     Screen.SAMPLE_HELLO_TRIANGLE -> HelloTriangleScreen()
+                    Screen.SAMPLE_TRANSPARENT_VIEW -> TransparentViewScreen()
                     Screen.SAMPLE_TEXTURED_OBJECT -> TexturedObjectScreen()
                     Screen.SAMPLE_MATERIAL_BUILDER -> MaterialBuilderScreen()
                     Screen.SAMPLE_PAGE_CURL -> PageCurlScreen()
                     Screen.SAMPLE_MULTI_VIEW -> MultiViewScreen()
+                    Screen.SAMPLE_LIVE_WALLPAPER -> LiveWallpaperScreen()
                     Screen.SAMPLE_GLTF_VIEWER -> GltfViewerScreen()
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
                     Screen.MARBLE -> MarbleScreen()

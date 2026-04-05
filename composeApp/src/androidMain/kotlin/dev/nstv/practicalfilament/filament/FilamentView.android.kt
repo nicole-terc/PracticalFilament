@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
+import com.google.android.filament.SwapChainFlags
 import com.google.android.filament.android.UiHelper
 import kotlin.math.min
 
@@ -23,11 +24,14 @@ actual fun FilamentView(
     lights: List<LightConfig>,
     backgroundColor: Color,
     clipShape: FilamentClipShape?,
+    isOpaque: Boolean,
     onEngineReady: (FilamentEngine) -> Unit,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val engine = remember { AndroidFilamentEngine(context) }
+    val effectiveOpaque = isOpaque && backgroundColor.a >= 0.999f && clipShape == null
+    val swapChainFlags = if (effectiveOpaque) 0L else SwapChainFlags.CONFIG_TRANSPARENT
 
     DisposableEffect(Unit) {
         onDispose {
@@ -49,9 +53,10 @@ actual fun FilamentView(
                 engine.setClearColor(backgroundColor)
 
                 val uiHelper = UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK).apply {
+                    this.isOpaque = effectiveOpaque
                     renderCallback = object : UiHelper.RendererCallback {
                         override fun onNativeWindowChanged(surface: Surface) {
-                            engine.attachSurface(surface)
+                            engine.attachSurface(surface, swapChainFlags = swapChainFlags)
                         }
 
                         override fun onDetachedFromSurface() {

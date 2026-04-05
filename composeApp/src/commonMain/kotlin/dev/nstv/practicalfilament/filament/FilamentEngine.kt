@@ -25,7 +25,9 @@ interface FilamentEngine {
     fun loadIndirectLight(path: String): Int
     fun setIndirectLight(handle: Int, intensity: Float = 30_000f)
     fun loadSkybox(path: String): Int
+    fun createColorSkybox(): Int = -1
     fun setSkybox(handle: Int)
+    fun setSkyboxColor(handle: Int, r: Float, g: Float, b: Float, a: Float) {}
 
     // Materials
     fun loadMaterial(path: String): Int

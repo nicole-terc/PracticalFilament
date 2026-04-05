@@ -36,6 +36,7 @@ actual fun FilamentView(
     lights: List<LightConfig>,
     backgroundColor: Color,
     clipShape: FilamentClipShape?,
+    isOpaque: Boolean,
     onEngineReady: (FilamentEngine) -> Unit,
 ) {
     val bridge = FilamentBridgeHolder.bridge
@@ -45,12 +46,12 @@ actual fun FilamentView(
     val engine = remember { IosFilamentEngine(bridge) }
     val metalLayerRef = remember { arrayOfNulls<CAMetalLayer>(1) }
     val isAttachedRef = remember { booleanArrayOf(false) }
+    val effectiveOpaque = isOpaque && backgroundColor.a >= 0.999f
 
     val syncSurface: (UIView, CAMetalLayer) -> Unit = { view, metalLayer ->
         val scale = UIScreen.mainScreen.scale
-        val isOpaque = backgroundColor.a >= 0.999f
-        metalLayer.setOpaque(isOpaque)
-        view.setOpaque(isOpaque)
+        metalLayer.setOpaque(effectiveOpaque)
+        view.setOpaque(effectiveOpaque)
         metalLayer.frame = view.bounds
         metalLayer.contentsScale = scale
         applyClipShape(view, metalLayer, clipShape, density, scale)
@@ -61,7 +62,7 @@ actual fun FilamentView(
             metalLayer.drawableSize = CGSizeMake(widthPx.toDouble(), heightPx.toDouble())
 
             if (!isAttachedRef[0]) {
-                engine.attachLayer(metalLayer, widthPx, heightPx)
+                engine.attachLayer(metalLayer, widthPx, heightPx, effectiveOpaque)
                 engine.updateCamera(camera)
                 lights.forEach { engine.addLight(it) }
                 onEngineReady(engine)
@@ -87,7 +88,7 @@ actual fun FilamentView(
             val metalLayer = CAMetalLayer()
             @Suppress("USELESS_CAST")
             metalLayer.device = MTLCreateSystemDefaultDevice() as objcnames.protocols.MTLDeviceProtocol?
-            metalLayer.setOpaque(backgroundColor.a >= 0.999f)
+            metalLayer.setOpaque(effectiveOpaque)
             metalLayer.setFramebufferOnly(true)
             metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm
             metalLayer.contentsScale = UIScreen.mainScreen.scale

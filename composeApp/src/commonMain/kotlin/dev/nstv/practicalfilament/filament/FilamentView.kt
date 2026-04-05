@@ -11,6 +11,7 @@ expect fun FilamentView(
     lights: List<LightConfig> = listOf(LightConfig(type = LightType.DIRECTIONAL)),
     backgroundColor: Color = Color(0f, 0f, 0f, 1f),
     clipShape: FilamentClipShape? = null,
+    isOpaque: Boolean = true,
     onEngineReady: (FilamentEngine) -> Unit = {},
 )
 

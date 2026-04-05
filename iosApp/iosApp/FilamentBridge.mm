@@ -293,7 +293,8 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
 
 - (void)initializeWithMetalLayer:(CAMetalLayer *)layer
                            width:(int)width
-                          height:(int)height {
+                          height:(int)height
+                        isOpaque:(BOOL)isOpaque {
     _nextHandle = 1;
     _viewWidth = width;
     _viewHeight = height;
@@ -314,7 +315,10 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _view->setCamera(_camera);
     _view->setViewport({0, 0, (uint32_t)width, (uint32_t)height});
 
-    _swapChain = _engine->createSwapChain((__bridge void *)layer);
+    _swapChain = _engine->createSwapChain(
+        (__bridge void *)layer,
+        isOpaque ? 0 : SwapChain::CONFIG_TRANSPARENT
+    );
 }
 
 - (void)setClearColorR:(float)r g:(float)g b:(float)b a:(float)a {
@@ -408,7 +412,8 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
 - (void)updateCameraEyeX:(float)eyeX eyeY:(float)eyeY eyeZ:(float)eyeZ
                   targetX:(float)targetX targetY:(float)targetY targetZ:(float)targetZ
                       upX:(float)upX upY:(float)upY upZ:(float)upZ
-                      fov:(double)fov near:(double)nearVal far:(double)farVal {
+                      fov:(double)fov near:(double)nearVal far:(double)farVal
+            projectionType:(int)projectionType orthoZoom:(double)orthoZoom {
     if (!_camera) return;
     _camera->lookAt(
         {eyeX, eyeY, eyeZ},
@@ -418,7 +423,26 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     double aspect = (_viewWidth > 0 && _viewHeight > 0)
         ? (double)_viewWidth / (double)_viewHeight
         : 1.0;
-    _camera->setProjection(fov, aspect, nearVal, farVal, Camera::Fov::VERTICAL);
+    if (projectionType == 1) {
+        const double orthoHeight = orthoZoom;
+        const double orthoWidth = orthoHeight * aspect;
+        _camera->setProjection(
+            Camera::Projection::ORTHO,
+            -orthoWidth,
+            orthoWidth,
+            -orthoHeight,
+            orthoHeight,
+            nearVal,
+            farVal
+        );
+    } else {
+        _camera->setProjection(fov, aspect, nearVal, farVal, Camera::Fov::VERTICAL);
+    }
+}
+
+- (void)setCameraExposure:(float)aperture shutterSpeed:(float)shutterSpeed sensitivity:(float)sensitivity {
+    if (!_camera) return;
+    _camera->setExposure(aperture, shutterSpeed, sensitivity);
 }
 
 - (int)addLightWithType:(int)type
@@ -573,10 +597,29 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     return handle;
 }
 
+- (int)createColorSkybox {
+    if (!_engine) return -1;
+
+    Skybox *skybox = Skybox::Builder().build(*_engine);
+    if (!skybox) {
+        return -1;
+    }
+
+    int handle = _nextHandle++;
+    _skyboxes[handle] = skybox;
+    return handle;
+}
+
 - (void)setSkybox:(int)handle {
     auto it = _skyboxes.find(handle);
     if (it == _skyboxes.end() || !_scene) return;
     _scene->setSkybox(it->second);
+}
+
+- (void)setSkyboxColorHandle:(int)handle r:(float)r g:(float)g b:(float)b a:(float)a {
+    auto it = _skyboxes.find(handle);
+    if (it == _skyboxes.end()) return;
+    it->second->setColor({r, g, b, a});
 }
 
 - (int)loadMaterialFromPath:(NSString *)path {
@@ -1212,6 +1255,83 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     return handle;
 }
 
+- (int)createCustomRenderableWithVertexData:(NSData *)vertexData
+                                vertexCount:(int)vertexCount
+                                strideBytes:(int)strideBytes
+                             attributeKinds:(NSArray<NSNumber *> *)attributeKinds
+                             attributeTypes:(NSArray<NSNumber *> *)attributeTypes
+                           attributeOffsets:(NSArray<NSNumber *> *)attributeOffsets
+                        attributeNormalized:(NSArray<NSNumber *> *)attributeNormalized
+                                     indices:(NSData *)indicesData
+                     materialInstanceHandle:(int)materialInstanceHandle
+                                     bboxCX:(float)bboxCX bboxCY:(float)bboxCY bboxCZ:(float)bboxCZ
+                                     bboxHX:(float)bboxHX bboxHY:(float)bboxHY bboxHZ:(float)bboxHZ
+                              primitiveType:(int)primitiveType {
+    if (!_engine) return -1;
+    auto materialIt = _materialInstances.find(materialInstanceHandle);
+    if (materialIt == _materialInstances.end()) return -1;
+
+    const NSUInteger attributeCount = attributeKinds.count;
+    if (attributeCount == 0 ||
+        attributeTypes.count != attributeCount ||
+        attributeOffsets.count != attributeCount ||
+        attributeNormalized.count != attributeCount) {
+        return -1;
+    }
+    if (vertexCount <= 0 || strideBytes <= 0 || vertexData.length == 0 || indicesData.length == 0) {
+        return -1;
+    }
+
+    VertexBuffer::Builder builder;
+    builder
+        .vertexCount((uint32_t)vertexCount)
+        .bufferCount(1);
+    for (NSUInteger index = 0; index < attributeCount; index++) {
+        const VertexAttribute attribute = PFVertexAttributeFromValue((int32_t)attributeKinds[index].intValue);
+        builder.attribute(
+            attribute,
+            0,
+            PFAttributeTypeFromValue((int32_t)attributeTypes[index].intValue),
+            (uint32_t)attributeOffsets[index].intValue,
+            (uint32_t)strideBytes
+        );
+        if (attributeNormalized[index].boolValue) {
+            builder.normalized(attribute);
+        }
+    }
+
+    auto *vb = builder.build(*_engine);
+    vb->setBufferAt(*_engine, 0, VertexBuffer::BufferDescriptor(
+        PFMakeOwnedCopy(vertexData.bytes, vertexData.length),
+        vertexData.length,
+        [](void *buffer, size_t, void *) { free(buffer); }
+    ));
+    _vertexBuffers.push_back(vb);
+
+    auto *ib = IndexBuffer::Builder()
+        .indexCount((uint32_t)(indicesData.length / sizeof(uint16_t)))
+        .bufferType(IndexBuffer::IndexType::USHORT)
+        .build(*_engine);
+    ib->setBuffer(*_engine, IndexBuffer::BufferDescriptor(
+        PFMakeOwnedCopy(indicesData.bytes, indicesData.length),
+        indicesData.length,
+        [](void *buffer, size_t, void *) { free(buffer); }
+    ));
+    _indexBuffers.push_back(ib);
+
+    Entity entity = EntityManager::get().create();
+    RenderableManager::Builder(1)
+        .geometry(0, PFPrimitiveTypeFromValue(primitiveType), vb, ib)
+        .material(0, materialIt->second)
+        .boundingBox(Box(float3{bboxCX, bboxCY, bboxCZ}, float3{bboxHX, bboxHY, bboxHZ}))
+        .build(*_engine, entity);
+
+    _scene->addEntity(entity);
+    int handle = _nextHandle++;
+    _renderables[handle] = entity;
+    return handle;
+}
+
 - (int)createMorphRenderableWithMaterial:(int)instanceHandle
                                positions:(NSData *)positionsData
                                       uvs:(NSData *)uvsData
@@ -1426,10 +1546,6 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _viewHeight = height;
     if (_view) {
         _view->setViewport({0, 0, (uint32_t)width, (uint32_t)height});
-    }
-    if (_camera && width > 0 && height > 0) {
-        double aspect = (double)width / (double)height;
-        _camera->setProjection(45.0, aspect, 0.1, 100.0, Camera::Fov::VERTICAL);
     }
 }
 

@@ -18,14 +18,15 @@ class IosFilamentEngine(
     private val materialInstanceMaterials = mutableMapOf<Int, Int>()
 
     private var _isInitialized = false
+    private var currentCameraConfig = CameraConfig()
     override val isInitialized: Boolean get() = _isInitialized
 
     fun setClearColor(color: Color) {
         bridge.setClearColorRGBA(color.r, g = color.g, b = color.b, a = color.a)
     }
 
-    fun attachLayer(metalLayer: CAMetalLayer, width: Int, height: Int) {
-        bridge.initializeWithMetalLayer(metalLayer, width = width, height = height)
+    fun attachLayer(metalLayer: CAMetalLayer, width: Int, height: Int, isOpaque: Boolean) {
+        bridge.initializeWithMetalLayer(metalLayer, width = width, height = height, isOpaque = isOpaque)
         _isInitialized = true
     }
 
@@ -44,12 +45,18 @@ class IosFilamentEngine(
     }
 
     override fun updateCamera(config: CameraConfig) {
+        currentCameraConfig = config
         bridge.updateCameraEyeX(
             config.position.x, eyeY = config.position.y, eyeZ = config.position.z,
             targetX = config.lookAt.x, targetY = config.lookAt.y, targetZ = config.lookAt.z,
             upX = config.up.x, upY = config.up.y, upZ = config.up.z,
             fov = config.fovDegrees, near = config.near, far = config.far,
+            projectionType = config.projectionType.ordinal, orthoZoom = config.orthoZoom,
         )
+    }
+
+    override fun setCameraExposure(aperture: Float, shutterSpeed: Float, sensitivity: Float) {
+        bridge.setCameraExposure(aperture, shutterSpeed = shutterSpeed, sensitivity = sensitivity)
     }
 
     override fun addLight(config: LightConfig): Int {
@@ -87,8 +94,16 @@ class IosFilamentEngine(
         return bridge.loadSkyboxFromPath(path)
     }
 
+    override fun createColorSkybox(): Int {
+        return bridge.createColorSkybox()
+    }
+
     override fun setSkybox(handle: Int) {
         bridge.setSkybox(handle)
+    }
+
+    override fun setSkyboxColor(handle: Int, r: Float, g: Float, b: Float, a: Float) {
+        bridge.setSkyboxColorHandle(handle, r = r, g = g, b = b, a = a)
     }
 
     override fun loadMaterial(path: String): Int {
@@ -239,6 +254,27 @@ class IosFilamentEngine(
         )
     }
 
+    override fun createCustomRenderable(config: CustomRenderableConfig): Int {
+        return bridge.createCustomRenderable(
+            vertexData = config.vertexData,
+            vertexCount = config.vertexCount,
+            strideBytes = config.strideBytes,
+            attributeKinds = config.attributes.map { it.attribute.ordinal }.toIntArray(),
+            attributeTypes = config.attributes.map { it.type.ordinal }.toIntArray(),
+            attributeOffsets = config.attributes.map(VertexAttributeLayout::offsetBytes).toIntArray(),
+            attributeNormalized = config.attributes.map(VertexAttributeLayout::normalized).toBooleanArray(),
+            indices = config.indices,
+            materialInstanceHandle = config.materialInstanceHandle,
+            bboxCX = config.boundingBox.center.x,
+            bboxCY = config.boundingBox.center.y,
+            bboxCZ = config.boundingBox.center.z,
+            bboxHX = config.boundingBox.halfExtent.x,
+            bboxHY = config.boundingBox.halfExtent.y,
+            bboxHZ = config.boundingBox.halfExtent.z,
+            primitiveType = config.primitiveType.ordinal,
+        )
+    }
+
     override fun createMorphRenderable(
         materialInstanceHandle: Int,
         geometry: MorphRenderableGeometry,
@@ -282,6 +318,7 @@ class IosFilamentEngine(
 
     fun updateViewport(width: Int, height: Int) {
         bridge.updateViewportWidth(width, height = height)
+        updateCamera(currentCameraConfig)
     }
 }
 
@@ -290,7 +327,7 @@ class IosFilamentEngine(
  * Defined here so Kotlin/Native can reference it; implemented in FilamentBridge.mm.
  */
 interface FilamentBridgeProtocol {
-    fun initializeWithMetalLayer(layer: CAMetalLayer, width: Int, height: Int)
+    fun initializeWithMetalLayer(layer: CAMetalLayer, width: Int, height: Int, isOpaque: Boolean)
     fun setClearColorRGBA(r: Float, g: Float, b: Float, a: Float)
     fun destroy()
     fun clearScene()
@@ -299,7 +336,9 @@ interface FilamentBridgeProtocol {
         targetX: Float, targetY: Float, targetZ: Float,
         upX: Float, upY: Float, upZ: Float,
         fov: Double, near: Double, far: Double,
+        projectionType: Int, orthoZoom: Double,
     )
+    fun setCameraExposure(aperture: Float, shutterSpeed: Float, sensitivity: Float)
     fun addLightWithType(
         type: Int,
         r: Float, g: Float, b: Float,
@@ -317,7 +356,9 @@ interface FilamentBridgeProtocol {
     fun loadIndirectLightFromPath(path: String): Int
     fun setIndirectLight(handle: Int, intensity: Float)
     fun loadSkyboxFromPath(path: String): Int
+    fun createColorSkybox(): Int
     fun setSkybox(handle: Int)
+    fun setSkyboxColorHandle(handle: Int, r: Float, g: Float, b: Float, a: Float)
     fun loadMaterialFromPath(path: String): Int
     fun getMaterialParameterDefinitionCount(materialHandle: Int): Int
     fun getMaterialParameterName(materialHandle: Int, index: Int): String
@@ -371,6 +412,24 @@ interface FilamentBridgeProtocol {
         halfExtentX: Float,
         halfExtentY: Float,
         halfExtentZ: Float,
+    ): Int
+    fun createCustomRenderable(
+        vertexData: ByteArray,
+        vertexCount: Int,
+        strideBytes: Int,
+        attributeKinds: IntArray,
+        attributeTypes: IntArray,
+        attributeOffsets: IntArray,
+        attributeNormalized: BooleanArray,
+        indices: ShortArray,
+        materialInstanceHandle: Int,
+        bboxCX: Float,
+        bboxCY: Float,
+        bboxCZ: Float,
+        bboxHX: Float,
+        bboxHY: Float,
+        bboxHZ: Float,
+        primitiveType: Int,
     ): Int
     fun createMorphRenderableWithMaterial(
         instanceHandle: Int,

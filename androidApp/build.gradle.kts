@@ -32,4 +32,7 @@ android {
 
 dependencies {
     implementation(project(":composeApp"))
+    implementation(libs.compose.runtime)
+    implementation(libs.filament.android)
+    implementation(libs.filament.utils.android)
 }

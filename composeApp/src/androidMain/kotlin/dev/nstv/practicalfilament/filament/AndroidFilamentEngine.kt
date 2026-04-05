@@ -46,7 +46,7 @@ import kotlin.math.max
 import kotlin.math.sin
 
 class AndroidFilamentEngine(
-    private val context: Context
+    private val context: Context,
 ) : FilamentEngine {
 
     private var engine: Engine? = null
@@ -186,7 +186,7 @@ class AndroidFilamentEngine(
 
         skyboxes.values.forEach { bundle ->
             eng.destroySkybox(bundle.skybox)
-            eng.destroyTexture(bundle.cubemap)
+            bundle.cubemap?.let(eng::destroyTexture)
         }
         skyboxes.clear()
 
@@ -222,9 +222,9 @@ class AndroidFilamentEngine(
         _isInitialized = false
     }
 
-    fun attachSurface(surface: Surface) {
+    fun attachSurface(surface: Surface, swapChainFlags: Long = 0L) {
         swapChain?.let { engine?.destroySwapChain(it) }
-        swapChain = engine?.createSwapChain(surface)
+        swapChain = engine?.createSwapChain(surface, swapChainFlags)
     }
 
     fun detachSurface() {
@@ -355,9 +355,22 @@ class AndroidFilamentEngine(
         return handle
     }
 
+    override fun createColorSkybox(): Int {
+        val eng = engine ?: return -1
+        val skybox = com.google.android.filament.Skybox.Builder().build(eng)
+        val handle = nextHandle++
+        skyboxes[handle] = EnvironmentSkybox(skybox, cubemap = null)
+        return handle
+    }
+
     override fun setSkybox(handle: Int) {
         val bundle = skyboxes[handle] ?: return
         scene?.setSkybox(bundle.skybox)
+    }
+
+    override fun setSkyboxColor(handle: Int, r: Float, g: Float, b: Float, a: Float) {
+        val bundle = skyboxes[handle] ?: return
+        bundle.skybox.setColor(floatArrayOf(r, g, b, a))
     }
 
     override fun loadMaterial(path: String): Int {
@@ -1607,7 +1620,7 @@ class AndroidFilamentEngine(
 
     private data class EnvironmentSkybox(
         val skybox: com.google.android.filament.Skybox,
-        val cubemap: Texture,
+        val cubemap: Texture?,
     )
 
     private data class RenderableBuffers(

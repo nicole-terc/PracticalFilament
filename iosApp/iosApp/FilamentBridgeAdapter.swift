@@ -23,8 +23,8 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
         }
     }
 
-    func initializeWithMetalLayer(layer: CAMetalLayer, width: Int32, height: Int32) {
-        bridge.initialize(with: layer, width: width, height: height)
+    func initializeWithMetalLayer(layer: CAMetalLayer, width: Int32, height: Int32, isOpaque: Bool) {
+        bridge.initialize(with: layer, width: width, height: height, isOpaque: isOpaque)
         startRenderLoop()
     }
 
@@ -41,11 +41,17 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
     func updateCameraEyeX(eyeX: Float, eyeY: Float, eyeZ: Float,
                            targetX: Float, targetY: Float, targetZ: Float,
                            upX: Float, upY: Float, upZ: Float,
-                           fov: Double, near: Double, far: Double) {
+                           fov: Double, near: Double, far: Double,
+                           projectionType: Int32, orthoZoom: Double) {
         bridge.updateCameraEyeX(eyeX, eyeY: eyeY, eyeZ: eyeZ,
                                 targetX: targetX, targetY: targetY, targetZ: targetZ,
                                 upX: upX, upY: upY, upZ: upZ,
-                                fov: fov, near: near, far: far)
+                                fov: fov, near: near, far: far,
+                                projectionType: projectionType, orthoZoom: orthoZoom)
+    }
+
+    func setCameraExposure(aperture: Float, shutterSpeed: Float, sensitivity: Float) {
+        bridge.setCameraExposure(aperture, shutterSpeed: shutterSpeed, sensitivity: sensitivity)
     }
 
     func addLightWithType(type: Int32, r: Float, g: Float, b: Float,
@@ -84,8 +90,16 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
         bridge.loadSkybox(fromPath: path)
     }
 
+    func createColorSkybox() -> Int32 {
+        bridge.createColorSkybox()
+    }
+
     func setSkybox(handle: Int32) {
         bridge.setSkybox(handle)
+    }
+
+    func setSkyboxColorHandle(handle: Int32, r: Float, g: Float, b: Float, a: Float) {
+        bridge.setSkyboxColorHandle(handle, r: r, g: g, b: b, a: a)
     }
 
     func loadMaterialFromPath(path: String) -> Int32 {
@@ -244,6 +258,34 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
         )
     }
 
+    func createCustomRenderable(vertexData: KotlinByteArray,
+                                vertexCount: Int32,
+                                strideBytes: Int32,
+                                attributeKinds: KotlinIntArray,
+                                attributeTypes: KotlinIntArray,
+                                attributeOffsets: KotlinIntArray,
+                                attributeNormalized: KotlinBooleanArray,
+                                indices: KotlinShortArray,
+                                materialInstanceHandle: Int32,
+                                bboxCX: Float, bboxCY: Float, bboxCZ: Float,
+                                bboxHX: Float, bboxHY: Float, bboxHZ: Float,
+                                primitiveType: Int32) -> Int32 {
+        return bridge.createCustomRenderable(
+            withVertexData: vertexData.toData(),
+            vertexCount: vertexCount,
+            strideBytes: strideBytes,
+            attributeKinds: attributeKinds.toNSNumberArray(),
+            attributeTypes: attributeTypes.toNSNumberArray(),
+            attributeOffsets: attributeOffsets.toNSNumberArray(),
+            attributeNormalized: attributeNormalized.toNSNumberArray(),
+            indices: indices.toShortData(),
+            materialInstanceHandle: materialInstanceHandle,
+            bboxCX: bboxCX, bboxCY: bboxCY, bboxCZ: bboxCZ,
+            bboxHX: bboxHX, bboxHY: bboxHY, bboxHZ: bboxHZ,
+            primitiveType: primitiveType
+        )
+    }
+
     func createMorphRenderableWithMaterial(instanceHandle: Int32,
                                           positions: KotlinFloatArray,
                                           uvs: KotlinFloatArray,
@@ -308,6 +350,34 @@ private extension KotlinFloatArray {
         return Data((0..<count).flatMap { index in
             withUnsafeBytes(of: get(index: Int32(index)).bitPattern.littleEndian, Array.init)
         })
+    }
+}
+
+private extension KotlinByteArray {
+    func toData() -> Data {
+        let count = Int(size)
+        var data = Data(count: count)
+        data.withUnsafeMutableBytes { rawBuffer in
+            guard let destination = rawBuffer.bindMemory(to: UInt8.self).baseAddress else { return }
+            for index in 0..<count {
+                destination[index] = UInt8(bitPattern: get(index: Int32(index)))
+            }
+        }
+        return data
+    }
+}
+
+private extension KotlinIntArray {
+    func toNSNumberArray() -> [NSNumber] {
+        let count = Int(size)
+        return (0..<count).map { NSNumber(value: get(index: Int32($0))) }
+    }
+}
+
+private extension KotlinBooleanArray {
+    func toNSNumberArray() -> [NSNumber] {
+        let count = Int(size)
+        return (0..<count).map { NSNumber(value: get(index: Int32($0))) }
     }
 }
 
