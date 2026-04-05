@@ -29,8 +29,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import dev.nstv.practicalfilament.filament.Float3
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 @Composable
 internal actual fun AndroidEffectsMarblePanel(
@@ -93,8 +95,8 @@ private fun RenderEffectMarbleStage(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val radius = size.minDimension * 0.5f
             val lightCenter = Offset(
-                x = size.width * (0.33f + drift * 0.045f),
-                y = size.height * (0.29f + sweep * 0.03f),
+                x = size.width * (0.28f + drift * 0.025f),
+                y = size.height * (0.22f + sweep * 0.02f),
             )
             val shadowCenter = Offset(
                 x = size.width * 0.76f,
@@ -179,14 +181,14 @@ private fun RenderEffectMarbleStage(
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = (46.dp + (sweep * 5f).dp), y = (42.dp + (drift * 4f).dp))
+                .offset(x = (34.dp + (sweep * 3f).dp), y = (28.dp + (drift * 3f).dp))
                 .size(
-                    width = (84.dp + (preset.reflectionStrength * 18f).dp),
-                    height = (54.dp + (preset.translucency * 12f).dp),
+                    width = (78.dp + (preset.reflectionStrength * 16f).dp),
+                    height = (48.dp + (preset.translucency * 10f).dp),
                 )
                 .rotate(-16f + preset.translucency * 3f)
                 .graphicsLayer {
-                    renderEffect = BlurEffect(38f, 38f, TileMode.Decal)
+                    renderEffect = BlurEffect(34f, 34f, TileMode.Decal)
                     alpha = reflectionAlpha * 0.82f
                 }
                 .background(
@@ -203,10 +205,10 @@ private fun RenderEffectMarbleStage(
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = (76.dp + (sweep * 2f).dp), y = (90.dp + (drift * 1.5f).dp))
-                .size(14.dp)
+                .offset(x = (60.dp + (sweep * 1.5f).dp), y = (72.dp + (drift * 1f).dp))
+                .size(12.dp)
                 .graphicsLayer {
-                    renderEffect = BlurEffect(8f, 8f, TileMode.Decal)
+                    renderEffect = BlurEffect(7f, 7f, TileMode.Decal)
                     alpha = (0.24f + preset.reflectionStrength * 0.24f).coerceAtMost(0.56f)
                 }
                 .background(
@@ -359,6 +361,7 @@ private class AgslMarbleView(
         super.onDraw(canvas)
         val width = width.toFloat().coerceAtLeast(1f)
         val height = height.toFloat().coerceAtLeast(1f)
+        val rig = CalculatedComparisonRigProjection
         shader.setFloatUniform("resolution", width, height)
         shader.setFloatUniform("time", timeSeconds)
         shader.setFloatUniform(
@@ -409,8 +412,73 @@ private class AgslMarbleView(
         shader.setFloatUniform("veinStrength", preset.veinStrength)
         shader.setFloatUniform("reflectionStrength", preset.reflectionStrength)
         shader.setFloatUniform("backgroundEnabled", if (backgroundEnabled) 1f else 0f)
+        shader.setFloatUniform("primaryHighlightCenter", rig.primaryHighlightCenter.x, rig.primaryHighlightCenter.y)
+        shader.setFloatUniform("secondaryHighlightCenter", rig.secondaryHighlightCenter.x, rig.secondaryHighlightCenter.y)
+        shader.setFloatUniform("keyLightDirection", rig.keyLightDirection.x, rig.keyLightDirection.y, rig.keyLightDirection.z)
         canvas.drawRect(0f, 0f, width, height, paint)
     }
+}
+
+private data class ComparisonRigProjection(
+    val primaryHighlightCenter: Offset,
+    val secondaryHighlightCenter: Offset,
+    val keyLightDirection: Float3,
+)
+
+private val CalculatedComparisonRigProjection: ComparisonRigProjection by lazy {
+    val cameraDirection = normalize3(ComparisonMarbleCamera.position)
+    val sunLight = MarbleAliveLights.first { it.type == dev.nstv.practicalfilament.filament.LightType.SUN }
+    val pointLight = MarbleAliveLights.first { it.type == dev.nstv.practicalfilament.filament.LightType.POINT }
+    val sunDirection = normalize3(
+        Float3(
+            x = -sunLight.direction.x,
+            y = -sunLight.direction.y,
+            z = -sunLight.direction.z,
+        ),
+    )
+    val pointDirection = normalize3(pointLight.position)
+    val pointDistance = length3(pointLight.position)
+    val pointAttenuation = (1f - pointDistance / pointLight.falloffRadius).coerceIn(0f, 1f)
+    val keyLightDirection = normalize3(
+        Float3(
+            x = sunDirection.x * 1f + pointDirection.x * pointAttenuation,
+            y = sunDirection.y * 1f + pointDirection.y * pointAttenuation,
+            z = sunDirection.z * 1f + pointDirection.z * pointAttenuation,
+        ),
+    )
+
+    ComparisonRigProjection(
+        primaryHighlightCenter = projectHighlightCenter(sunDirection, cameraDirection),
+        secondaryHighlightCenter = projectHighlightCenter(pointDirection, cameraDirection),
+        keyLightDirection = keyLightDirection,
+    )
+}
+
+private fun projectHighlightCenter(
+    lightDirection: Float3,
+    cameraDirection: Float3,
+): Offset {
+    val halfVector = normalize3(
+        Float3(
+            x = lightDirection.x + cameraDirection.x,
+            y = lightDirection.y + cameraDirection.y,
+            z = lightDirection.z + cameraDirection.z,
+        ),
+    )
+    return Offset(halfVector.x, halfVector.y)
+}
+
+private fun normalize3(vector: Float3): Float3 {
+    val length = length3(vector).coerceAtLeast(1e-5f)
+    return Float3(
+        x = vector.x / length,
+        y = vector.y / length,
+        z = vector.z / length,
+    )
+}
+
+private fun length3(vector: Float3): Float {
+    return sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z)
 }
 
 private const val MarbleShaderSource = """
@@ -428,10 +496,9 @@ uniform float translucency;
 uniform float veinStrength;
 uniform float reflectionStrength;
 uniform float backgroundEnabled;
-
-float sdCircle(float2 p, float2 center, float radius) {
-    return length(p - center) - radius;
-}
+uniform float2 primaryHighlightCenter;
+uniform float2 secondaryHighlightCenter;
+uniform float3 keyLightDirection;
 
 float2 rot2(float angle, float2 p) {
     float c = cos(angle);
@@ -491,6 +558,7 @@ float marbleField(float3 p) {
 half4 main(float2 fragCoord) {
     float2 uv = fragCoord / resolution;
     float2 p = uv * 2.0 - 1.0;
+    p.y = -p.y;
     p.x *= resolution.x / resolution.y;
     float r = length(p);
     if (r > 1.0) {
@@ -498,15 +566,23 @@ half4 main(float2 fragCoord) {
     }
 
     float z = sqrt(max(0.0, 1.0 - r * r));
+    float3 position = float3(p.x, p.y, z);
     float3 n = normalize(float3(p.x, p.y, z));
-    float3 l = normalize(float3(-0.55 + sin(time * 0.45) * 0.1, -0.6, 0.8));
-    float3 v = float3(0.0, 0.0, 1.0);
-    float3 h = normalize(l + v);
+    float3 cameraPos = float3(0.0, 0.08, 4.08);
+    float3 viewDir = normalize(cameraPos - position);
+    float3 sunToLight = normalize(float3(-0.45, 1.0, 0.72));
+    float3 pointVector = float3(-1.6, 1.2, 2.6) - position;
+    float pointDistance = length(pointVector);
+    float3 pointToLight = pointVector / max(pointDistance, 1e-5);
+    float pointAttenuation = pow(clamp(1.0 - pointDistance / 8.0, 0.0, 1.0), 1.8);
 
-    float diffuse = max(dot(n, l), 0.0);
+    float sunDiffuse = max(dot(n, sunToLight), 0.0);
+    float pointDiffuse = max(dot(n, pointToLight), 0.0) * pointAttenuation;
     float specPower = mix(12.0, 68.0, 1.0 - roughness);
-    float specular = pow(max(dot(n, h), 0.0), specPower) * mix(0.55, 1.15, reflectionStrength);
-    float fresnel = pow(1.0 - max(dot(n, v), 0.0), mix(4.2, 2.0, reflectionStrength));
+    float sunSpec = pow(max(dot(n, normalize(sunToLight + viewDir)), 0.0), specPower) * (0.75 + reflectionStrength * 0.4);
+    float pointSpec = pow(max(dot(n, normalize(pointToLight + viewDir)), 0.0), specPower * 1.05) * pointAttenuation * 0.42;
+    float specular = sunSpec + pointSpec;
+    float fresnel = pow(1.0 - max(dot(n, viewDir), 0.0), mix(4.2, 2.0, reflectionStrength));
     float innerStrength = smoothstep(0.42, 0.78, translucency);
 
     float3 innerCoord = n;
@@ -523,31 +599,39 @@ half4 main(float2 fragCoord) {
     float brushed = sin((p.y * 92.0) + p.x * 18.0 + fbm3(float3(p * 8.0, time * 0.03)) * 4.0);
     brushed = smoothstep(0.72, 0.96, brushed) * metallic * 0.12;
 
-    float reflectionBand = smoothstep(0.16, 0.0, abs(dot(p, normalize(float2(0.95, 0.31))) - 0.34));
-    reflectionBand += smoothstep(0.18, 0.0, abs(dot(p, normalize(float2(0.9, -0.43))) + 0.72));
-    reflectionBand *= reflectionStrength * mix(0.35, 0.55 + backgroundEnabled * 0.45, innerStrength);
-    float primaryGlint = smoothstep(0.055, 0.0, sdCircle(p, float2(-0.24, -0.27), 0.06));
-    float secondaryGlint = smoothstep(0.022, 0.0, sdCircle(p, float2(-0.27, -0.09), 0.024));
-    float glintMask = (primaryGlint * 0.82 + secondaryGlint * 0.58) * (0.22 + reflectionStrength * 0.46);
+    float reflectionBand = smoothstep(0.16, 0.0, abs(dot(p, normalize(float2(0.95, 0.31))) - 0.42));
+    reflectionBand += smoothstep(0.18, 0.0, abs(dot(p, normalize(float2(0.9, -0.43))) + 0.8));
+    reflectionBand *= reflectionStrength * backgroundEnabled * 0.35;
     float backgroundReflection = smoothstep(0.14, 0.0, abs(dot(p, normalize(float2(0.92, 0.38))) - 0.12));
     backgroundReflection *= backgroundEnabled * reflectionStrength * 0.26;
 
-    float backGlow = smoothstep(-0.25, 0.85, z + translucency * 0.55 - p.x * 0.18 - p.y * 0.12) * translucency;
+    float backGlow = smoothstep(-0.25, 0.85, z + translucency * 0.55 - p.x * 0.18 - p.y * 0.12) * innerStrength;
     float shellMask = smoothstep(0.0, 0.18 + innerStrength * 0.22, z);
     float absorption = exp(-(1.7 - translucency * 0.9) * (1.0 - z));
-    float ambient = 0.22 + z * (0.16 + translucency * 0.2);
+    float keyDiffuse = dot(n, normalize(keyLightDirection));
+    float lightMix = clamp(0.03 + sunDiffuse * 0.82 + pointDiffuse * 0.28, 0.0, 1.0);
+    float shadowTerm = smoothstep(0.24, -0.18, keyDiffuse);
+    float ambient = 0.02 + z * 0.025;
 
-    half3 shellColor = mix(shadowColor.rgb, baseColor.rgb, half(clamp(ambient + diffuse * (0.66 + translucency * 0.08), 0.0, 1.0)));
+    float2 primaryDelta = p - primaryHighlightCenter;
+    float2 secondaryDelta = p - secondaryHighlightCenter;
+    float primaryGlint = exp(-dot(primaryDelta, primaryDelta) / mix(0.011, 0.0048, 1.0 - roughness));
+    float secondaryGlint = exp(-dot(secondaryDelta, secondaryDelta) / mix(0.0032, 0.0016, 1.0 - roughness));
+    float glintMask = primaryGlint * (0.72 + reflectionStrength * 0.34) + secondaryGlint * 0.9;
+
+    half3 shellColor = mix(shadowColor.rgb, baseColor.rgb, half(lightMix));
+    shellColor = mix(shellColor, shadowColor.rgb, half(shadowTerm * 0.84));
     half3 coreColor = mix(baseColor.rgb, veinColor.rgb, half(veins));
     coreColor = mix(coreColor, highlightColor.rgb, half((1.0 - absorption) * innerStrength * 0.22));
     coreColor = mix(coreColor, reflectionColor.rgb, half(reflectionBand * 0.12));
     half3 diffuseColor = mix(shellColor, coreColor, half((innerStrength * 0.42) * shellMask));
     diffuseColor = mix(diffuseColor, veinColor.rgb, half(surfacePattern + brushed));
     diffuseColor = mix(diffuseColor, highlightColor.rgb, half(backGlow * 0.12));
+    diffuseColor = mix(shadowColor.rgb, diffuseColor, half(clamp(ambient + lightMix, 0.0, 1.0)));
 
     half3 finalColor = diffuseColor;
     finalColor = mix(finalColor, reflectionColor.rgb, half(specular * mix(0.35, 0.82, metallic)));
-    finalColor = mix(finalColor, highlightColor.rgb, half(specular * (0.42 + innerStrength * 0.14) + reflectionBand * 0.12 + glintMask + backgroundReflection));
+    finalColor = mix(finalColor, highlightColor.rgb, half(specular * 0.28 + glintMask + reflectionBand * 0.12 + backgroundReflection));
     finalColor = mix(finalColor, rimColor.rgb, half(fresnel * (0.24 + translucency * 0.34 + metallic * 0.18)));
 
     return half4(finalColor, 1.0);
