@@ -7,6 +7,9 @@ data class SkyWallpaperConfig(
     val sunRadius: Float = 1.2f,
     val sunLimbDarkening: Float = 0.5f,
     val sunDiskIntensityBoost: Float = 1f,
+    val sunTintRed: Float = 1f,
+    val sunTintGreen: Float = 0.94f,
+    val sunTintBlue: Float = 0.82f,
     val turbidity: Float = 2f,
     val rayleigh: Float = 1f,
     val mieCoefficient: Float = 1f,
@@ -29,8 +32,11 @@ data class SkyWallpaperConfig(
     val moonEnabled: Boolean = true,
     val moonAzimuth: Float = 180f,
     val moonHeight: Float = 0.70710677f,
-    val moonIntensity: Float = 6f,
-    val moonRadius: Float = 1.2f,
+    val moonIntensity: Float = 0.25f,
+    val moonRadius: Float = 0.75f,
+    val moonTintRed: Float = 0.58f,
+    val moonTintGreen: Float = 0.68f,
+    val moonTintBlue: Float = 0.92f,
     val milkyWayEnabled: Boolean = true,
     val milkyWayIntensity: Float = 1f,
     val milkyWaySaturation: Float = 1f,
@@ -62,6 +68,9 @@ data class SkyWallpaperConfig(
         add(sunRadius.toString())
         add(sunLimbDarkening.toString())
         add(sunDiskIntensityBoost.toString())
+        add(sunTintRed.toString())
+        add(sunTintGreen.toString())
+        add(sunTintBlue.toString())
         add(turbidity.toString())
         add(rayleigh.toString())
         add(mieCoefficient.toString())
@@ -86,6 +95,9 @@ data class SkyWallpaperConfig(
         add(moonHeight.toString())
         add(moonIntensity.toString())
         add(moonRadius.toString())
+        add(moonTintRed.toString())
+        add(moonTintGreen.toString())
+        add(moonTintBlue.toString())
         add(if (milkyWayEnabled) "1" else "0")
         add(milkyWayIntensity.toString())
         add(milkyWaySaturation.toString())
@@ -111,7 +123,7 @@ data class SkyWallpaperConfig(
     }.joinToString("|")
 
     companion object {
-        private const val SerializationVersion = 7
+        private const val SerializationVersion = 8
 
         val default = SkyWallpaperConfig()
 
@@ -134,6 +146,9 @@ data class SkyWallpaperConfig(
                 sunRadius = nextFloat(default.sunRadius),
                 sunLimbDarkening = nextFloat(default.sunLimbDarkening),
                 sunDiskIntensityBoost = nextFloat(default.sunDiskIntensityBoost),
+                sunTintRed = if (version >= 8) nextFloat(default.sunTintRed) else default.sunTintRed,
+                sunTintGreen = if (version >= 8) nextFloat(default.sunTintGreen) else default.sunTintGreen,
+                sunTintBlue = if (version >= 8) nextFloat(default.sunTintBlue) else default.sunTintBlue,
                 turbidity = nextFloat(default.turbidity),
                 rayleigh = nextFloat(default.rayleigh),
                 mieCoefficient = nextFloat(default.mieCoefficient),
@@ -158,6 +173,9 @@ data class SkyWallpaperConfig(
                 moonHeight = nextFloat(default.moonHeight),
                 moonIntensity = nextFloat(default.moonIntensity),
                 moonRadius = nextFloat(default.moonRadius),
+                moonTintRed = if (version >= 8) nextFloat(default.moonTintRed) else default.moonTintRed,
+                moonTintGreen = if (version >= 8) nextFloat(default.moonTintGreen) else default.moonTintGreen,
+                moonTintBlue = if (version >= 8) nextFloat(default.moonTintBlue) else default.moonTintBlue,
                 milkyWayEnabled = nextBoolean(default.milkyWayEnabled),
                 milkyWayIntensity = nextFloat(default.milkyWayIntensity),
                 milkyWaySaturation = nextFloat(default.milkyWaySaturation),

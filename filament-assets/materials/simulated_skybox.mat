@@ -32,6 +32,11 @@ material {
            precision : high
         },
         {
+           type : float3,
+           name : sunTint,
+           precision : high
+        },
+        {
            type : float,
            name : contrast,
            precision : high
@@ -79,6 +84,11 @@ material {
         {
            type : float,
            name : sunIntensity2,
+           precision : high
+        },
+        {
+           type : float3,
+           name : moonTint,
            precision : high
         },
         {
@@ -195,8 +205,11 @@ fragment {
     #define REFLECTION_HORIZON_FADE 0.1      // Normalized height to fade star reflections [0.0 - 0.5]
     
     // Moon
-    #define MOON_EARTHSHINE 0.002            // Dark side brightness scalar [0.0 - 0.01]
+    #define MOON_EARTHSHINE 0.0004           // Dark side brightness scalar [0.0 - 0.01]
     #define MOON_LIMB_SOFTNESS 0.05          // Edge softness relative to radius [0.0 - 0.1]
+    #define MOON_ALBEDO_TINT vec3(0.58, 0.68, 0.92)
+    #define MOON_ALBEDO_CONTRAST 1.8
+    #define MOON_NIGHT_TINT vec3(0.20, 0.26, 0.40)
 
     // Atmosphere
     #define HORIZON_GLOW_POWER 5.0           // Horizon glow falloff curve [1.0 - 10.0]
@@ -481,7 +494,7 @@ fragment {
     // @return             Radiance of the sun disk (if visible and enabled).
     // ------------------------------------------------------------------------
     vec3 getSunDisk(highp vec3 V, highp vec3 L, highp vec4 sunParams, 
-                          highp float sunIntensity, highp vec3 transmittance) {
+                          highp float sunIntensity, highp vec3 transmittance, highp vec3 sunTint) {
         
         highp float sunCosRadius = sunParams.x;
         highp float limbDarkening = sunParams.y;
@@ -510,7 +523,7 @@ fragment {
              // Direct Sun Light (Radiance)
              // SunIntensity * Transmittance -> Physical Sun Color
              // SunDiskIntensity -> Artistic Boost to punch through Mie halo
-             return sunIntensity * transmittance * limbFactor * sunDiskIntensity * sunDiskProfile;
+             return sunIntensity * transmittance * sunTint * limbFactor * sunDiskIntensity * sunDiskProfile;
         }
         
         return vec3(0.0);
@@ -811,7 +824,7 @@ fragment {
     // @return             Radiance of the moon disk.
     // ------------------------------------------------------------------------
     highp vec3 getMoonDisk(highp vec3 V, highp vec3 L_moon, highp vec3 L_sun, 
-                           highp vec4 moonParams, highp float moonIntensity, 
+                           highp vec4 moonParams, highp float moonIntensity, highp vec3 moonTint,
                            highp vec3 transmittance, sampler2D moonTex, sampler2D moonNormal) {
         
         highp float moonCosRadius = moonParams.x;
@@ -882,9 +895,8 @@ fragment {
              // Sample Albedo
              // Flip V here as well. Flip U to fix horizontal mirroring.
              highp vec3 moonColorSample = texture(moonTex, vec2(1.0 - u, 1.0 - v)).rgb;
-             // The original code used a float 'moonAlbedo' derived from .rrr.
-             // To support "3 channels" properly if it had color, we use the full RGB sample.
-             highp vec3 moonAlbedo = moonColorSample;
+             highp vec3 moonAlbedo = pow(max(moonColorSample, vec3(0.0)), vec3(MOON_ALBEDO_CONTRAST));
+             moonAlbedo *= MOON_ALBEDO_TINT;
              
              // Normal Mapping
              // Convert Tangent Space Normal (from texture) to World Space
@@ -908,8 +920,8 @@ fragment {
 
              highp float NdotL = max(0.0, dot(N_sphere, L_sun));
              
-             highp vec3 litColor = moonIntensity * transmittance * NdotL * moonAlbedo;
-             highp vec3 unlitColor = moonIntensity * transmittance * MOON_EARTHSHINE * earthPhase * moonAlbedo;
+             highp vec3 litColor = moonIntensity * transmittance * moonTint * NdotL * moonAlbedo;
+             highp vec3 unlitColor = moonIntensity * transmittance * moonTint * MOON_EARTHSHINE * earthPhase * moonAlbedo * MOON_NIGHT_TINT;
              
              // Smooth transition at terminator to avoid hard lines
              return mix(unlitColor, litColor, smoothstep(0.0, 0.1, NdotL)) * moonDiskIntensity * moonProfile;
@@ -1076,7 +1088,7 @@ fragment {
 
         // Sun Disk Reflection
         // Use sunDiskIntensity (Un-Dimmed) + Moon Occlusion Mask
-        highp vec3 sunDiskRefl = getSunDisk(R, L, sunHalo, sunDiskIntensity, outTransmittance);
+        highp vec3 sunDiskRefl = getSunDisk(R, L, sunHalo, sunDiskIntensity, outTransmittance, materialParams.sunTint);
         
         // Apply Moon Occlusion to Reflection
         // We calculate occlusion for R.
@@ -1096,7 +1108,7 @@ fragment {
         
         // Add Moon Disk to reflection
         if (sunHalo2.w > 0.5) {
-             reflection += getMoonDisk(R, L2, L, sunHalo2, sunIntensity2, outTransmittance, moonTex, moonNormal);
+             reflection += getMoonDisk(R, L2, L, sunHalo2, sunIntensity2, materialParams.moonTint, outTransmittance, moonTex, moonNormal);
         }
         
         // Apply clouds to reflection
@@ -1196,7 +1208,7 @@ fragment {
         // 5. Sun Disk (Direct)
         // Use ORIGINAL sunIntensity (Un-dimmed) so the disk looks bright
         // We mask it by Moon Occlusion AND Cloud Occlusion
-        highp vec3 sunDisk = getSunDisk(V, L, materialParams.sunHalo, materialParams.sunIntensity, transmittance);
+        highp vec3 sunDisk = getSunDisk(V, L, materialParams.sunHalo, materialParams.sunIntensity, transmittance, materialParams.sunTint);
         
         // Moon Occlusion Mask
         highp float moonOcclusion = 0.0;
@@ -1219,7 +1231,7 @@ fragment {
         // 6. Moon Disk
         if (materialParams.sunHalo2.w > 0.5) {
              color += getMoonDisk(V, L2, L, materialParams.sunHalo2, 
-                                  materialParams.sunIntensity2, transmittance, materialParams_moonTexture, materialParams_moonNormal) * sunAccess;
+                                  materialParams.sunIntensity2, materialParams.moonTint, transmittance, materialParams_moonTexture, materialParams_moonNormal) * sunAccess;
         }
 
         // 7. Stars
@@ -1280,5 +1292,3 @@ fragment {
         material.baseColor = vec4(color, 1.0);
     }
 }
-
-

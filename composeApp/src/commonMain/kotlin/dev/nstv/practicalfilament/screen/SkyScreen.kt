@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -72,6 +73,8 @@ private const val MilkyWayTexturePath = "files/textures/milkyway.png"
 private const val DefaultSunAzimuth = 0f
 private const val DefaultSunHeight = 0f
 private const val DefaultSunIntensity = 100_000f
+private const val DefaultFullMoonIlluminance = 0.25f
+private val DefaultSunTint = Float3(1f, 0.94f, 0.82f)
 private const val DefaultSunRadius = 1.2f
 private const val DefaultSunLimbDarkening = 0.5f
 private const val DefaultSunDiskIntensityBoost = 1f
@@ -91,8 +94,9 @@ private const val DefaultIso = 100f
 private const val DefaultFocalLength = 24f
 private const val DefaultMoonAzimuth = 180f
 private const val DefaultMoonHeight = 0.70710677f
-private const val DefaultMoonIntensity = 6f
-private const val DefaultMoonRadius = 1.2f
+private const val DefaultMoonIntensity = DefaultFullMoonIlluminance
+private const val DefaultMoonRadius = 0.75f
+private val DefaultMoonTint = Float3(0.58f, 0.68f, 0.92f)
 private const val DefaultMilkyWayIntensity = 1f
 private const val DefaultMilkyWaySaturation = 1f
 private const val DefaultMilkyWayBlackPoint = 0.07f
@@ -133,6 +137,9 @@ fun SkyScreen(
     var sunRadius by remember { mutableFloatStateOf(DefaultSunRadius) }
     var sunLimbDarkening by remember { mutableFloatStateOf(DefaultSunLimbDarkening) }
     var sunDiskIntensityBoost by remember { mutableFloatStateOf(DefaultSunDiskIntensityBoost) }
+    var sunTintRed by remember { mutableFloatStateOf(DefaultSunTint.x) }
+    var sunTintGreen by remember { mutableFloatStateOf(DefaultSunTint.y) }
+    var sunTintBlue by remember { mutableFloatStateOf(DefaultSunTint.z) }
     var turbidity by remember { mutableFloatStateOf(DefaultTurbidity) }
     var rayleigh by remember { mutableFloatStateOf(DefaultRayleigh) }
     var mieCoefficient by remember { mutableFloatStateOf(DefaultMieCoefficient) }
@@ -157,6 +164,9 @@ fun SkyScreen(
     var moonHeight by remember { mutableFloatStateOf(DefaultMoonHeight) }
     var moonIntensity by remember { mutableFloatStateOf(DefaultMoonIntensity) }
     var moonRadius by remember { mutableFloatStateOf(DefaultMoonRadius) }
+    var moonTintRed by remember { mutableFloatStateOf(DefaultMoonTint.x) }
+    var moonTintGreen by remember { mutableFloatStateOf(DefaultMoonTint.y) }
+    var moonTintBlue by remember { mutableFloatStateOf(DefaultMoonTint.z) }
     var milkyWayEnabled by remember { mutableStateOf(true) }
     var milkyWayIntensity by remember { mutableFloatStateOf(DefaultMilkyWayIntensity) }
     var milkyWaySaturation by remember { mutableFloatStateOf(DefaultMilkyWaySaturation) }
@@ -190,6 +200,9 @@ fun SkyScreen(
         sunRadius = sunRadius,
         sunLimbDarkening = sunLimbDarkening,
         sunDiskIntensityBoost = sunDiskIntensityBoost,
+        sunTintRed = sunTintRed,
+        sunTintGreen = sunTintGreen,
+        sunTintBlue = sunTintBlue,
         turbidity = turbidity,
         rayleigh = rayleigh,
         mieCoefficient = mieCoefficient,
@@ -214,6 +227,9 @@ fun SkyScreen(
         moonHeight = moonHeight,
         moonIntensity = moonIntensity,
         moonRadius = moonRadius,
+        moonTintRed = moonTintRed,
+        moonTintGreen = moonTintGreen,
+        moonTintBlue = moonTintBlue,
         milkyWayEnabled = milkyWayEnabled,
         milkyWayIntensity = milkyWayIntensity,
         milkyWaySaturation = milkyWaySaturation,
@@ -238,6 +254,7 @@ fun SkyScreen(
         syncLongitude = syncLongitude,
     )
     val realtimeModeEnabled = syncEnabled || syncManualOverride
+    val cameraModified = cameraAzimuth != DefaultCameraAzimuth || cameraElevation != DefaultCameraElevation
 
     fun clearRealtimeSync() {
         syncEnabled = false
@@ -328,6 +345,7 @@ fun SkyScreen(
             sunRadius = sunRadius,
             sunLimbDarkening = sunLimbDarkening,
             sunDiskIntensityBoost = sunDiskIntensityBoost,
+            sunTint = Float3(sunTintRed, sunTintGreen, sunTintBlue),
             turbidity = turbidity,
             rayleigh = rayleigh,
             mieCoefficient = mieCoefficient,
@@ -353,6 +371,7 @@ fun SkyScreen(
             moonHeight = moonHeight,
             moonIntensity = moonIntensity,
             moonRadius = moonRadius,
+            moonTint = Float3(moonTintRed, moonTintGreen, moonTintBlue),
             milkyWayEnabled = milkyWayEnabled,
             milkyWayIntensity = milkyWayIntensity,
             milkyWaySaturation = milkyWaySaturation,
@@ -524,6 +543,9 @@ fun SkyScreen(
                     sunDiskIntensityBoost,
                     0f..100f
                 ) { applyManualEdit { sunDiskIntensityBoost = it } }
+                SkySlider("Tint Red", sunTintRed, 0f..1f) { applyManualEdit { sunTintRed = it } }
+                SkySlider("Tint Green", sunTintGreen, 0f..1f) { applyManualEdit { sunTintGreen = it } }
+                SkySlider("Tint Blue", sunTintBlue, 0f..1f) { applyManualEdit { sunTintBlue = it } }
             }
 
             ExpandableSection(
@@ -544,6 +566,9 @@ fun SkyScreen(
                 ) { applyManualEdit { moonHeight = it } }
                 SkySlider("Intensity", moonIntensity, 0f..1000f) { applyMoonEdit { moonIntensity = it } }
                 SkySlider("Radius", moonRadius, 0.1f..5f) { applyMoonEdit { moonRadius = it } }
+                SkySlider("Tint Red", moonTintRed, 0f..1f) { applyMoonEdit { moonTintRed = it } }
+                SkySlider("Tint Green", moonTintGreen, 0f..1f) { applyMoonEdit { moonTintGreen = it } }
+                SkySlider("Tint Blue", moonTintBlue, 0f..1f) { applyMoonEdit { moonTintBlue = it } }
             }
 
             ExpandableSection(
@@ -637,6 +662,16 @@ fun SkyScreen(
                 SkySlider("Aperture", aperture, 1.4f..32f) { applyManualEdit { aperture = it } }
                 SkySlider("Shutter Speed (1/x s)", shutterSpeed, 0.05f..1000f) { applyManualEdit { shutterSpeed = it } }
                 SkySlider("ISO", iso, 50f..3200f) { applyManualEdit { iso = it } }
+                Button(
+                    onClick = {
+                        cameraAzimuth = DefaultCameraAzimuth
+                        cameraElevation = DefaultCameraElevation
+                    },
+                    enabled = cameraModified,
+                    modifier = Modifier.fillMaxWidth().padding(top = Grid.One),
+                ) {
+                    Text("Reset Camera")
+                }
             }
 
             ExpandableSection(
@@ -756,6 +791,7 @@ private fun applySkyParameters(
     sunRadius: Float,
     sunLimbDarkening: Float,
     sunDiskIntensityBoost: Float,
+    sunTint: Float3,
     turbidity: Float,
     rayleigh: Float,
     mieCoefficient: Float,
@@ -781,6 +817,7 @@ private fun applySkyParameters(
     moonHeight: Float,
     moonIntensity: Float,
     moonRadius: Float,
+    moonTint: Float3,
     milkyWayEnabled: Boolean,
     milkyWayIntensity: Float,
     milkyWaySaturation: Float,
@@ -930,6 +967,13 @@ private fun applySkyParameters(
         engine,
         instanceHandle,
         supportedParameters,
+        MaterialParameter("sunTint", sunTint),
+        onError,
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
         MaterialParameter("contrast", contrast),
         onError
     )
@@ -1014,6 +1058,13 @@ private fun applySkyParameters(
         supportedParameters,
         MaterialParameter("sunIntensity2", moonIntensity),
         onError
+    )
+    setMaterialParameterSafely(
+        engine,
+        instanceHandle,
+        supportedParameters,
+        MaterialParameter("moonTint", moonTint),
+        onError,
     )
     setMaterialParameterSafely(
         engine,
