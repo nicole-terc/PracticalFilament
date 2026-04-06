@@ -13,6 +13,7 @@ import android.view.WindowManager
 import com.google.android.filament.Camera
 import com.google.android.filament.EntityManager
 import com.google.android.filament.Filament
+import com.google.android.filament.IndexBuffer
 import com.google.android.filament.IndirectLight
 import com.google.android.filament.LightManager
 import com.google.android.filament.Material
@@ -24,10 +25,9 @@ import com.google.android.filament.Skybox
 import com.google.android.filament.SwapChain
 import com.google.android.filament.Texture
 import com.google.android.filament.TextureSampler
+import com.google.android.filament.VertexBuffer
 import com.google.android.filament.View
 import com.google.android.filament.Viewport
-import com.google.android.filament.IndexBuffer
-import com.google.android.filament.VertexBuffer
 import com.google.android.filament.android.DisplayHelper
 import com.google.android.filament.android.FilamentHelper
 import com.google.android.filament.android.UiHelper
@@ -38,35 +38,40 @@ import com.google.android.filament.gltfio.ResourceLoader
 import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.utils.KTX1Loader
 import com.google.android.filament.utils.Utils
-import com.google.android.filament.Engine as FilamentEngine
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.ProjectionType
-import dev.nstv.practicalfilament.screen.LiveWallpaperPreferences
-import dev.nstv.practicalfilament.screen.LiveWallpaperPreset
-import dev.nstv.practicalfilament.screen.SkyWallpaperConfig
-import dev.nstv.practicalfilament.screen.liveWallpaperHueAt
-import dev.nstv.practicalfilament.screen.resolveRealtimeSkyConfig
+import dev.nstv.practicalfilament.screen.sky.SkyWallpaperConfig
+import dev.nstv.practicalfilament.screen.sky.resolveRealtimeSkyConfig
+import dev.nstv.practicalfilament.screen.wallpaper.LiveWallpaperPreferences
+import dev.nstv.practicalfilament.screen.wallpaper.LiveWallpaperPreset
+import dev.nstv.practicalfilament.screen.wallpaper.liveWallpaperHueAt
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.max
 import kotlin.math.PI
 import kotlin.math.acos
 import kotlin.math.atan
 import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
-import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
+import com.google.android.filament.Engine as FilamentEngine
 
-private const val ComposeResourcesRoot = "composeResources/practicalfilament.composeapp.generated.resources"
-private const val WallpaperIndirectLightPath = "$ComposeResourcesRoot/files/envs/pillars_2k/pillars_2k_ibl.ktx"
-private const val WallpaperSkyboxPath = "$ComposeResourcesRoot/files/envs/pillars_2k/pillars_2k_skybox.ktx"
+private const val ComposeResourcesRoot =
+    "composeResources/practicalfilament.composeapp.generated.resources"
+private const val WallpaperIndirectLightPath =
+    "$ComposeResourcesRoot/files/envs/pillars_2k/pillars_2k_ibl.ktx"
+private const val WallpaperSkyboxPath =
+    "$ComposeResourcesRoot/files/envs/pillars_2k/pillars_2k_skybox.ktx"
 private const val WallpaperEnvironmentIntensity = 30_000f
-private const val WallpaperSkyMaterialPath = "$ComposeResourcesRoot/files/materials/simulated_skybox.filamat"
-private const val WallpaperMoonDiskTexturePath = "$ComposeResourcesRoot/files/textures/moon_disk.png"
-private const val WallpaperMoonNormalTexturePath = "$ComposeResourcesRoot/files/textures/moon_normal.png"
+private const val WallpaperSkyMaterialPath =
+    "$ComposeResourcesRoot/files/materials/simulated_skybox.filamat"
+private const val WallpaperMoonDiskTexturePath =
+    "$ComposeResourcesRoot/files/textures/moon_disk.png"
+private const val WallpaperMoonNormalTexturePath =
+    "$ComposeResourcesRoot/files/textures/moon_normal.png"
 private const val WallpaperMilkyWayTexturePath = "$ComposeResourcesRoot/files/textures/milkyway.png"
 
 class FilamentLiveWallpaperService : WallpaperService() {
@@ -167,7 +172,8 @@ class FilamentLiveWallpaperService : WallpaperService() {
             destroyConfiguredSky()
 
             if (preset == LiveWallpaperPreset.CONFIGURED_SKY) {
-                configuredSkyConfig = LiveWallpaperPreferences.loadSkyConfig(this@FilamentLiveWallpaperService)
+                configuredSkyConfig =
+                    LiveWallpaperPreferences.loadSkyConfig(this@FilamentLiveWallpaperService)
                 ensureConfiguredSky()
                 applyConfiguredSky(configuredSkyConfig, System.currentTimeMillis())
                 return
@@ -310,8 +316,9 @@ class FilamentLiveWallpaperService : WallpaperService() {
             if (path.endsWith(".gltf", ignoreCase = true)) {
                 val basePath = path.substringBeforeLast('/', "")
                 asset.resourceUris.forEach { resourceUri ->
-                    val resourceBuffer = loadAssetBuffer(resolveRelativeAssetPath(basePath, resourceUri))
-                        ?: return null
+                    val resourceBuffer =
+                        loadAssetBuffer(resolveRelativeAssetPath(basePath, resourceUri))
+                            ?: return null
                     currentResourceLoader.addResourceData(resourceUri, resourceBuffer)
                 }
             }
@@ -397,7 +404,13 @@ class FilamentLiveWallpaperService : WallpaperService() {
             val vertexBuffer = VertexBuffer.Builder()
                 .vertexCount(3)
                 .bufferCount(1)
-                .attribute(VertexBuffer.VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT2, 0, 8)
+                .attribute(
+                    VertexBuffer.VertexAttribute.POSITION,
+                    0,
+                    VertexBuffer.AttributeType.FLOAT2,
+                    0,
+                    8
+                )
                 .build(filamentEngine)
             vertexBuffer.setBufferAt(filamentEngine, 0, vertexData)
 
@@ -456,7 +469,11 @@ class FilamentLiveWallpaperService : WallpaperService() {
                     far = 5000.0,
                 ),
             )
-            applySkyConfigToMaterial(sky.materialInstance, resolvedConfig, viewportHeight = viewportHeight)
+            applySkyConfigToMaterial(
+                sky.materialInstance,
+                resolvedConfig,
+                viewportHeight = viewportHeight
+            )
         }
 
         private fun destroyConfiguredSky() {
@@ -473,9 +490,12 @@ class FilamentLiveWallpaperService : WallpaperService() {
         }
 
         private fun loadTexture(path: String): Texture? {
-            val bytes = runCatching { this@FilamentLiveWallpaperService.assets.open(path).readBytes() }.getOrNull()
+            val bytes = runCatching {
+                this@FilamentLiveWallpaperService.assets.open(path).readBytes()
+            }.getOrNull()
                 ?: return null
-            val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+            val bitmap =
+                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
             val pixelBuffer = ByteBuffer.allocateDirect(bitmap.byteCount)
             bitmap.copyPixelsToBuffer(pixelBuffer)
             pixelBuffer.flip()
@@ -496,9 +516,10 @@ class FilamentLiveWallpaperService : WallpaperService() {
         }
 
         private fun loadAssetBuffer(path: String): ByteBuffer? {
-            val bytes = runCatching { this@FilamentLiveWallpaperService.assets.open(path).readBytes() }
-                .getOrNull()
-                ?: return null
+            val bytes =
+                runCatching { this@FilamentLiveWallpaperService.assets.open(path).readBytes() }
+                    .getOrNull()
+                    ?: return null
             return ByteBuffer.allocateDirect(bytes.size).apply {
                 order(ByteOrder.nativeOrder())
                 put(bytes)
@@ -637,7 +658,8 @@ class FilamentLiveWallpaperService : WallpaperService() {
     }
 }
 
-private fun androidAssetPathFor(relativePath: String): String = "$ComposeResourcesRoot/$relativePath"
+private fun androidAssetPathFor(relativePath: String): String =
+    "$ComposeResourcesRoot/$relativePath"
 
 private fun applySkyConfigToMaterial(
     materialInstance: MaterialInstance,
@@ -659,21 +681,27 @@ private fun applySkyConfigToMaterial(
     val mieBase = 2.0e-5 * config.turbidity
     val depthM = FloatArray(3) { index ->
         (
-            mieBase *
-                (550e-9 / lambda[index]).pow(1.3) *
-                1200.0 *
-                config.mieCoefficient
-            ).toFloat()
+                mieBase *
+                        (550e-9 / lambda[index]).pow(1.3) *
+                        1200.0 *
+                        config.mieCoefficient
+                ).toFloat()
     }
 
     val cutoffAngle = 96.0 * PI / 180.0
     val steepness = 1.5
     val zenithFade = 1.0 - exp(-(cutoffAngle / steepness))
     val zenithAngle = acos(sunDirection[1].coerceIn(-1f, 1f).toDouble())
-    val sunFade = (max(0.0, 1.0 - exp(-((cutoffAngle - zenithAngle) / steepness))) / zenithFade).toFloat()
+    val sunFade =
+        (max(0.0, 1.0 - exp(-((cutoffAngle - zenithAngle) / steepness))) / zenithFade).toFloat()
     val physicalSunIntensity = preExposedSunIntensity * sunFade
 
-    val sunHalo = buildHalo(config.sunRadius, config.sunLimbDarkening, config.sunDiskIntensityBoost, enabled = true)
+    val sunHalo = buildHalo(
+        config.sunRadius,
+        config.sunLimbDarkening,
+        config.sunDiskIntensityBoost,
+        enabled = true
+    )
     val moonHalo = buildMoonHalo(config.moonRadius, 1f, config.moonEnabled)
 
     val cloudHeightKm = config.cloudHeightMeters * 0.001f
@@ -697,7 +725,12 @@ private fun applySkyConfigToMaterial(
         config.horizonGlow,
     )
     val g2 = config.mieG * config.mieG
-    val starControl = buildStarControl(config.starDensity, config.starsEnabled, viewportHeight, config.focalLength)
+    val starControl = buildStarControl(
+        config.starDensity,
+        config.starsEnabled,
+        viewportHeight,
+        config.focalLength
+    )
     val milkyWayControl = floatArrayOf(
         if (config.milkyWayEnabled) config.milkyWayIntensity * 0.003f else 0f,
         config.milkyWaySaturation,
@@ -705,7 +738,12 @@ private fun applySkyConfigToMaterial(
     )
 
     materialInstance.setParameter("sunDirection", sunDirection[0], sunDirection[1], sunDirection[2])
-    materialInstance.setParameter("sunDirection2", moonDirection[0], moonDirection[1], moonDirection[2])
+    materialInstance.setParameter(
+        "sunDirection2",
+        moonDirection[0],
+        moonDirection[1],
+        moonDirection[2]
+    )
     materialInstance.setParameter("depthR", depthR[0], depthR[1], depthR[2])
     materialInstance.setParameter("depthM", depthM[0], depthM[1], depthM[2])
     materialInstance.setParameter("miePhaseParams", 1f + g2, -2f * config.mieG)
@@ -723,10 +761,28 @@ private fun applySkyConfigToMaterial(
             moonEnabled = config.moonEnabled,
         ),
     )
-    materialInstance.setParameter("multiScatParams", multiScatParams[0], multiScatParams[1], multiScatParams[2], multiScatParams[3])
+    materialInstance.setParameter(
+        "multiScatParams",
+        multiScatParams[0],
+        multiScatParams[1],
+        multiScatParams[2],
+        multiScatParams[3]
+    )
     materialInstance.setParameter("sunHalo", sunHalo[0], sunHalo[1], sunHalo[2], sunHalo[3])
-    materialInstance.setParameter("shimmerControl", shimmerControl[0], shimmerControl[1], shimmerControl[2], shimmerControl[3])
-    materialInstance.setParameter("cloudControl", cloudControl[0], cloudControl[1], cloudControl[2], cloudControl[3])
+    materialInstance.setParameter(
+        "shimmerControl",
+        shimmerControl[0],
+        shimmerControl[1],
+        shimmerControl[2],
+        shimmerControl[3]
+    )
+    materialInstance.setParameter(
+        "cloudControl",
+        cloudControl[0],
+        cloudControl[1],
+        cloudControl[2],
+        cloudControl[3]
+    )
     materialInstance.setParameter(
         "cloudControl2",
         config.cloudEvolutionSpeed,
@@ -743,10 +799,21 @@ private fun applySkyConfigToMaterial(
         if (config.waterDerivativeTrick) 1f else 0f,
         config.waterOctaves,
     )
-    materialInstance.setParameter("starControl", starControl[0], starControl[1], starControl[2], starControl[3])
+    materialInstance.setParameter(
+        "starControl",
+        starControl[0],
+        starControl[1],
+        starControl[2],
+        starControl[3]
+    )
     materialInstance.setParameter("starIntensity", 2f.pow(config.starIntensityExponent))
     materialInstance.setParameter("exposure", 1f)
-    materialInstance.setParameter("milkyWayControl", milkyWayControl[0], milkyWayControl[1], milkyWayControl[2])
+    materialInstance.setParameter(
+        "milkyWayControl",
+        milkyWayControl[0],
+        milkyWayControl[1],
+        milkyWayControl[2]
+    )
     materialInstance.setParameter(
         "milkyWayRotation",
         MaterialInstance.FloatElement.MAT3,
@@ -772,11 +839,21 @@ private fun skyExposure(aperture: Float, shutterSpeed: Float, iso: Float): Float
     return 1f / (1.2f * ev100Linear)
 }
 
-private fun buildHalo(radiusDegrees: Float, limbDarkening: Float, intensity: Float, enabled: Boolean): FloatArray {
+private fun buildHalo(
+    radiusDegrees: Float,
+    limbDarkening: Float,
+    intensity: Float,
+    enabled: Boolean
+): FloatArray {
     val cosRadius = cos(radiusDegrees.toDouble() * PI / 180.0).toFloat()
     val solidAngle = (2.0 * PI * (1.0 - cosRadius)).toFloat()
     val radianceConversion = 1f / max(1e-9f, solidAngle)
-    return floatArrayOf(cosRadius, limbDarkening, intensity * radianceConversion, if (enabled) 1f else 0f)
+    return floatArrayOf(
+        cosRadius,
+        limbDarkening,
+        intensity * radianceConversion,
+        if (enabled) 1f else 0f
+    )
 }
 
 private fun buildMoonHalo(radiusDegrees: Float, intensity: Float, enabled: Boolean): FloatArray {
@@ -785,7 +862,12 @@ private fun buildMoonHalo(radiusDegrees: Float, intensity: Float, enabled: Boole
     val sinRadius = sin(radians).toFloat()
     val solidAngle = (2.0 * PI * (1.0 - cosRadius)).toFloat()
     val radianceConversion = 1f / max(1e-9f, solidAngle)
-    return floatArrayOf(cosRadius, sinRadius, intensity * radianceConversion, if (enabled) 1f else 0f)
+    return floatArrayOf(
+        cosRadius,
+        sinRadius,
+        intensity * radianceConversion,
+        if (enabled) 1f else 0f
+    )
 }
 
 private fun buildStarControl(
@@ -795,7 +877,8 @@ private fun buildStarControl(
     focalLengthMm: Float,
 ): FloatArray {
     val compensatedDensity = (density * 12f).coerceIn(0f, 1f)
-    val pixelScale = (1f / viewportHeightPx.coerceAtLeast(1)) * (24f / focalLengthMm.coerceAtLeast(1f))
+    val pixelScale =
+        (1f / viewportHeightPx.coerceAtLeast(1)) * (24f / focalLengthMm.coerceAtLeast(1f))
     return floatArrayOf(compensatedDensity, if (enabled) 1f else 0f, 100f, pixelScale * 1.3f)
 }
 
@@ -809,7 +892,11 @@ private fun computeEclipseFactor(
     if (!moonEnabled) return 1f
     val sunRadius = sunRadiusDegrees.toDouble() * PI / 180.0
     val moonRadius = moonRadiusDegrees.toDouble() * PI / 180.0
-    val dot = (sunDirection[0] * moonDirection[0] + sunDirection[1] * moonDirection[1] + sunDirection[2] * moonDirection[2]).coerceIn(-1f, 1f)
+    val dot =
+        (sunDirection[0] * moonDirection[0] + sunDirection[1] * moonDirection[1] + sunDirection[2] * moonDirection[2]).coerceIn(
+            -1f,
+            1f
+        )
     val separation = acos(dot.toDouble())
     val overlap = areaIntersection(sunRadius, moonRadius, separation)
     val sunArea = PI * sunRadius * sunRadius

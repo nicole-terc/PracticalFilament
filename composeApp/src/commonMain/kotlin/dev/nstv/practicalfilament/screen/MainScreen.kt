@@ -18,6 +18,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import dev.nstv.practicalfilament.screen.comparison.GraphicsEffectsComparisonScreen
+import dev.nstv.practicalfilament.screen.marbles.MarbleScreen
+import dev.nstv.practicalfilament.screen.marbles.MarbleTextureScreen
+import dev.nstv.practicalfilament.screen.marbles.MarbleUIScreen
+import dev.nstv.practicalfilament.screen.otherViewers.MaterialViewerScreen
+import dev.nstv.practicalfilament.screen.otherViewers.MorphingScreen
+import dev.nstv.practicalfilament.screen.otherViewers.RedballScreen
+import dev.nstv.practicalfilament.screen.otherViewers.SheepScreen
+import dev.nstv.practicalfilament.screen.particles.ParticleWordScreen
+import dev.nstv.practicalfilament.screen.samples.GltfViewerScreen
+import dev.nstv.practicalfilament.screen.samples.HelloTriangleScreen
+import dev.nstv.practicalfilament.screen.samples.IBLScreen
+import dev.nstv.practicalfilament.screen.samples.LitCubeScreen
+import dev.nstv.practicalfilament.screen.samples.MaterialBuilderScreen
+import dev.nstv.practicalfilament.screen.samples.MultiViewScreen
+import dev.nstv.practicalfilament.screen.samples.PageCurlScreen
+import dev.nstv.practicalfilament.screen.samples.StressTestScreen
+import dev.nstv.practicalfilament.screen.samples.TexturedObjectScreen
+import dev.nstv.practicalfilament.screen.samples.TransparentViewScreen
+import dev.nstv.practicalfilament.screen.sky.SkyScreen
+import dev.nstv.practicalfilament.screen.wallpaper.LiveWallpaperScreen
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import dev.nstv.practicalfilament.theme.slidesBackground
@@ -57,7 +78,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by remember { mutableStateOf(Screen.MARBLE_TEXTURE) }
+        var selectedScreen by remember { mutableStateOf(Screen.MARBLE_UI) }
 
         Column(
             modifier = Modifier
