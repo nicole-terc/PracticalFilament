@@ -19,6 +19,7 @@ class IosFilamentEngine(
 
     private var _isInitialized = false
     private var currentCameraConfig = CameraConfig()
+    override val supportsMaterialBuilder: Boolean = false
     override val isInitialized: Boolean get() = _isInitialized
 
     fun setClearColor(color: Color) {
@@ -109,6 +110,24 @@ class IosFilamentEngine(
     override fun loadMaterial(path: String): Int {
         return bridge.loadMaterialFromPath(path)
     }
+
+    override fun buildMaterial(
+        materialSource: String,
+        shadingModel: String,
+        requiredAttributes: List<VertexAttribute>,
+        parameters: List<MaterialParameterDefinition>,
+        blendingMode: MaterialBlendingMode,
+    ): Int = -1
+
+    override fun compileMaterialPackage(
+        materialSource: String,
+        shadingModel: String,
+        requiredAttributes: List<VertexAttribute>,
+        parameters: List<MaterialParameterDefinition>,
+        blendingMode: MaterialBlendingMode,
+    ): ByteArray? = null
+
+    override fun createMaterialFromPackage(materialPackage: ByteArray): Int = -1
 
     override fun getMaterialParameters(materialHandle: Int): List<MaterialParameterDefinition> {
         val count = bridge.getMaterialParameterDefinitionCount(materialHandle)
@@ -212,8 +231,8 @@ class IosFilamentEngine(
         return bridge.createTextureWithWidth(width, height = height, pixels = pixels)
     }
 
-    override fun loadTexture(path: String): Int {
-        return bridge.loadTextureFromPath(path)
+    override fun loadTexture(path: String, colorFormat: TextureColorFormat): Int {
+        return bridge.loadTextureFromPath(path, colorFormat = colorFormat.ordinal)
     }
 
     override fun setTextureParameter(instanceHandle: Int, paramName: String, textureHandle: Int) {
@@ -227,6 +246,8 @@ class IosFilamentEngine(
     override fun createSphereRenderable(materialInstanceHandle: Int, radius: Float): Int {
         return bridge.createSphereWithMaterial(materialInstanceHandle, radius = radius)
     }
+
+    override fun createCubeRenderable(materialInstanceHandle: Int, size: Float): Int = -1
 
     override fun createCustomRenderableWithGeneratedTangents(config: CustomRenderableConfig): Int {
         val attributeMetadata = IntArray(config.attributes.size * 4)
@@ -275,6 +296,8 @@ class IosFilamentEngine(
         )
     }
 
+    override fun loadMesh(path: String, materialInstanceHandle: Int): Int = -1
+
     override fun createMorphRenderable(
         materialInstanceHandle: Int,
         geometry: MorphRenderableGeometry,
@@ -304,12 +327,59 @@ class IosFilamentEngine(
         )
     }
 
+    override fun setShadowsEnabled(renderableHandle: Int, castShadows: Boolean, receiveShadows: Boolean) {
+    }
+
+    override fun updateVertexData(renderableHandle: Int, vertexData: ByteArray) {
+    }
+
     override fun setMorphWeights(handle: Int, weights: FloatArray) {
         bridge.setMorphWeights(handle, weights = weights)
     }
 
     override fun removeRenderable(handle: Int) {
         bridge.removeRenderable(handle)
+    }
+
+    override fun createView(viewport: ViewportConfig): Int = -1
+
+    override fun removeView(handle: Int) {
+    }
+
+    override fun setViewViewport(handle: Int, viewport: ViewportConfig) {
+    }
+
+    override fun setViewCamera(handle: Int, config: CameraConfig) {
+    }
+
+    override fun setViewBlendMode(handle: Int, translucent: Boolean) {
+    }
+
+    override fun setViewPostProcessing(handle: Int, enabled: Boolean) {
+    }
+
+    override fun loadGltfAsset(path: String): Int = -1
+
+    override fun destroyGltfAsset(handle: Int) {
+    }
+
+    override fun getGltfAnimationCount(handle: Int): Int = 0
+
+    override fun getGltfAnimationDuration(handle: Int, animationIndex: Int): Float = 0f
+
+    override fun applyGltfAnimation(handle: Int, animationIndex: Int, timeSeconds: Float) {
+    }
+
+    override fun updateGltfBoneMatrices(handle: Int) {
+    }
+
+    override fun transformGltfToUnitCube(handle: Int) {
+    }
+
+    override fun addGltfToScene(handle: Int) {
+    }
+
+    override fun removeGltfFromScene(handle: Int) {
     }
 
     override fun requestFrame() {
@@ -394,7 +464,7 @@ interface FilamentBridgeProtocol {
         m30: Float, m31: Float, m32: Float, m33: Float,
     )
     fun createTextureWithWidth(width: Int, height: Int, pixels: ByteArray): Int
-    fun loadTextureFromPath(path: String): Int
+    fun loadTextureFromPath(path: String, colorFormat: Int): Int
     fun setTextureParam(instanceHandle: Int, name: String, textureHandle: Int)
     fun createPlaneWithMaterial(instanceHandle: Int, width: Float, height: Float): Int
     fun createSphereWithMaterial(instanceHandle: Int, radius: Float): Int

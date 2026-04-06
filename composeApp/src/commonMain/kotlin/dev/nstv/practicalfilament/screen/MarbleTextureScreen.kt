@@ -20,6 +20,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import dev.nstv.practicalfilament.components.materials.brownMudLeavesMaterial
+import dev.nstv.practicalfilament.components.utils.OrbitQuaternion
+import dev.nstv.practicalfilament.components.utils.orbitCameraConfig
+import dev.nstv.practicalfilament.components.utils.orbitCameraControls
+import dev.nstv.practicalfilament.components.utils.orbitDistance
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.Color
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -27,12 +31,19 @@ import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
+import dev.nstv.practicalfilament.filament.material.BuiltInTexture
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.sqrt
 
-private const val MarbleTextureEnvironmentIntensity = 30_000f
+private const val MarbleTextureEnvironmentIntensity = 50_000f
+private const val MarbleTextureMinCameraDistance = 2.2f
+private const val MarbleTextureMaxCameraDistance = 8f
+private val MarbleTextureBaseCamera = CameraConfig(
+    position = Float3(0f, 0.04f, 3.35f),
+    lookAt = Float3(0f, 0f, 0f),
+)
 
 private data class EnvironmentOption(
     val label: String,
@@ -70,8 +81,10 @@ fun MarbleTextureScreen(
 ) {
     var filamentEngine by remember { mutableStateOf<FilamentEngine?>(null) }
     var selectedMaterialIndex by remember { mutableIntStateOf(0) }
-    var selectedBackgroundIndex by remember { mutableIntStateOf(0) }
+    var selectedBackgroundIndex by remember { mutableIntStateOf(8) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
+    var orientation by remember { mutableStateOf(OrbitQuaternion.Identity) }
+    var cameraDistance by remember { mutableStateOf(MarbleTextureBaseCamera.orbitDistance()) }
     var renderableHandle by remember { mutableIntStateOf(0) }
     var gestureLightHandle by remember { mutableIntStateOf(0) }
     var gestureLightPosition by remember { mutableStateOf<Float3?>(null) }
@@ -164,6 +177,18 @@ fun MarbleTextureScreen(
         engine.requestFrame()
     }
 
+    LaunchedEffect(filamentEngine, orientation, cameraDistance) {
+        val engine = filamentEngine ?: return@LaunchedEffect
+        engine.updateCamera(
+            orbitCameraConfig(
+                baseCamera = MarbleTextureBaseCamera,
+                orientation = orientation,
+                distance = cameraDistance,
+            )
+        )
+        engine.requestFrame()
+    }
+
     SampleScreenLayout(
         modifier = modifier,
         title = "Marble Texture",
@@ -182,17 +207,34 @@ fun MarbleTextureScreen(
                                 }
                             },
                         )
-                    },
-                camera = CameraConfig(
-                    position = Float3(0f, 0.05f, 4.25f),
-                    lookAt = Float3(0f, 0f, 0f),
+                    }
+                    .orbitCameraControls(
+                        viewportSize = viewportSize,
+                        orientation = orientation,
+                        onOrientationChange = { orientation = it },
+                        distance = cameraDistance,
+                        onDistanceChange = { cameraDistance = it },
+                        minDistance = MarbleTextureMinCameraDistance,
+                        maxDistance = MarbleTextureMaxCameraDistance,
+                        enabled = renderableHandle > 0,
+                    ),
+                camera = orbitCameraConfig(
+                    baseCamera = MarbleTextureBaseCamera,
+                    orientation = orientation,
+                    distance = cameraDistance,
                 ),
                 lights = listOf(
                     LightConfig(
                         type = LightType.DIRECTIONAL,
-                        color = Color(1f, 0.98f, 0.95f),
-                        intensity = 75_000f,
-                        direction = Float3(-0.24f, -0.38f, -1f),
+                        color = Color(1f, 0.96f, 0.92f),
+                        intensity = 110_000f,
+                        direction = Float3(-0.5f, -0.72f, -0.42f),
+                    ),
+                    LightConfig(
+                        type = LightType.DIRECTIONAL,
+                        color = Color(0.82f, 0.88f, 1f),
+                        intensity = 28_000f,
+                        direction = Float3(0.72f, -0.18f, -0.66f),
                     ),
                 ),
                 backgroundColor = Color(0.16f, 0.18f, 0.27f, 1f),
@@ -205,6 +247,13 @@ fun MarbleTextureScreen(
                         loaded.textureHandles.size != material.textureBindings.size ->
                             "Some textures could not be loaded."
                         else -> null
+                    }
+                    if (loaded.instanceHandle > 0) {
+                        loaded.parameters.values
+                            .filter { parameter -> parameter.value !is BuiltInTexture }
+                            .forEach { parameter ->
+                                engine.setMaterialParameter(loaded.instanceHandle, parameter)
+                            }
                     }
                     renderableHandle = if (loaded.instanceHandle > 0) {
                         engine.createSphereRenderable(
@@ -271,6 +320,11 @@ fun MarbleTextureScreen(
                     if (loaded.instanceHandle <= 0) {
                         return@DropDownWithArrows
                     }
+                    loaded.parameters.values
+                        .filter { parameter -> parameter.value !is BuiltInTexture }
+                        .forEach { parameter ->
+                            engine.setMaterialParameter(loaded.instanceHandle, parameter)
+                        }
                     renderableHandle = engine.createSphereRenderable(
                         materialInstanceHandle = loaded.instanceHandle,
                         radius = 1f,
@@ -303,6 +357,12 @@ fun MarbleTextureScreen(
                     .fillMaxWidth()
                     .padding(top = Grid.One),
                 text = "Double-tap the sphere to place a gesture light.",
+            )
+            androidx.compose.material3.Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Grid.One),
+                text = "Drag to orbit and pinch to zoom.",
             )
         },
     )

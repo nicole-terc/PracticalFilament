@@ -664,18 +664,26 @@ class AndroidFilamentEngine(
         }
     }
 
+    private fun calculateMipLevelCount(width: Int, height: Int): Int {
+        val maxDimension = max(width, height).coerceAtLeast(1)
+        return Int.SIZE_BITS - Integer.numberOfLeadingZeros(maxDimension)
+    }
+
     override fun createTexture(width: Int, height: Int, pixels: ByteArray): Int {
         val eng = engine ?: return -1
         require(pixels.size == width * height * 4) {
             "Pixel data size ${pixels.size} does not match expected ${width * height * 4} for ${width}x${height} RGBA"
         }
 
+        val mipLevelCount = calculateMipLevelCount(width, height)
+
         val texture = Texture.Builder()
             .width(width)
             .height(height)
             .sampler(Texture.Sampler.SAMPLER_2D)
             .format(Texture.InternalFormat.RGBA8)
-            .levels(1)
+            .usage(Texture.Usage.DEFAULT or Texture.Usage.GEN_MIPMAPPABLE)
+            .levels(mipLevelCount)
             .build(eng)
 
         val buffer = ByteBuffer.allocateDirect(pixels.size).apply {
@@ -691,13 +699,14 @@ class AndroidFilamentEngine(
                 Texture.Type.UBYTE,
             )
         )
+        texture.generateMipmaps(eng)
 
         val handle = nextHandle++
         textures[handle] = texture
         return handle
     }
 
-    override fun loadTexture(path: String): Int {
+    override fun loadTexture(path: String, colorFormat: TextureColorFormat): Int {
         val eng = engine ?: return -1
         if (path.endsWith(".ktx", ignoreCase = true) || path.endsWith(".ktx1", ignoreCase = true)) {
             val buffer = loadAssetBuffer(path) ?: return -1
@@ -729,13 +738,20 @@ class AndroidFilamentEngine(
             val pixelBuffer = ByteBuffer.allocateDirect(bitmap.byteCount)
             bitmap.copyPixelsToBuffer(pixelBuffer)
             pixelBuffer.flip()
+            val mipLevelCount = calculateMipLevelCount(bitmap.width, bitmap.height)
 
             val texture = Texture.Builder()
                 .width(bitmap.width)
                 .height(bitmap.height)
                 .sampler(Texture.Sampler.SAMPLER_2D)
-                .format(Texture.InternalFormat.RGBA8)
-                .levels(1)
+                .format(
+                    when (colorFormat) {
+                        TextureColorFormat.RGBA8 -> Texture.InternalFormat.RGBA8
+                        TextureColorFormat.SRGB8_A8 -> Texture.InternalFormat.SRGB8_A8
+                    }
+                )
+                .usage(Texture.Usage.DEFAULT or Texture.Usage.GEN_MIPMAPPABLE)
+                .levels(mipLevelCount)
                 .build(eng)
             texture.setImage(
                 eng,
@@ -746,6 +762,7 @@ class AndroidFilamentEngine(
                     Texture.Type.UBYTE,
                 )
             )
+            texture.generateMipmaps(eng)
             bitmap.recycle()
 
             val handle = nextHandle++
@@ -762,7 +779,7 @@ class AndroidFilamentEngine(
         val texture = textures[textureHandle] ?: return
 
         val sampler = TextureSampler(
-            TextureSampler.MinFilter.LINEAR,
+            TextureSampler.MinFilter.LINEAR_MIPMAP_LINEAR,
             TextureSampler.MagFilter.LINEAR,
             TextureSampler.WrapMode.REPEAT,
         )
@@ -805,8 +822,8 @@ class AndroidFilamentEngine(
         val eng = engine ?: return -1
         val instance = materialInstances[materialInstanceHandle] ?: return -1
 
-        val stacks = 24
-        val slices = 24
+        val stacks = 64
+        val slices = 64
         val vertexCount = (stacks + 1) * (slices + 1)
         val positions = FloatArray(vertexCount * 3)
         val normals = FloatArray(vertexCount * 3)
@@ -858,33 +875,20 @@ class AndroidFilamentEngine(
             }
         }
 
-        val tangentQuaternions = buildSurfaceOrientationQuaternions(
+        val tangentQuaternions = buildSurfaceOrientationShortQuaternions(
             vertexCount = vertexCount,
             positions = positions,
             normals = normals,
             uvs = uvs,
             indices = indexData,
         )
-
-        // Interleaved vertex format: position(3) + tangent quaternion(4) + uv(2)
-        val vertexData = FloatArray(vertexCount * 9)
-        var vi = 0
-        var pi = 0
-        var qi = 0
-        var ui = 0
-        repeat(vertexCount) {
-            vertexData[vi++] = positions[pi++]
-            vertexData[vi++] = positions[pi++]
-            vertexData[vi++] = positions[pi++]
-            vertexData[vi++] = tangentQuaternions[qi++]
-            vertexData[vi++] = tangentQuaternions[qi++]
-            vertexData[vi++] = tangentQuaternions[qi++]
-            vertexData[vi++] = tangentQuaternions[qi++]
-            vertexData[vi++] = uvs[ui++]
-            vertexData[vi++] = uvs[ui++]
-        }
-
-        val vertexBuffer = buildVertexBuffer(eng, vertexData, vertexCount)
+        val vertexBuffer = buildShortTangentVertexBuffer(
+            eng = eng,
+            positions = positions,
+            tangentQuaternions = tangentQuaternions,
+            uvs = uvs,
+            vertexCount = vertexCount,
+        )
         val indexBuffer = buildIndexBuffer(eng, indexData)
 
         val entity = EntityManager.get().create()
@@ -1058,6 +1062,8 @@ class AndroidFilamentEngine(
         }
         return createCustomRenderable(config)
     }
+
+    override fun loadMesh(path: String, materialInstanceHandle: Int): Int = -1
 
     override fun createMorphRenderable(
         materialInstanceHandle: Int,
@@ -1520,6 +1526,7 @@ class AndroidFilamentEngine(
     private fun buildSurfaceOrientationShortQuaternions(
         vertexCount: Int,
         positions: FloatArray,
+        normals: FloatArray? = null,
         uvs: FloatArray,
         indices: ShortArray,
     ): ShortArray {
@@ -1550,6 +1557,9 @@ class AndroidFilamentEngine(
 
         val orientation = SurfaceOrientation.Builder()
             .vertexCount(vertexCount)
+            .apply {
+                normals?.let { normals(normalsBufferFrom(it)) }
+            }
             .uvs(uvsBuffer)
             .positions(positionsBuffer)
             .triangleCount(indices.size / 3)
@@ -1565,6 +1575,14 @@ class AndroidFilamentEngine(
             orientation.destroy()
         }
     }
+
+    private fun normalsBufferFrom(normals: FloatArray) = ByteBuffer.allocateDirect(normals.size * 4)
+        .order(ByteOrder.nativeOrder())
+        .asFloatBuffer()
+        .apply {
+            put(normals)
+            flip()
+        }
 
     private fun buildIndexBuffer(eng: Engine, data: ShortArray): IndexBuffer {
         val byteBuffer = ByteBuffer.allocateDirect(data.size * 2).apply {

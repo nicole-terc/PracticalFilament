@@ -19,6 +19,7 @@ import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
+import dev.nstv.practicalfilament.filament.TextureColorFormat
 import dev.nstv.practicalfilament.filament.material.MaterialParameterType
 import practicalfilament.composeapp.generated.resources.Res
 
@@ -79,7 +80,10 @@ fun TexturedObjectScreen(
                         notice = "No sampler parameter was found in texturedSample.filamat."
                         return@FilamentView
                     }
-                    val textureHandle = readyEngine.loadTexture(Res.getUri(TexturedObjectTexturePath))
+                    val textureHandle = readyEngine.loadTexture(
+                        Res.getUri(TexturedObjectTexturePath),
+                        TextureColorFormat.SRGB8_A8,
+                    )
                     if (textureHandle <= 0) {
                         notice = "Texture loading failed on this platform."
                         return@FilamentView

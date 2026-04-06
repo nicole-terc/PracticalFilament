@@ -4,23 +4,33 @@ material {
     specularAntiAliasing : true,
     requires : [ uv0 ],
     parameters : [
-        { type : sampler2d, name : baseColorMap },
-        { type : sampler2d, name : normalMap },
-        { type : sampler2d, name : roughnessMap },
-        { type : sampler2d, name : aoMap }
+        { type : sampler2d, name : albedoTex },
+        { type : sampler2d, name : normalTex },
+        { type : sampler2d, name : roughnessTex },
+        { type : sampler2d, name : aoTex },
+        { type : float, name : uvScale },
+        { type : float, name : normalStrength }
     ]
 }
 
 fragment {
     void material(inout MaterialInputs material) {
+        vec2 uv = fract(getUV0() * materialParams.uvScale);
+        vec4 baseColor = texture(materialParams_albedoTex, uv);
+        vec3 normalSample = texture(materialParams_normalTex, uv).xyz * 2.0 - 1.0;
+        float roughness = texture(materialParams_roughnessTex, uv).r;
+        float ao = texture(materialParams_aoTex, uv).r;
+        material.normal = normalize(
+            vec3(
+                normalSample.xy * materialParams.normalStrength,
+                normalSample.z
+            )
+        );
         prepareMaterial(material);
-
-        vec2 uv = getUV0();
-        material.baseColor = texture(materialParams_baseColorMap, uv);
-        material.normal = texture(materialParams_normalMap, uv).xyz * 2.0 - 1.0;
-        material.roughness = texture(materialParams_roughnessMap, uv).r;
-        material.ambientOcclusion = texture(materialParams_aoMap, uv).r;
+        material.baseColor = baseColor;
+        material.roughness = clamp(roughness, 0.28, 1.0);
+        material.ambientOcclusion = ao;
         material.metallic = 0.0;
-        material.reflectance = 0.35;
+        material.reflectance = 0.25;
     }
 }

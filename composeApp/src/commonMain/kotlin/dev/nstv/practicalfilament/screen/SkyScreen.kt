@@ -38,6 +38,7 @@ import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float2
 import dev.nstv.practicalfilament.filament.Float3
+import dev.nstv.practicalfilament.filament.TextureColorFormat
 import dev.nstv.practicalfilament.filament.Float4
 import dev.nstv.practicalfilament.filament.PrimitiveType
 import dev.nstv.practicalfilament.filament.VertexAttribute
@@ -773,7 +774,10 @@ private fun bindTexture(
     onFailure: (String) -> Unit,
 ) {
     if (parameterName !in supportedParameters) return
-    val textureHandle = engine.loadTexture(Res.getUri(path))
+    val textureHandle = engine.loadTexture(
+        Res.getUri(path),
+        TextureColorFormat.SRGB8_A8,
+    )
     if (textureHandle <= 0) {
         onFailure("The texture $path could not be loaded.")
         return
