@@ -37,6 +37,8 @@ import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
 import practicalfilament.composeapp.generated.resources.Res
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
+import dev.nstv.practicalfilament.screen.marbles.components.MeshSelectionField
+import dev.nstv.practicalfilament.screen.marbles.components.MeshList
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import dev.nstv.practicalfilament.theme.components.SampleNotice
@@ -56,14 +58,12 @@ private val MarbleTextureMaterials = listOf(
     mossMaterial(),
 )
 
-private val sphereFilamesh ="files/models/sphere.filamesh"
-
-
 @Composable
 fun MarbleTextureScreen(
     modifier: Modifier = Modifier,
 ) {
     var filamentEngine by remember { mutableStateOf<FilamentEngine?>(null) }
+    var selectedMeshName by remember { mutableStateOf(MeshList.values.toList()[0]) }
     var selectedMaterialIndex by remember { mutableIntStateOf(0) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var orientation by remember { mutableStateOf(OrbitQuaternion.Identity) }
@@ -176,7 +176,7 @@ fun MarbleTextureScreen(
                     }
                     renderableHandle = if (loaded.instanceHandle > 0) {
                         engine.loadMesh(
-                            path = Res.getUri(sphereFilamesh),
+                            path = Res.getUri(selectedMeshName),
                             materialInstanceHandle = loaded.instanceHandle,
                             scale = 2f,
                         )
@@ -210,6 +210,9 @@ fun MarbleTextureScreen(
         },
         controls = {
             notice?.let { SampleNotice(it) }
+            MeshSelectionField(
+                onMeshSelectionChanged = { selectedMeshName = it },
+            )
             DropDownWithArrows(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -247,7 +250,7 @@ fun MarbleTextureScreen(
                             engine.setMaterialParameter(loaded.instanceHandle, parameter)
                         }
                     renderableHandle = engine.loadMesh(
-                        path = Res.getUri(sphereFilamesh),
+                        path = Res.getUri(selectedMeshName),
                         materialInstanceHandle = loaded.instanceHandle,
                         scale = 2f,
                     )
