@@ -18,8 +18,8 @@ import com.google.android.filament.MorphTargetBuffer
 import com.google.android.filament.RenderableManager
 import com.google.android.filament.Renderer
 import com.google.android.filament.Scene
-import com.google.android.filament.SwapChain
 import com.google.android.filament.SurfaceOrientation
+import com.google.android.filament.SwapChain
 import com.google.android.filament.Texture
 import com.google.android.filament.TextureSampler
 import com.google.android.filament.VertexBuffer

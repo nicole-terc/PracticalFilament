@@ -1,6 +1,6 @@
 package dev.nstv.practicalfilament.screen.marbles
 
-import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.Color
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.Float3
@@ -8,10 +8,10 @@ import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.Material.SimpleMaterial
 
-internal val MarbleUiBackground = ComposeColor(0xFF101721)
-internal val MarbleUiText = ComposeColor(0xFFF4EEE4)
-internal val MarbleUiMuted = ComposeColor(0xFFB6C1CD)
-internal val MarbleUiAccent = ComposeColor(0xFFF6D28A)
+internal val MarbleUiBackground = Color(0xFF101721)
+internal val MarbleUiText = Color(0xFFF4EEE4)
+internal val MarbleUiMuted = Color(0xFFB6C1CD)
+internal val MarbleUiAccent = Color(0xFFF6D28A)
 internal val MarbleUiBackgroundFilament = MarbleUiBackground.toFilamentColor()
 
 private const val GlassMaterialPath = "files/materials/marbleGlass.filamat"
@@ -178,6 +178,6 @@ internal val NeutralSphereMaterial = SimpleMaterial(
 
 internal const val CeramicPresetIndex = 4
 
-internal fun ComposeColor.toFilamentColor(): FilamentColor {
+internal fun Color.toFilamentColor(): FilamentColor {
     return FilamentColor(r = red, g = green, b = blue, a = alpha)
 }

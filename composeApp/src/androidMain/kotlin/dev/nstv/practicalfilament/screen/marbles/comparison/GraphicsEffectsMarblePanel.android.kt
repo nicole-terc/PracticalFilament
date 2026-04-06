@@ -1,7 +1,6 @@
 package dev.nstv.practicalfilament.screen.marbles.comparison
 
 import android.content.Context
-import android.graphics.Canvas as AndroidCanvas
 import android.graphics.Paint
 import android.graphics.RuntimeShader
 import android.os.Build
@@ -36,6 +35,7 @@ import dev.nstv.practicalfilament.screen.marbles.MarbleAliveLights
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import android.graphics.Canvas as AndroidCanvas
 
 @Composable
 internal fun RenderEffectMarbleStage(

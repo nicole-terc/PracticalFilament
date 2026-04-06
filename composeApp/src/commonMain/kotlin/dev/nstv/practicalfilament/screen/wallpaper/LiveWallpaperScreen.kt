@@ -15,8 +15,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.components.platformSpecific.SetAsWallpaperButton
-import dev.nstv.practicalfilament.theme.components.SampleNotice
-import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -26,6 +24,8 @@ import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.screen.sky.ConfiguredSkyRealtimeStatus
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
+import dev.nstv.practicalfilament.theme.components.SampleNotice
+import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import practicalfilament.composeapp.generated.resources.Res
 
 private const val LiveWallpaperIblPath = "files/envs/pillars_2k/pillars_2k_ibl.ktx"

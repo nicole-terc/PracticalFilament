@@ -13,8 +13,8 @@ import platform.Metal.MTLCreateSystemDefaultDevice
 import platform.Metal.MTLPixelFormatBGRA8Unorm
 import platform.QuartzCore.CAMetalLayer
 import platform.UIKit.UIColor
-import platform.UIKit.UIView
 import platform.UIKit.UIScreen
+import platform.UIKit.UIView
 
 /**
  * Singleton holder for the FilamentBridge instance.

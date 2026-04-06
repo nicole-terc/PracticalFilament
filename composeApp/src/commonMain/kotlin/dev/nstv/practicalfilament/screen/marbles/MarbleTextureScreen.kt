@@ -16,13 +16,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
-import dev.nstv.practicalfilament.theme.components.SampleNotice
-import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.components.materials.brownMudLeavesMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.FilamentColor
@@ -33,6 +31,8 @@ import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
+import dev.nstv.practicalfilament.theme.components.SampleNotice
+import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.sqrt
 
@@ -228,17 +228,17 @@ fun MarbleTextureScreen(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val marker = gestureLightScreenPosition ?: return@Canvas
                 drawCircle(
-                    color = ComposeColor.White.copy(alpha = 0.2f),
+                    color = Color.White.copy(alpha = 0.2f),
                     radius = 26f,
                     center = marker,
                 )
                 drawCircle(
-                    color = ComposeColor.White.copy(alpha = 0.95f),
+                    color = Color.White.copy(alpha = 0.95f),
                     radius = 12f,
                     center = marker,
                 )
                 drawCircle(
-                    color = ComposeColor.White.copy(alpha = 0.8f),
+                    color = Color.White.copy(alpha = 0.8f),
                     radius = 18f,
                     center = marker,
                     style = Stroke(width = 3f),

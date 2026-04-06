@@ -16,25 +16,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import dev.nstv.practicalfilament.theme.components.SampleNotice
-import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.CustomRenderableConfig
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
-import dev.nstv.practicalfilament.filament.ProjectionType
 import dev.nstv.practicalfilament.filament.PrimitiveType
+import dev.nstv.practicalfilament.filament.ProjectionType
 import dev.nstv.practicalfilament.filament.VertexAttribute
 import dev.nstv.practicalfilament.filament.VertexAttributeLayout
 import dev.nstv.practicalfilament.theme.Grid
+import dev.nstv.practicalfilament.theme.components.SampleNotice
+import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
+import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import practicalfilament.composeapp.generated.resources.Res
 
 private const val TransparentViewMaterialPath = "files/materials/bakedColor.filamat"
 

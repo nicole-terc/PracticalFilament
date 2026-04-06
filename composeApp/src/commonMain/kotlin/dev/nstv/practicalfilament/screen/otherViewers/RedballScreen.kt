@@ -20,8 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
@@ -216,17 +216,17 @@ fun RedballScreen(
             ) {
                 val marker = gestureLightScreenPosition ?: return@Canvas
                 drawCircle(
-                    color = ComposeColor.White.copy(alpha = 0.16f),
+                    color = Color.White.copy(alpha = 0.16f),
                     radius = 28f,
                     center = marker,
                 )
                 drawCircle(
-                    color = ComposeColor(0xFFFF8A80).copy(alpha = 0.92f),
+                    color = Color(0xFFFF8A80).copy(alpha = 0.92f),
                     radius = 10f,
                     center = marker,
                 )
                 drawCircle(
-                    color = ComposeColor.White.copy(alpha = 0.8f),
+                    color = Color.White.copy(alpha = 0.8f),
                     radius = 18f,
                     center = marker,
                     style = Stroke(width = 3f),

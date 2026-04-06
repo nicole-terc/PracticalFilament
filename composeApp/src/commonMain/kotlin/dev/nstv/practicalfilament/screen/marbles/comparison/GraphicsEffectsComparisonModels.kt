@@ -1,6 +1,6 @@
 package dev.nstv.practicalfilament.screen.marbles.comparison
 
-import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.Color
 import dev.nstv.practicalfilament.filament.material.Material
 import dev.nstv.practicalfilament.screen.marbles.MarbleCeramicMaterial
 import dev.nstv.practicalfilament.screen.marbles.MarbleGlassMaterial
@@ -38,12 +38,12 @@ internal enum class ComparisonMaterialPreset(
 internal data class ComparisonPresetSpec(
     val preset: ComparisonMaterialPreset,
     val filamentMaterial: Material,
-    val baseColor: ComposeColor,
-    val shadowColor: ComposeColor,
-    val highlightColor: ComposeColor,
-    val rimColor: ComposeColor,
-    val veinColor: ComposeColor,
-    val reflectionColor: ComposeColor,
+    val baseColor: Color,
+    val shadowColor: Color,
+    val highlightColor: Color,
+    val rimColor: Color,
+    val veinColor: Color,
+    val reflectionColor: Color,
     val roughness: Float,
     val metallic: Float,
     val translucency: Float,
@@ -55,12 +55,12 @@ internal val ComparisonPresetSpecs = listOf(
     ComparisonPresetSpec(
         preset = ComparisonMaterialPreset.Ceramic,
         filamentMaterial = MarbleCeramicMaterial,
-        baseColor = ComposeColor(red = 0.22f, green = 0.45f, blue = 0.72f, alpha = 1f),
-        shadowColor = ComposeColor(red = 0.09f, green = 0.19f, blue = 0.33f, alpha = 1f),
-        highlightColor = ComposeColor(red = 0.94f, green = 0.97f, blue = 1f, alpha = 1f),
-        rimColor = ComposeColor(red = 0.78f, green = 0.86f, blue = 0.98f, alpha = 1f),
-        veinColor = ComposeColor(red = 0.42f, green = 0.58f, blue = 0.8f, alpha = 1f),
-        reflectionColor = ComposeColor(red = 0.84f, green = 0.9f, blue = 1f, alpha = 1f),
+        baseColor = Color(red = 0.22f, green = 0.45f, blue = 0.72f, alpha = 1f),
+        shadowColor = Color(red = 0.09f, green = 0.19f, blue = 0.33f, alpha = 1f),
+        highlightColor = Color(red = 0.94f, green = 0.97f, blue = 1f, alpha = 1f),
+        rimColor = Color(red = 0.78f, green = 0.86f, blue = 0.98f, alpha = 1f),
+        veinColor = Color(red = 0.42f, green = 0.58f, blue = 0.8f, alpha = 1f),
+        reflectionColor = Color(red = 0.84f, green = 0.9f, blue = 1f, alpha = 1f),
         roughness = 0.42f,
         metallic = 0f,
         translucency = 0.1f,
@@ -70,12 +70,12 @@ internal val ComparisonPresetSpecs = listOf(
     ComparisonPresetSpec(
         preset = ComparisonMaterialPreset.Glass,
         filamentMaterial = MarbleGlassMaterial,
-        baseColor = ComposeColor(red = 0.92f, green = 0.96f, blue = 1f, alpha = 1f),
-        shadowColor = ComposeColor(red = 0.51f, green = 0.58f, blue = 0.67f, alpha = 1f),
-        highlightColor = ComposeColor(red = 1f, green = 1f, blue = 1f, alpha = 1f),
-        rimColor = ComposeColor(red = 0.9f, green = 0.96f, blue = 1f, alpha = 1f),
-        veinColor = ComposeColor(red = 0.96f, green = 0.98f, blue = 1f, alpha = 1f),
-        reflectionColor = ComposeColor(red = 0.86f, green = 0.92f, blue = 1f, alpha = 1f),
+        baseColor = Color(red = 0.92f, green = 0.96f, blue = 1f, alpha = 1f),
+        shadowColor = Color(red = 0.51f, green = 0.58f, blue = 0.67f, alpha = 1f),
+        highlightColor = Color(red = 1f, green = 1f, blue = 1f, alpha = 1f),
+        rimColor = Color(red = 0.9f, green = 0.96f, blue = 1f, alpha = 1f),
+        veinColor = Color(red = 0.96f, green = 0.98f, blue = 1f, alpha = 1f),
+        reflectionColor = Color(red = 0.86f, green = 0.92f, blue = 1f, alpha = 1f),
         roughness = 0.06f,
         metallic = 0f,
         translucency = 0.68f,
@@ -85,12 +85,12 @@ internal val ComparisonPresetSpecs = listOf(
     ComparisonPresetSpec(
         preset = ComparisonMaterialPreset.Metal,
         filamentMaterial = MarbleMetalMaterial,
-        baseColor = ComposeColor(red = 0.04f, green = 0.04f, blue = 0.045f, alpha = 1f),
-        shadowColor = ComposeColor(red = 0.005f, green = 0.005f, blue = 0.008f, alpha = 1f),
-        highlightColor = ComposeColor(red = 0.97f, green = 0.98f, blue = 1f, alpha = 1f),
-        rimColor = ComposeColor(red = 0.36f, green = 0.38f, blue = 0.42f, alpha = 1f),
-        veinColor = ComposeColor(red = 0.18f, green = 0.18f, blue = 0.2f, alpha = 1f),
-        reflectionColor = ComposeColor(red = 0.95f, green = 0.96f, blue = 0.99f, alpha = 1f),
+        baseColor = Color(red = 0.04f, green = 0.04f, blue = 0.045f, alpha = 1f),
+        shadowColor = Color(red = 0.005f, green = 0.005f, blue = 0.008f, alpha = 1f),
+        highlightColor = Color(red = 0.97f, green = 0.98f, blue = 1f, alpha = 1f),
+        rimColor = Color(red = 0.36f, green = 0.38f, blue = 0.42f, alpha = 1f),
+        veinColor = Color(red = 0.18f, green = 0.18f, blue = 0.2f, alpha = 1f),
+        reflectionColor = Color(red = 0.95f, green = 0.96f, blue = 0.99f, alpha = 1f),
         roughness = 0.11f,
         metallic = 1f,
         translucency = 0f,

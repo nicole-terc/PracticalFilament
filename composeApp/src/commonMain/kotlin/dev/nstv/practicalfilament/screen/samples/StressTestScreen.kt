@@ -17,8 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import dev.nstv.practicalfilament.theme.components.SampleNotice
-import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -28,9 +26,11 @@ import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.theme.Grid
+import dev.nstv.practicalfilament.theme.components.SampleNotice
+import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
+import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.sin
 import kotlin.random.Random
-import practicalfilament.composeapp.generated.resources.Res
 
 private data class StressCube(
     val handle: Int,

@@ -1,6 +1,8 @@
 // Migrated sample from https://github.com/google/filament/tree/main/android/samples/sample-image-based-lighting
 package dev.nstv.practicalfilament.screen.samples
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -13,9 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.components.materials.redballMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.FilamentColor
@@ -25,6 +24,7 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.theme.Grid
+import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import practicalfilament.composeapp.generated.resources.Res
 
 private const val IblIndirectLightPath = "files/envs/pillars_2k/pillars_2k_ibl.ktx"

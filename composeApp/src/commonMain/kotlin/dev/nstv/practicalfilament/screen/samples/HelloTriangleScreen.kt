@@ -14,23 +14,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import dev.nstv.practicalfilament.theme.components.SampleNotice
-import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
+import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.CustomRenderableConfig
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
-import dev.nstv.practicalfilament.filament.ProjectionType
+import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.PrimitiveType
+import dev.nstv.practicalfilament.filament.ProjectionType
 import dev.nstv.practicalfilament.filament.VertexAttribute
 import dev.nstv.practicalfilament.filament.VertexAttributeLayout
-import dev.nstv.practicalfilament.filament.AttributeDataType
-import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.toByteArray
+import dev.nstv.practicalfilament.theme.components.SampleNotice
+import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 
 private const val TriangleMaterialSource = """
 void material(inout MaterialInputs material) {

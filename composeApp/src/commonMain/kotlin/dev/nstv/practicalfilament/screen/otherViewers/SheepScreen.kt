@@ -1,7 +1,7 @@
 package dev.nstv.practicalfilament.screen.otherViewers
 
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,14 +27,13 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import dev.nstv.composablesheep.library.model.FluffStyle
 import dev.nstv.practicalfilament.components.ParameterInputField
-import dev.nstv.practicalfilament.theme.components.SampleNotice
 import dev.nstv.practicalfilament.components.materials.sheepBodyMaterial
 import dev.nstv.practicalfilament.components.materials.sheepFluffMaterial
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.CustomRenderableConfig
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
@@ -47,6 +46,7 @@ import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.toByteArray
 import dev.nstv.practicalfilament.theme.Grid
+import dev.nstv.practicalfilament.theme.components.SampleNotice
 import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.PI
 import kotlin.math.abs

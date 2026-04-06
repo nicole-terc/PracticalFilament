@@ -9,10 +9,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import dev.nstv.practicalfilament.screen.marbles.MarbleUiText
-import dev.nstv.practicalfilament.screen.marbles.comparison.Android2DEffectMode
-import dev.nstv.practicalfilament.screen.marbles.comparison.CircularComparisonStage
-import dev.nstv.practicalfilament.screen.marbles.comparison.ComparisonPanelCard
-import dev.nstv.practicalfilament.screen.marbles.comparison.ComparisonPresetSpec
 
 @Composable
 internal actual fun EffectsMarblePanel(

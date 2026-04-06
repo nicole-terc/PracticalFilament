@@ -32,7 +32,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -40,12 +40,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
-import dev.nstv.practicalfilament.theme.components.SampleNotice
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.CustomRenderableConfig
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float2
@@ -59,6 +58,7 @@ import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.MaterialParameterType
 import dev.nstv.practicalfilament.theme.Grid
+import dev.nstv.practicalfilament.theme.components.SampleNotice
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
@@ -81,11 +81,11 @@ void material(inout MaterialInputs material) {
 private val DefaultParticleWords = listOf("FILAMENT", "COMPOSE", "3D", "PARTICLES", "ANDROID")
 
 private val ParticlePalettes = listOf(
-    ParticlePalette("Ice", ComposeColor(0xFF9AF3FF)),
-    ParticlePalette("Ember", ComposeColor(0xFFFF8A5B)),
-    ParticlePalette("Lime", ComposeColor(0xFFA7FF7A)),
-    ParticlePalette("Rose", ComposeColor(0xFFFF6FB5)),
-    ParticlePalette("Gold", ComposeColor(0xFFFFD76B)),
+    ParticlePalette("Ice", Color(0xFF9AF3FF)),
+    ParticlePalette("Ember", Color(0xFFFF8A5B)),
+    ParticlePalette("Lime", Color(0xFFA7FF7A)),
+    ParticlePalette("Rose", Color(0xFFFF6FB5)),
+    ParticlePalette("Gold", Color(0xFFFFD76B)),
 )
 
 private enum class ParticleWordPhase {
@@ -110,7 +110,7 @@ private enum class ParticleAnimationMode(
 
 private data class ParticlePalette(
     val label: String,
-    val color: ComposeColor,
+    val color: Color,
 )
 
 @Composable
@@ -321,7 +321,7 @@ fun ParticleWordScreen(
             FilamentView(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(ComposeColor(0xFF061019))
+                    .background(Color(0xFF061019))
                     .onSizeChanged { viewportSize = it }
                     .then(interactionModifier),
                 camera = CameraConfig(
@@ -807,7 +807,7 @@ private fun Offset.toWorldPoint(viewportSize: IntSize): Float2 {
 
 private fun DrawScope.drawStroke(
     stroke: List<Offset>,
-    color: ComposeColor,
+    color: Color,
 ) {
     if (stroke.isEmpty()) return
     if (stroke.size == 1) {
@@ -839,7 +839,7 @@ private fun DrawScope.drawStroke(
 
 private fun Offset.distanceTo(other: Offset): Float = hypot(x - other.x, y - other.y)
 
-private fun ComposeColor.toFilamentFloat4(): Float4 = Float4(
+private fun Color.toFilamentFloat4(): Float4 = Float4(
     x = red,
     y = green,
     z = blue,

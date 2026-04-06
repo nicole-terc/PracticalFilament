@@ -33,8 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import dev.nstv.practicalfilament.screen.HideOptions
-import org.jetbrains.compose.resources.imageResource
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.vectorResource
 import practicalfilament.composeapp.generated.resources.Res
 import practicalfilament.composeapp.generated.resources.ic_arrow_left

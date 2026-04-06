@@ -18,9 +18,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import dev.nstv.practicalfilament.screen.marbles.comparison.GraphicsEffectsComparisonScreen
 import dev.nstv.practicalfilament.screen.marbles.MarbleScreen
 import dev.nstv.practicalfilament.screen.marbles.MarbleTextureScreen
+import dev.nstv.practicalfilament.screen.marbles.comparison.GraphicsEffectsComparisonScreen
 import dev.nstv.practicalfilament.screen.marbles.steps.MarbleStepsScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MaterialViewerScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MorphingScreen
