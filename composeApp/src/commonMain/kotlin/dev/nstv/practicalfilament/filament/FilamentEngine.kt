@@ -112,7 +112,7 @@ interface FilamentEngine {
     fun createMorphRenderable(materialInstanceHandle: Int, geometry: MorphRenderableGeometry): Int
     fun createCustomRenderable(config: CustomRenderableConfig): Int
     fun createCustomRenderableWithGeneratedTangents(config: CustomRenderableConfig): Int
-    fun loadMesh(path: String, materialInstanceHandle: Int): Int
+    fun loadMesh(path: String, materialInstanceHandle: Int, scale: Float = 1f): Int
     fun setRenderableRotation(handle: Int, rotationXDegrees: Float, rotationYDegrees: Float)
     fun setRenderableTransform(handle: Int, transform: FloatArray)
     fun setShadowsEnabled(renderableHandle: Int, castShadows: Boolean, receiveShadows: Boolean)

@@ -1066,7 +1066,7 @@ class AndroidFilamentEngine(
         return createCustomRenderable(config)
     }
 
-    override fun loadMesh(path: String, materialInstanceHandle: Int): Int {
+    override fun loadMesh(path: String, materialInstanceHandle: Int, scale: Float): Int {
         val eng = engine ?: return -1
         val instance = materialInstances[materialInstanceHandle] ?: return -1
         val rawBuffer = loadAssetBuffer(path) ?: return -1
@@ -1163,6 +1163,15 @@ class AndroidFilamentEngine(
         }
         builder.build(eng, entity)
         scene?.addEntity(entity)
+
+        if (scale != 1f) {
+            val transformManager = eng.transformManager
+            val ti = transformManager.getInstance(entity)
+            val transform = FloatArray(16)
+            Matrix.setIdentityM(transform, 0)
+            Matrix.scaleM(transform, 0, scale, scale, scale)
+            transformManager.setTransform(ti, transform)
+        }
 
         val handle = nextHandle++
         renderables[handle] = entity

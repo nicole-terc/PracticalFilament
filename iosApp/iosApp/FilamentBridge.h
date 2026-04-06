@@ -82,7 +82,7 @@
 - (int)loadTextureFromPath:(NSString * _Nonnull)path colorFormat:(int)colorFormat;
 - (void)setTextureParam:(int)instanceHandle name:(NSString * _Nonnull)name textureHandle:(int)textureHandle;
 
-- (int)loadMeshFromPath:(NSString * _Nonnull)path materialInstanceHandle:(int)instanceHandle;
+- (int)loadMeshFromPath:(NSString * _Nonnull)path materialInstanceHandle:(int)instanceHandle scale:(float)scale;
 
 - (int)createPlaneWithMaterial:(int)instanceHandle width:(float)width height:(float)height;
 - (int)createSphereWithMaterial:(int)instanceHandle radius:(float)radius;

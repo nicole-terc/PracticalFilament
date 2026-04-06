@@ -950,7 +950,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     instIt->second->setParameter(name.UTF8String, texIt->second, sampler);
 }
 
-- (int)loadMeshFromPath:(NSString *)path materialInstanceHandle:(int)instanceHandle {
+- (int)loadMeshFromPath:(NSString *)path materialInstanceHandle:(int)instanceHandle scale:(float)scale {
     if (!_engine) return -1;
     auto instIt = _materialInstances.find(instanceHandle);
     if (instIt == _materialInstances.end()) return -1;
@@ -967,6 +967,13 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     );
 
     if (mesh.renderable.isNull()) return -1;
+
+    if (scale != 1.0f) {
+        auto &tm = _engine->getTransformManager();
+        tm.create(mesh.renderable);
+        auto ti = tm.getInstance(mesh.renderable);
+        tm.setTransform(ti, math::mat4f::scaling(math::float3{scale, scale, scale}));
+    }
 
     _scene->addEntity(mesh.renderable);
     _vertexBuffers.push_back(mesh.vertexBuffer);

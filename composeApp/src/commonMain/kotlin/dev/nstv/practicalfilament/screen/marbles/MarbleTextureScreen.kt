@@ -178,6 +178,7 @@ fun MarbleTextureScreen(
                         engine.loadMesh(
                             path = Res.getUri(sphereFilamesh),
                             materialInstanceHandle = loaded.instanceHandle,
+                            scale = 2f,
                         )
                     } else {
                         -1
@@ -248,6 +249,7 @@ fun MarbleTextureScreen(
                     renderableHandle = engine.loadMesh(
                         path = Res.getUri(sphereFilamesh),
                         materialInstanceHandle = loaded.instanceHandle,
+                        scale = 2f,
                     )
                     if (renderableHandle <= 0) {
                         notice = "The textured sphere could not be created on this platform."
