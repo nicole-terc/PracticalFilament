@@ -12,7 +12,7 @@ fun monkeyMaterial() = TextureMaterial(
     label = "Monkey",
     materialPath = MonkeyMaterialPath,
     overrides = mapOf(
-//        "clearCoat" to 2.0f,
+        "clearCoat" to 1.0f,
     ),
     textureBindings = listOf(
         TextureBinding(
