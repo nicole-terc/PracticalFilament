@@ -35,16 +35,13 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
-import dev.nstv.practicalfilament.screen.marbles.components.LoadedEnvironment
-import dev.nstv.practicalfilament.screen.marbles.components.MarbleTextureBackgrounds
+import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import dev.nstv.practicalfilament.theme.components.SampleNotice
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
-import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.sqrt
 
-private const val MarbleTextureEnvironmentIntensity = 50_000f
 private const val MarbleTextureMinCameraDistance = 2.2f
 private const val MarbleTextureMaxCameraDistance = 8f
 private val MarbleTextureBaseCamera = CameraConfig(
@@ -59,14 +56,12 @@ private val MarbleTextureMaterials = listOf(
 )
 
 
-
 @Composable
 fun MarbleTextureScreen(
     modifier: Modifier = Modifier,
 ) {
     var filamentEngine by remember { mutableStateOf<FilamentEngine?>(null) }
     var selectedMaterialIndex by remember { mutableIntStateOf(0) }
-    var selectedBackgroundIndex by remember { mutableIntStateOf(8) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var orientation by remember { mutableStateOf(OrbitQuaternion.Identity) }
     var cameraDistance by remember { mutableStateOf(MarbleTextureBaseCamera.orbitDistance()) }
@@ -75,9 +70,6 @@ fun MarbleTextureScreen(
     var gestureLightPosition by remember { mutableStateOf<Float3?>(null) }
     var gestureLightScreenPosition by remember { mutableStateOf<Offset?>(null) }
     var gestureLightVersion by remember { mutableLongStateOf(0L) }
-    var environmentHandles by remember { mutableStateOf<Map<String, LoadedEnvironment>>(emptyMap()) }
-    var colorSkyboxHandle by remember { mutableIntStateOf(0) }
-    var activeIndirectLightHandle by remember { mutableIntStateOf(0) }
     var notice by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(filamentEngine, gestureLightVersion) {
@@ -97,69 +89,6 @@ fun MarbleTextureScreen(
             ),
         )
         currentEngine.requestFrame()
-    }
-
-    LaunchedEffect(filamentEngine, selectedBackgroundIndex) {
-        val engine = filamentEngine ?: return@LaunchedEffect
-
-        var currentColorSkyboxHandle = colorSkyboxHandle
-        if (currentColorSkyboxHandle == 0) {
-            currentColorSkyboxHandle = engine.createColorSkybox()
-            if (currentColorSkyboxHandle > 0) {
-                engine.setSkyboxColor(
-                    currentColorSkyboxHandle,
-                    r = 0.16f,
-                    g = 0.18f,
-                    b = 0.27f,
-                    a = 1f,
-                )
-                colorSkyboxHandle = currentColorSkyboxHandle
-            }
-        }
-
-        val background = MarbleTextureBackgrounds[selectedBackgroundIndex]
-        if (background.iblPath == null || background.skyboxPath == null) {
-            if (activeIndirectLightHandle > 0) {
-                engine.setIndirectLight(activeIndirectLightHandle, 0f)
-            }
-            if (currentColorSkyboxHandle > 0) {
-                engine.setSkybox(currentColorSkyboxHandle)
-            }
-            notice = null
-            engine.requestFrame()
-            return@LaunchedEffect
-        }
-
-        var updatedEnvironmentHandles = environmentHandles
-        val loadedEnvironment = updatedEnvironmentHandles[background.label] ?: run {
-            val indirectLightHandle = engine.loadIndirectLight(Res.getUri(background.iblPath))
-            val skyboxHandle = engine.loadSkybox(Res.getUri(background.skyboxPath))
-            if (indirectLightHandle <= 0 || skyboxHandle <= 0) {
-                notice = "The ${background.label} background could not be loaded."
-                return@LaunchedEffect
-            }
-            LoadedEnvironment(
-                indirectLightHandle = indirectLightHandle,
-                skyboxHandle = skyboxHandle,
-            ).also { loaded ->
-                updatedEnvironmentHandles = updatedEnvironmentHandles + (background.label to loaded)
-            }
-        }
-
-        environmentHandles = updatedEnvironmentHandles
-        if (activeIndirectLightHandle > 0 &&
-            activeIndirectLightHandle != loadedEnvironment.indirectLightHandle
-        ) {
-            engine.setIndirectLight(activeIndirectLightHandle, 0f)
-        }
-        engine.setIndirectLight(
-            loadedEnvironment.indirectLightHandle,
-            intensity = MarbleTextureEnvironmentIntensity,
-        )
-        engine.setSkybox(loadedEnvironment.skyboxHandle)
-        activeIndirectLightHandle = loadedEnvironment.indirectLightHandle
-        notice = null
-        engine.requestFrame()
     }
 
     LaunchedEffect(filamentEngine, orientation, cameraDistance) {
@@ -331,15 +260,13 @@ fun MarbleTextureScreen(
                     engine.requestFrame()
                 },
             )
-            DropDownWithArrows(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = Grid.One),
-                options = MarbleTextureBackgrounds.map { it.label },
-                selectedIndex = selectedBackgroundIndex,
-                label = "Background",
-                onSelectionChanged = { selectedBackgroundIndex = it },
+
+            EnvironmentSelectionField(
+                filamentEngine = filamentEngine,
+                updateNotice = { notice = it },
+                selectedBackground = 8,
             )
+
             Text(
                 modifier = Modifier
                     .fillMaxWidth()

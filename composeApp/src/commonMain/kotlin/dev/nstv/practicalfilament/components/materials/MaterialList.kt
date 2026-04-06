@@ -16,14 +16,12 @@ val MaterialOverridesList = listOf(
     MarbleVelvetMaterial,
     redballMaterial(),
     aiDefaultMatMaterial(),
-    texturedSampleMaterial(),
+//    texturedSampleMaterial(),
     sandboxLitFadeMaterial(),
     sandboxClothMaterial(),
     mirrorMaterial(),
     sheepFluffMaterial(),
     sheepBodyMaterial(),
-    brownMudLeavesMaterial(),
-    mossMaterial(),
 )
 
 val MaterialFilesList = MaterialOverridesList

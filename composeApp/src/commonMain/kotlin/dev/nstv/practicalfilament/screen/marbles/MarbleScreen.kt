@@ -37,6 +37,7 @@ import dev.nstv.practicalfilament.filament.material.BuiltInTexture
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.generateTexturePixels
+import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import kotlin.math.sqrt
@@ -206,6 +207,10 @@ fun MarbleScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(Grid.Two)
         ) {
+            EnvironmentSelectionField(
+                filamentEngine = filamentEngine,
+            )
+
             DropDownWithArrows(
                 options = marbleMaterials.map { it.label },
                 selectedIndex = selectedMaterialIndex,
