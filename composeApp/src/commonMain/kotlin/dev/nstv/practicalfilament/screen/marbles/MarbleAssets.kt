@@ -1,9 +1,8 @@
 package dev.nstv.practicalfilament.screen.marbles
 
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color as ComposeColor
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
@@ -44,7 +43,7 @@ internal val ButtonSurfaceCamera = CameraConfig(
 internal val SphereStepLights = listOf(
     LightConfig(
         type = LightType.DIRECTIONAL,
-        color = Color(1f, 0.97f, 0.93f),
+        color = FilamentColor(1f, 0.97f, 0.93f),
         intensity = 72_000f,
         direction = Float3(-0.28f, -0.38f, -1f),
     ),
@@ -53,7 +52,7 @@ internal val SphereStepLights = listOf(
 internal val MarbleAliveLights = listOf(
     LightConfig(
         type = LightType.SUN,
-        color = Color(1f, 0.95f, 0.89f),
+        color = FilamentColor(1f, 0.95f, 0.89f),
         intensity = 110_000f,
         direction = Float3(0.45f, -1f, -0.72f),
         sunAngularRadius = 1.7f,
@@ -62,7 +61,7 @@ internal val MarbleAliveLights = listOf(
     ),
     LightConfig(
         type = LightType.POINT,
-        color = Color(0.88f, 0.94f, 1f),
+        color = FilamentColor(0.88f, 0.94f, 1f),
         intensity = 120_000f,
         position = Float3(-1.6f, 1.2f, 2.6f),
         falloffRadius = 8f,
@@ -72,7 +71,7 @@ internal val MarbleAliveLights = listOf(
 internal val ThemePickerLights = listOf(
     LightConfig(
         type = LightType.SUN,
-        color = Color(1f, 0.95f, 0.9f),
+        color = FilamentColor(1f, 0.95f, 0.9f),
         intensity = 100_000f,
         direction = Float3(0.35f, -1f, -0.9f),
         sunAngularRadius = 1.5f,
@@ -81,7 +80,7 @@ internal val ThemePickerLights = listOf(
     ),
     LightConfig(
         type = LightType.POINT,
-        color = Color(0.85f, 0.9f, 1f),
+        color = FilamentColor(0.85f, 0.9f, 1f),
         intensity = 75_000f,
         position = Float3(0f, 1.3f, 3.8f),
         falloffRadius = 10f,
@@ -179,6 +178,6 @@ internal val NeutralSphereMaterial = SimpleMaterial(
 
 internal const val CeramicPresetIndex = 4
 
-internal fun ComposeColor.toFilamentColor(): Color {
-    return Color(r = red, g = green, b = blue, a = alpha)
+internal fun ComposeColor.toFilamentColor(): FilamentColor {
+    return FilamentColor(r = red, g = green, b = blue, a = alpha)
 }

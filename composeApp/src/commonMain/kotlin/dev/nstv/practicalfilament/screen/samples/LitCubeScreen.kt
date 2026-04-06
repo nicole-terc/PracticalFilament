@@ -20,7 +20,7 @@ import dev.nstv.practicalfilament.theme.components.SampleNotice
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.components.materials.morphingMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
@@ -73,7 +73,7 @@ fun LitCubeScreen(
                         castShadows = true,
                     ),
                 ),
-                backgroundColor = Color(0.04f, 0.05f, 0.07f, 1f),
+                backgroundColor = FilamentColor(0.04f, 0.05f, 0.07f, 1f),
                 onEngineReady = { readyEngine ->
                     val loaded = readyEngine.loadMaterial(morphingMaterial())
                     loaded.parameters.values.forEach {

@@ -18,7 +18,7 @@ import dev.nstv.practicalfilament.theme.components.SampleNotice
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.CustomRenderableConfig
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
@@ -74,7 +74,7 @@ fun HelloTriangleScreen(
                         intensity = 10_000f
                     )
                 ),
-                backgroundColor = Color(0.01f, 0.02f, 0.03f, 1f),
+                backgroundColor = FilamentColor(0.01f, 0.02f, 0.03f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
                     if (!readyEngine.supportsMaterialBuilder) {

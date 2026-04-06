@@ -17,7 +17,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import dev.nstv.practicalfilament.components.materials.morphingMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
@@ -94,7 +94,7 @@ fun MultiViewScreen(
                         direction = Float3(0.4f, -1f, -0.6f),
                     ),
                 ),
-                backgroundColor = Color(0.03f, 0.03f, 0.03f, 1f),
+                backgroundColor = FilamentColor(0.03f, 0.03f, 0.03f, 1f),
                 onEngineReady = { readyEngine ->
                     val loaded = readyEngine.loadMaterial(morphingMaterial())
                     loaded.parameters.values.forEach {

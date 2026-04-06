@@ -20,7 +20,7 @@ import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.theme.components.SampleNotice
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
@@ -155,7 +155,7 @@ fun StressTestScreen(
                             direction = Float3(-0.8f, -1f, -0.4f),
                         ),
                     ),
-                    backgroundColor = Color(0.02f, 0.02f, 0.03f, 1f),
+                    backgroundColor = FilamentColor(0.02f, 0.02f, 0.03f, 1f),
                     onEngineReady = { readyEngine ->
                         engine = readyEngine
                     },

@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.components.ParameterInputField
 import dev.nstv.practicalfilament.components.materials.MaterialFilesList
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
@@ -103,13 +103,13 @@ fun MaterialViewerScreen(
                 lights = listOf(
                     LightConfig(
                         type = LightType.DIRECTIONAL,
-                        color = Color(1f, 1f, 1f),
+                        color = FilamentColor(1f, 1f, 1f),
                         intensity = 110_000f,
                         direction = Float3(0f, -1f, -1f),
                     ),
                     LightConfig(
                         type = LightType.POINT,
-                        color = Color(1f, 0.9f, 0.8f),
+                        color = FilamentColor(1f, 0.9f, 0.8f),
                         intensity = 50_000f,
                         position = Float3(2f, 2f, 2f),
                     ),

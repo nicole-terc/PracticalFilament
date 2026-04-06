@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.padding
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.components.materials.redballMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
@@ -34,7 +34,7 @@ private val IblLights = listOf(
     LightConfig(
         type = LightType.SUN,
         intensity = 95_000f,
-        color = Color(1f, 0.97f, 0.94f),
+        color = FilamentColor(1f, 0.97f, 0.94f),
         direction = Float3(0.5f, -1f, -0.8f),
         castShadows = true,
     ),
@@ -74,7 +74,7 @@ fun IBLScreen(
                     fovDegrees = 28.0,
                 ),
                 lights = IblLights,
-                backgroundColor = Color(0.02f, 0.03f, 0.05f, 1f),
+                backgroundColor = FilamentColor(0.02f, 0.03f, 0.05f, 1f),
                 onEngineReady = { readyEngine ->
                     val loaded = readyEngine.loadMaterial(redballMaterial())
                     loaded.parameters.values.forEach {

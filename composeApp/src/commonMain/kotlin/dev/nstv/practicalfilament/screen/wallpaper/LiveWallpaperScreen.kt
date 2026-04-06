@@ -18,7 +18,7 @@ import dev.nstv.practicalfilament.components.platformSpecific.SetAsWallpaperButt
 import dev.nstv.practicalfilament.theme.components.SampleNotice
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
@@ -154,7 +154,7 @@ fun LiveWallpaperScreen(
                 modifier = Modifier.fillMaxSize(),
                 camera = CameraConfig(),
                 lights = LiveWallpaperLights,
-                backgroundColor = Color(0f, 0f, 0f, 1f),
+                backgroundColor = FilamentColor(0f, 0f, 0f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
                     readyEngine.setCameraExposure(16f, 1f / 125f, 100f)

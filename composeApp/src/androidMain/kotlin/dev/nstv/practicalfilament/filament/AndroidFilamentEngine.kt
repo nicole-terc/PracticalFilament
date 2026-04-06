@@ -92,7 +92,7 @@ class AndroidFilamentEngine(
 
     override val isInitialized: Boolean get() = _isInitialized
 
-    fun setClearColor(color: Color) {
+    fun setClearColor(color: FilamentColor) {
         renderer?.clearOptions = Renderer.ClearOptions().apply {
             clear = true
             clearColor = floatArrayOf(color.r, color.g, color.b, color.a)
@@ -128,7 +128,7 @@ class AndroidFilamentEngine(
         Utils.init()
         engine = Engine.create().also { eng ->
             renderer = eng.createRenderer()
-            setClearColor(Color(0f, 0f, 0f, 1f))
+            setClearColor(FilamentColor(0f, 0f, 0f, 1f))
             scene = eng.createScene()
             filamentView = eng.createView().apply {
                 this.scene = this@AndroidFilamentEngine.scene
@@ -543,7 +543,7 @@ class AndroidFilamentEngine(
             is IntArray -> setIntArrayParameter(instance, param.name, value, definition)
             is UIntArray -> setIntArrayParameter(instance, param.name, value.map(UInt::toInt).toIntArray(), definition)
             is BooleanArray -> setBooleanArrayParameter(instance, param.name, value, definition)
-            is Color -> instance.setParameter(param.name, value.r, value.g, value.b)
+            is FilamentColor -> instance.setParameter(param.name, value.r, value.g, value.b)
             else -> error("Unsupported material parameter value for ${param.name}: ${value::class.simpleName}")
         }
     }

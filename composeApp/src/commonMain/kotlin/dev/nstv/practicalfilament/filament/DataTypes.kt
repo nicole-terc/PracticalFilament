@@ -24,7 +24,7 @@ data class Bool3(val x: Boolean, val y: Boolean, val z: Boolean)
 
 data class Bool4(val x: Boolean, val y: Boolean, val z: Boolean, val w: Boolean)
 
-data class Color(val r: Float, val g: Float, val b: Float, val a: Float = 1f)
+data class FilamentColor(val r: Float, val g: Float, val b: Float, val a: Float = 1f)
 
 enum class ProjectionType {
     PERSPECTIVE,

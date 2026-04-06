@@ -22,7 +22,7 @@ import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.CustomRenderableConfig
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
@@ -100,7 +100,7 @@ fun PageCurlScreen(
                         direction = Float3(0f, -0.54f, -0.89f),
                     ),
                 ),
-                backgroundColor = Color(0.42f, 0.55f, 0.74f, 1f),
+                backgroundColor = FilamentColor(0.42f, 0.55f, 0.74f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
                     readyEngine.setCameraExposure(1f, 1f, 1f)

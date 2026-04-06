@@ -33,7 +33,7 @@ import dev.nstv.practicalfilament.components.materials.sheepFluffMaterial
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.CustomRenderableConfig
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
@@ -89,7 +89,7 @@ private data class FluffChunk(
 private val SheepBaseLights = listOf(
     LightConfig(
         type = LightType.SUN,
-        color = Color(0.98f, 0.94f, 0.90f),
+        color = FilamentColor(0.98f, 0.94f, 0.90f),
         intensity = 100_000f,
         direction = Float3(0.45f, -1f, -0.6f),
         sunAngularRadius = 1.9f,
@@ -98,7 +98,7 @@ private val SheepBaseLights = listOf(
     ),
     LightConfig(
         type = LightType.DIRECTIONAL,
-        color = Color(0.78f, 0.84f, 1f),
+        color = FilamentColor(0.78f, 0.84f, 1f),
         intensity = 28_000f,
         direction = Float3(-1f, -0.35f, 0.8f),
     ),
@@ -314,7 +314,7 @@ fun SheepScreen(
                     distance = cameraDistance,
                 ),
                 lights = SheepBaseLights,
-                backgroundColor = Color(0f, 0f, 0f, 1f),
+                backgroundColor = FilamentColor(0f, 0f, 0f, 1f),
                 onEngineReady = { engine ->
                     val fluffMaterial = engine.loadMaterial(sheepFluffMaterial())
                     val indirectLightHandle = engine.loadIndirectLight(Res.getUri(SheepIndirectLightPath))

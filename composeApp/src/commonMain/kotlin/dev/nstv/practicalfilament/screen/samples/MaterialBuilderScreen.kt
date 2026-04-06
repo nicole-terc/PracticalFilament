@@ -23,7 +23,7 @@ import androidx.compose.ui.Alignment
 import dev.nstv.practicalfilament.theme.components.SampleNotice
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
@@ -130,7 +130,7 @@ fun MaterialBuilderScreen(
                             direction = Float3(0.5f, -1f, -0.7f),
                         ),
                     ),
-                    backgroundColor = Color(0.05f, 0.05f, 0.06f, 1f),
+                    backgroundColor = FilamentColor(0.05f, 0.05f, 0.06f, 1f),
                     onEngineReady = { readyEngine ->
                         engine = readyEngine
                         compileVersion += 1

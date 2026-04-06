@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.IntSize
 import dev.nstv.practicalfilament.components.ParameterInputField
 import dev.nstv.practicalfilament.components.materials.redballMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
@@ -52,7 +52,7 @@ private const val RedballEnvironmentIntensity = 50_000f
 private val RedballBaseLights = listOf(
     LightConfig(
         type = LightType.SUN,
-        color = Color(0.98f, 0.92f, 0.89f),
+        color = FilamentColor(0.98f, 0.92f, 0.89f),
         intensity = 110_000f,
         direction = Float3(0.6f, -1f, -0.8f),
         sunAngularRadius = 1.9f,
@@ -121,7 +121,7 @@ fun RedballScreen(
         gestureLightHandle = currentEngine.addLight(
             LightConfig(
                 type = LightType.POINT,
-                color = Color(1f, 0.95f, 0.92f),
+                color = FilamentColor(1f, 0.95f, 0.92f),
                 intensity = 30_000f,
                 position = position,
                 falloffRadius = 5f,
@@ -180,7 +180,7 @@ fun RedballScreen(
                     },
                 camera = redballCameraForOrientation(orientation),
                 lights = RedballBaseLights,
-                backgroundColor = Color(0f, 0f, 0f, 1f),
+                backgroundColor = FilamentColor(0f, 0f, 0f, 1f),
                 onEngineReady = { engine ->
                     val loaded = engine.loadMaterial(redballMaterial())
                     val indirectLightHandle =

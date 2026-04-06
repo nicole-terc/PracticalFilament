@@ -29,7 +29,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import dev.nstv.practicalfilament.components.materials.morphingMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
@@ -52,7 +52,7 @@ private const val MorphingEnvironmentIntensity = 45_000f
 private val MorphingBaseLights = listOf(
     LightConfig(
         type = LightType.SUN,
-        color = Color(0.98f, 0.98f, 1f),
+        color = FilamentColor(0.98f, 0.98f, 1f),
         intensity = 85_000f,
         direction = Float3(0.35f, -1f, -0.6f),
         sunAngularRadius = 1.8f,
@@ -142,7 +142,7 @@ fun MorphingScreen(
                     },
                 camera = morphingCameraForOrientation(orientation),
                 lights = MorphingBaseLights,
-                backgroundColor = Color(0.6f, 0.6f, 0.6f, 1f),
+                backgroundColor = FilamentColor(0.6f, 0.6f, 0.6f, 1f),
                 onEngineReady = { engine ->
                     val loaded = engine.loadMaterial(morphingMaterial())
                     val indirectLightHandle =

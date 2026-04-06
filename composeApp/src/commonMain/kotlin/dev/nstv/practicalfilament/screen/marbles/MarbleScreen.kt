@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.IntSize
 import dev.nstv.practicalfilament.components.ParameterInputField
 import dev.nstv.practicalfilament.components.materials.MaterialOverridesList
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.Color
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
@@ -113,7 +113,7 @@ fun MarbleScreen(
         gestureLightHandle = currentEngine.addLight(
             LightConfig(
                 type = LightType.POINT,
-                color = Color(1f, 1f, 1f),
+                color = FilamentColor(1f, 1f, 1f),
                 intensity = 600_000f,
                 position = position,
                 falloffRadius = 10f,
@@ -154,14 +154,14 @@ fun MarbleScreen(
                 lights = listOf(
                     LightConfig(
                         type = LightType.DIRECTIONAL,
-                        color = Color(1f, 0.98f, 0.95f),
+                        color = FilamentColor(1f, 0.98f, 0.95f),
                         intensity = 75_000f,
                         // Filament treats this as the direction the light emits toward.
                         // With the camera on +Z, negative Z lights the front of the sphere.
                         direction = Float3(-0.24f, -0.38f, -1f),
                     ),
                 ),
-                backgroundColor = Color(0.16f, 0.18f, 0.27f, 1f),
+                backgroundColor = FilamentColor(0.16f, 0.18f, 0.27f, 1f),
                 onEngineReady = { engine ->
                     val loaded = engine.loadMaterial(marbleMaterials[selectedMaterialIndex])
                     filamentEngine = engine
