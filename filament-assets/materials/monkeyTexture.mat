@@ -1,7 +1,10 @@
 material {
     name : textured,
-    requires : [ uv0 ],
     shadingModel : lit,
+    specularAntiAliasing : true,
+    multiBounceAmbientOcclusion : true,
+    specularAmbientOcclusion : simple,
+    requires : [ uv0 ],
     parameters : [
         { type : sampler2d, name : albedo },
         { type : sampler2d, name : roughness },
