@@ -65,13 +65,14 @@ import dev.nstv.practicalfilament.screen.marbles.components.PickerMarbleCamera
 import dev.nstv.practicalfilament.screen.marbles.components.ThemePickerLights
 import dev.nstv.practicalfilament.screen.marbles.steps.components.SphereMaterialView
 import dev.nstv.practicalfilament.theme.Grid
+import dev.nstv.practicalfilament.theme.components.CheckBoxLabel
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-private const val DefaultButtonCurvature = -0.42f
+private const val DefaultButtonCurvature = 0.44f
 private val ButtonCornerRadius = 24.dp
 private val ButtonHeight = 88.dp
 private val ButtonShape = RoundedCornerShape(ButtonCornerRadius)
@@ -91,6 +92,7 @@ fun MarbleStepFive(
 ) {
     var selectedPresetIndex by remember { mutableIntStateOf(CeramicPresetIndex) }
     var buttonCurvature by remember { mutableFloatStateOf(DefaultButtonCurvature) }
+    var surface3d by remember { mutableStateOf(true) }
 
     Column(
         modifier = modifier.fillMaxSize(),
@@ -106,12 +108,21 @@ fun MarbleStepFive(
             modifier = Modifier.fillMaxWidth(),
             preset = MarblePresets[selectedPresetIndex],
             curvature = buttonCurvature,
+            flatSurface = !surface3d,
         )
-        CurvatureSlider(
+        CheckBoxLabel(
+            text = "3D surface",
             modifier = Modifier.fillMaxWidth(),
-            value = buttonCurvature,
-            onValueChange = { buttonCurvature = it },
+            checked = surface3d,
+            onCheckedChange = { surface3d = it },
         )
+        if (surface3d) {
+            CurvatureSlider(
+                modifier = Modifier.fillMaxWidth(),
+                value = buttonCurvature,
+                onValueChange = { buttonCurvature = it },
+            )
+        }
     }
 }
 
@@ -186,6 +197,7 @@ private fun MarbleOption(
 private fun SampleMarbleButton(
     preset: Material,
     curvature: Float,
+    flatSurface: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Button(
@@ -206,6 +218,7 @@ private fun SampleMarbleButton(
                 ButtonMaterialBackground(
                     preset = preset,
                     curvature = curvature,
+                    flatSurface = flatSurface,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -222,20 +235,23 @@ private fun SampleMarbleButton(
 private fun ButtonMaterialBackground(
     preset: Material,
     curvature: Float,
+    flatSurface: Boolean,
     modifier: Modifier = Modifier,
 ) {
     var engineReady by remember { mutableStateOf<FilamentEngine?>(null) }
     var materialInstanceHandle by remember { mutableIntStateOf(0) }
     var renderableHandle by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(engineReady, materialInstanceHandle, curvature) {
+    LaunchedEffect(engineReady, materialInstanceHandle, curvature, flatSurface) {
         val engine = engineReady ?: return@LaunchedEffect
         if (materialInstanceHandle == 0) return@LaunchedEffect
         if (renderableHandle != 0) {
             engine.removeRenderable(renderableHandle)
         }
+        val geometry =
+            if (flatSurface) buildFlatButtonGeometry() else buildRoundedButtonGeometry(curvature)
         renderableHandle = engine.createCustomRenderableWithGeneratedTangents(
-            buildRoundedButtonGeometry(curvature).copy(materialInstanceHandle = materialInstanceHandle),
+            geometry.copy(materialInstanceHandle = materialInstanceHandle),
         )
         engine.requestFrame()
     }
@@ -383,6 +399,81 @@ private fun SelectionRingOverlay(
             style = Stroke(width = 3.dp.toPx()),
         )
     }
+}
+
+private fun buildFlatButtonGeometry(): CustomRenderableConfig {
+    val width = ButtonMeshWidth
+    val height = ButtonMeshHeight
+    val outerRadius =
+        (height * ButtonCornerRadiusFraction).coerceAtMost(minOf(width, height) * 0.5f)
+    val arcSegments = 18
+    val ringCount = 8
+
+    val vertexFloats = mutableListOf<Float>()
+    val indices = mutableListOf<Short>()
+
+    fun appendVertex(x: Float, y: Float, u: Float, v: Float): Short {
+        val idx = vertexFloats.size / 5
+        vertexFloats += x; vertexFloats += y; vertexFloats += 0f
+        vertexFloats += u; vertexFloats += v
+        return idx.toShort()
+    }
+
+    var prevRing = roundedRectRing(width, height, outerRadius, arcSegments).map { p ->
+        appendVertex(p.x, p.y, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+    }
+
+    for (step in 1 until ringCount) {
+        val t = step.toFloat() / ringCount.toFloat()
+        val scale = 1f - t
+        val terminalDiameter = minOf(width, height) * scale
+        val centerBlend = easedProgress(((t - 0.4f) / 0.6f).coerceIn(0f, 1f))
+        val rw = lerp(width * scale, terminalDiameter, centerBlend)
+        val rh = lerp(height * scale, terminalDiameter, centerBlend)
+        val rr = lerp(outerRadius * scale, terminalDiameter * 0.5f, centerBlend)
+        if (rw < 0.035f || rh < 0.035f) break
+        val ring = roundedRectRing(rw, rh, rr.coerceAtLeast(0.02f), arcSegments)
+        val ringIndices = ring.map { p ->
+            appendVertex(p.x, p.y, (p.x / width) + 0.5f, (p.y / height) + 0.5f)
+        }
+        for (i in prevRing.indices) {
+            val j = (i + 1) % prevRing.size
+            indices += prevRing[i]; indices += prevRing[j]; indices += ringIndices[j]
+            indices += prevRing[i]; indices += ringIndices[j]; indices += ringIndices[i]
+        }
+        prevRing = ringIndices
+    }
+
+    val center = appendVertex(0f, 0f, 0.5f, 0.5f)
+    for (i in prevRing.indices) {
+        val j = (i + 1) % prevRing.size
+        indices += center; indices += prevRing[i]; indices += prevRing[j]
+    }
+
+    return CustomRenderableConfig(
+        vertexData = vertexFloats.toFloatArray().toByteArray(),
+        vertexCount = vertexFloats.size / 5,
+        strideBytes = 20,
+        attributes = listOf(
+            VertexAttributeLayout(
+                attribute = VertexAttribute.POSITION,
+                type = AttributeDataType.FLOAT3,
+                offsetBytes = 0,
+            ),
+            VertexAttributeLayout(
+                attribute = VertexAttribute.UV0,
+                type = AttributeDataType.FLOAT2,
+                offsetBytes = 12,
+            ),
+        ),
+        indices = indices.toShortArray(),
+        materialInstanceHandle = 0,
+        boundingBox = BoundingBox(
+            center = Float3(0f, 0f, 0f),
+            halfExtent = Float3(width * 0.5f, height * 0.5f, 0.01f),
+        ),
+        primitiveType = PrimitiveType.TRIANGLES,
+    )
 }
 
 private fun buildRoundedButtonGeometry(
