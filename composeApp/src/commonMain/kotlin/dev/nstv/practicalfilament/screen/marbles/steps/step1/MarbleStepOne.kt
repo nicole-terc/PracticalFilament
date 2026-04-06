@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 @Composable
 internal fun MarbleStepOne(
     modifier: Modifier = Modifier,
+    showHighlight: Boolean = false,
 ) {
     Box(
         modifier = modifier.fillMaxSize(),
@@ -30,11 +31,13 @@ internal fun MarbleStepOne(
                 radius = radius,
                 center = center,
             )
-            drawCircle(
-                color = Color.White.copy(alpha = 0.08f),
-                radius = radius * 0.72f,
-                center = center + Offset(-radius * 0.18f, -radius * 0.16f),
-            )
+            if (showHighlight) {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.08f),
+                    radius = radius * 0.72f,
+                    center = center + Offset(-radius * 0.18f, -radius * 0.16f),
+                )
+            }
         }
     }
 }

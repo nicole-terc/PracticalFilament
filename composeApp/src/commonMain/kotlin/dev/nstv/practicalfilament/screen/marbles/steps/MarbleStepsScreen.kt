@@ -44,10 +44,10 @@ private enum class DemoStep(
         label = "2. Filament Sphere",
     ),
     THREE(
-        label = "3. Add Material",
+        label = "3. Tweak Material",
     ),
     FOUR(
-        label = "4. Add Light",
+        label = "4. Add more Light",
     ),
     FIVE(
         label = "5. UI System",
@@ -96,14 +96,14 @@ fun MarbleStepsScreen(
                 DemoStep.TWO -> key(selectedStep) {
                     SingleMarbleView(
                         material = NeutralSphereMaterial,
-                        lights = SphereStepLights,
+                       // lights = SphereStepLights,
                     )
                 }
 
                 DemoStep.THREE -> key(selectedStep) {
                     SingleMarbleView(
                         material = MarblePresets[CeramicPresetIndex],
-                        lights = SphereStepLights,
+                      //  lights = SphereStepLights,
                     )
                 }
 

@@ -15,8 +15,8 @@ import dev.nstv.practicalfilament.screen.marbles.SingleMarbleCamera
 @Composable
 internal fun SingleMarbleView(
     material: Material,
-    lights: List<LightConfig>,
     modifier: Modifier = Modifier,
+    lights: List<LightConfig> = emptyList(),
     autoRotate: Boolean = false,
 ) {
     Box(
