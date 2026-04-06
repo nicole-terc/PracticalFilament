@@ -21,8 +21,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
-import dev.nstv.practicalfilament.components.materials.brownMudLeavesMaterial
-import dev.nstv.practicalfilament.components.materials.mossMaterial
+import dev.nstv.practicalfilament.components.materials.textured.brownMudLeavesMaterial
+import dev.nstv.practicalfilament.components.materials.textured.monkeyMaterial
+import dev.nstv.practicalfilament.components.materials.textured.mossMaterial
 import dev.nstv.practicalfilament.components.utils.OrbitQuaternion
 import dev.nstv.practicalfilament.components.utils.orbitCameraConfig
 import dev.nstv.practicalfilament.components.utils.orbitCameraControls
@@ -56,6 +57,7 @@ private val MarbleTextureBaseCamera = CameraConfig(
 private val MarbleTextureMaterials = listOf(
     brownMudLeavesMaterial(),
     mossMaterial(),
+    monkeyMaterial()
 )
 
 @Composable
@@ -103,6 +105,52 @@ fun MarbleTextureScreen(
                 distance = cameraDistance,
             )
         )
+        engine.requestFrame()
+    }
+
+
+    fun refreshScene(){
+        val engine = filamentEngine ?: return
+
+        if (renderableHandle != 0) {
+            engine.removeRenderable(renderableHandle)
+            renderableHandle = 0
+        }
+
+        val material = MarbleTextureMaterials[selectedMaterialIndex]
+        val loaded = engine.loadMaterial(material)
+        notice = when {
+            loaded.instanceHandle <= 0 -> "The textured material could not be loaded."
+            loaded.textureHandles.size != material.textureBindings.size ->
+                "Some textures could not be loaded."
+
+            else -> null
+        }
+        if (loaded.instanceHandle <= 0) {
+            return
+        }
+        loaded.parameters.values
+            .filter { parameter -> parameter.value !is BuiltInTexture }
+            .forEach { parameter ->
+                engine.setMaterialParameter(loaded.instanceHandle, parameter)
+            }
+        renderableHandle = engine.loadMesh(
+            path = Res.getUri(selectedMeshName),
+            materialInstanceHandle = loaded.instanceHandle,
+            scale = 2f,
+        )
+        if (renderableHandle <= 0) {
+            notice =
+                "The textured $selectedMeshName could not be created on this platform."
+            return
+        }
+        if (gestureLightHandle != 0) {
+            engine.removeLight(gestureLightHandle)
+            gestureLightHandle = 0
+        }
+        if (gestureLightPosition != null) {
+            gestureLightVersion += 1L
+        }
         engine.requestFrame()
     }
 
@@ -211,7 +259,10 @@ fun MarbleTextureScreen(
         controls = {
             notice?.let { SampleNotice(it) }
             MeshSelectionField(
-                onMeshSelectionChanged = { selectedMeshName = it },
+                onMeshSelectionChanged = {
+                    selectedMeshName = it
+                    refreshScene()
+                },
             )
             DropDownWithArrows(
                 modifier = Modifier
@@ -221,51 +272,8 @@ fun MarbleTextureScreen(
                 selectedIndex = selectedMaterialIndex,
                 label = "Material",
                 onSelectionChanged = { index ->
-                    val engine = filamentEngine ?: run {
-                        selectedMaterialIndex = index
-                        return@DropDownWithArrows
-                    }
                     selectedMaterialIndex = index
-
-                    if (renderableHandle != 0) {
-                        engine.removeRenderable(renderableHandle)
-                        renderableHandle = 0
-                    }
-
-                    val material = MarbleTextureMaterials[index]
-                    val loaded = engine.loadMaterial(material)
-                    notice = when {
-                        loaded.instanceHandle <= 0 -> "The textured material could not be loaded."
-                        loaded.textureHandles.size != material.textureBindings.size ->
-                            "Some textures could not be loaded."
-
-                        else -> null
-                    }
-                    if (loaded.instanceHandle <= 0) {
-                        return@DropDownWithArrows
-                    }
-                    loaded.parameters.values
-                        .filter { parameter -> parameter.value !is BuiltInTexture }
-                        .forEach { parameter ->
-                            engine.setMaterialParameter(loaded.instanceHandle, parameter)
-                        }
-                    renderableHandle = engine.loadMesh(
-                        path = Res.getUri(selectedMeshName),
-                        materialInstanceHandle = loaded.instanceHandle,
-                        scale = 2f,
-                    )
-                    if (renderableHandle <= 0) {
-                        notice = "The textured sphere could not be created on this platform."
-                        return@DropDownWithArrows
-                    }
-                    if (gestureLightHandle != 0) {
-                        engine.removeLight(gestureLightHandle)
-                        gestureLightHandle = 0
-                    }
-                    if (gestureLightPosition != null) {
-                        gestureLightVersion += 1L
-                    }
-                    engine.requestFrame()
+                    refreshScene()
                 },
             )
 

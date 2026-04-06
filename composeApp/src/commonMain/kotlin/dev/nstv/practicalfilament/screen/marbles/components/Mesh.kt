@@ -7,6 +7,7 @@ import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 
 val MeshList = mapOf(
     "sphere" to "files/models/sphere.filamesh",
+    "monkey" to "files/models/monkey.filamesh",
 )
 
 
@@ -18,6 +19,7 @@ fun MeshSelectionField(
     onMeshSelectionChanged: (String) -> Unit,
 ){
     DropDownWithArrows(
+        label = "Mesh",
         options = meshList.keys.toList(),
         onSelectionChanged = {
             onMeshSelectionChanged(meshList.values.toList()[it])
