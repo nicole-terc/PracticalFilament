@@ -3,6 +3,10 @@ Codebase for Practical Filament talk :D
 
 Sample code using Google's [Filament](https://github.com/google/filament) framework
 
+## Interesting Links
+- Framework repository: [google/filament](https://github.com/google/filament/tree/main)
+- Trove of assets: [polyhaven.com](https://polyhaven.com/)
+
 ## Asset generation
 
 Filament's macOS SDK is bundled in `tools/filament/1.70.1` so material and environment assets can be rebuilt locally without depending on a separate desktop install.
@@ -15,7 +19,7 @@ The script compiles `.mat` files into `composeApp/src/commonMain/composeResource
 
 ### Asset disclaimer
 
-This demo includes several materials and environment resources from the [google/filament](https://github.com/google/filament/tree/main) samples and third-party assets. They belong to their original authors and keep their original licenses.
+This demo includes several assets from [google/filament](https://github.com/google/filament/tree/main) and [polyhaven.com](https://polyhaven.com/). They belong to their original authors and keep their original licenses.
 
 
 ## Gotchas
