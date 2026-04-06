@@ -867,6 +867,24 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
         return -1;
     }
 
+    NSString *lowercasePath = path.lowercaseString;
+    if ([lowercasePath hasSuffix:@".ktx"] || [lowercasePath hasSuffix:@".ktx1"]) {
+        auto ktx = std::make_unique<image::Ktx1Bundle>(
+            (const uint8_t *)data.bytes, (uint32_t)data.length
+        );
+        // sRGB for albedo/color textures (format == PFTextureColorFormatSrgb8A8),
+        // linear for normal/roughness/ao (format == PFTextureColorFormatRgba8).
+        bool srgb = (colorFormat == (int)PFTextureColorFormatSrgb8A8);
+        Texture *texture = ktxreader::Ktx1Reader::createTexture(_engine, ktx.release(), srgb);
+        if (!texture) {
+            NSLog(@"Failed to create KTX texture from '%@'", path);
+            return -1;
+        }
+        int handle = _nextHandle++;
+        _textures[handle] = texture;
+        return handle;
+    }
+
     UIImage *image = [UIImage imageWithData:data];
     CGImageRef cgImage = image.CGImage;
     if (!cgImage) {

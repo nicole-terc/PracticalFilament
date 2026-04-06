@@ -6,10 +6,11 @@ material {
     specularAmbientOcclusion : simple,
     requires : [ uv0 ],
     parameters : [
-        { type : sampler2d, name : baseColor },
-        { type : sampler2d, name : normal },
-        { type : sampler2d, name : ao },
+        { type : sampler2d, name : albedo },
         { type : sampler2d, name : roughness },
+        { type : sampler2d, name : ao },
+        { type : sampler2d, name : normal },
+        { type : float, name : metallic },
         { type : float, name : uvScale },
         { type : float, name : normalStrength }
     ]
@@ -29,9 +30,9 @@ fragment {
 
         prepareMaterial(material);
 
-        material.baseColor = texture(materialParams_baseColor, uv);
+        material.baseColor = texture(materialParams_albedo, uv);
         material.ambientOcclusion = texture(materialParams_ao, uv).r;
         material.roughness = texture(materialParams_roughness, uv).r;
-        material.metallic = 0.0;
+        material.metallic = materialParams.metallic;
     }
 }

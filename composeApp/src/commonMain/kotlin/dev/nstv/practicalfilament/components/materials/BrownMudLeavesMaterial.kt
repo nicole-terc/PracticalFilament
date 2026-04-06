@@ -14,23 +14,30 @@ fun brownMudLeavesMaterial() = TextureMaterial(
     overrides = mapOf(
         "uvScale" to 4.5f,
         "normalStrength" to 1.8f,
+        "metallic" to 0.0f,
     ),
     textureBindings = listOf(
         TextureBinding(
-            parameterName = "baseColor",
-            texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_diff_2k.jpg",
-            label = "Base Color",
+            parameterName = "albedo",
+            texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_diff_2k.ktx",
+            label = "Albedo",
         ),
         TextureBinding(
             parameterName = "normal",
-            texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_nor_gl_2k.jpg",
+            texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_nor_gl_2k.ktx",
             label = "Normal (GL)",
             colorFormat = TextureColorFormat.RGBA8,
         ),
         TextureBinding(
-            parameterName = "aoRoughnessMetallic",
-            texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_arm_2k.jpg",
-            label = "ARM",
+            parameterName = "roughness",
+            texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_rough_2k.ktx",
+            label = "Roughness",
+            colorFormat = TextureColorFormat.RGBA8,
+        ),
+        TextureBinding(
+            parameterName = "ao",
+            texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_ao_2k.ktx",
+            label = "Ambient Occlusion",
             colorFormat = TextureColorFormat.RGBA8,
         ),
     ),

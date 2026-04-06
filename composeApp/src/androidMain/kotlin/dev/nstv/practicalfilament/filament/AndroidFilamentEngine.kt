@@ -710,7 +710,10 @@ class AndroidFilamentEngine(
         val eng = engine ?: return -1
         if (path.endsWith(".ktx", ignoreCase = true) || path.endsWith(".ktx1", ignoreCase = true)) {
             val buffer = loadAssetBuffer(path) ?: return -1
-            val texture = KTX1Loader.createTexture(eng, buffer)
+            val options = KTX1Loader.Options().apply {
+                srgb = colorFormat == TextureColorFormat.SRGB8_A8
+            }
+            val texture = KTX1Loader.createTexture(eng, buffer, options)
             val handle = nextHandle++
             textures[handle] = texture
             return handle
