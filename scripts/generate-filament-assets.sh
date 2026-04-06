@@ -6,14 +6,17 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FILAMENT_DIR="${FILAMENT_DIR:-$ROOT_DIR/tools/filament/1.70.1}"
 MATERIALS_SOURCE_DIR="${MATERIALS_SOURCE_DIR:-$ROOT_DIR/filament-assets/materials}"
 ENVIRONMENTS_SOURCE_DIR="${ENVIRONMENTS_SOURCE_DIR:-$ROOT_DIR/filament-assets/envs}"
+MODELS_SOURCE_DIR="${MODELS_SOURCE_DIR:-$ROOT_DIR/filament-assets/models}"
 RESOURCES_DIR="${RESOURCES_DIR:-$ROOT_DIR/composeApp/src/commonMain/composeResources/files}"
 MATERIALS_OUTPUT_DIR="${MATERIALS_OUTPUT_DIR:-$RESOURCES_DIR/materials}"
 ENVIRONMENT_OUTPUT_DIR="${ENVIRONMENT_OUTPUT_DIR:-$RESOURCES_DIR/envs}"
+MODELS_OUTPUT_DIR="${MODELS_OUTPUT_DIR:-$RESOURCES_DIR/models}"
 CMGEN_SIZE="${CMGEN_SIZE:-256}"
 CMGEN_EXTRACT_BLUR="${CMGEN_EXTRACT_BLUR:-0.1}"
 
 MATC="$FILAMENT_DIR/bin/matc"
 CMGEN="$FILAMENT_DIR/bin/cmgen"
+FILAMESH="$FILAMENT_DIR/bin/filamesh"
 
 usage() {
     cat <<EOF
@@ -89,6 +92,32 @@ build_environments() {
     fi
 }
 
+build_models(){
+    local found=0
+
+    if [[ ! -d "$MODELS_SOURCE_DIR" ]]; then
+        echo "Skipping models: source directory not found at $MODELS_SOURCE_DIR"
+        return
+    fi
+
+    while IFS= read -r source_file; do
+        local relative_path output_base output_parent
+        found=1
+        relative_path="${source_file#"$MODELS_SOURCE_DIR"/}"
+        output_base="$MODELS_OUTPUT_DIR/${relative_path%.obj}.filamesh"
+        output_parent="$(dirname "$output_base")"
+
+        mkdir -p "$output_parent"
+        rm -rf "$output_base"
+        echo "filamesh $relative_path -> ${output_base#"$ROOT_DIR"/}/"
+        "$FILAMESH" --compress "$source_file" "$output_base">/dev/null
+    done < <(find "$MODELS_SOURCE_DIR" -type f -name '*.obj' | LC_ALL=C sort)
+
+    if [[ "$found" -eq 0 ]]; then
+        echo "No .obj files found in $MODELS_SOURCE_DIR"
+    fi
+}
+
 main() {
     local mode="${1:-all}"
     mkdir -p "$RESOURCES_DIR" "$MATERIALS_OUTPUT_DIR" "$ENVIRONMENT_OUTPUT_DIR"
@@ -97,8 +126,10 @@ main() {
         all)
             require_tool "$MATC"
             require_tool "$CMGEN"
+            require_tool "$FILAMESH"
             build_materials
             build_environments
+            build_models
             ;;
         materials)
             require_tool "$MATC"
@@ -107,6 +138,10 @@ main() {
         environments|envs)
             require_tool "$CMGEN"
             build_environments
+            ;;
+        models)
+            require_tool "$FILAMESH"
+            build_models
             ;;
         -h|--help|help)
             usage
