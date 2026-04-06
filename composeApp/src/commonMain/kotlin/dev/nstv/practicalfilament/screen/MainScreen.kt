@@ -45,27 +45,27 @@ import dev.nstv.practicalfilament.theme.slidesBackground
 
 
 private enum class Screen {
-    SAMPLE_IBL,
-    SAMPLE_LIT_CUBE,
+    MATERIAL_VIEWER,
+    MARBLE_VIEWER,
+    MARBLE_TEXTURE,
+    MARBLE_STEPS,
+    MARBLE_COMPARISON,
+    REDBALL,
+    SHEEP,
+    MORPHING,
+    PARTICLE_WORD,
+    SAMPLE_GLTF_VIEWER,
+    SAMPLE_SKY,
+    SAMPLE_LIVE_WALLPAPER,
+    SAMPLE_PAGE_CURL,
     SAMPLE_STRESS_TEST,
     SAMPLE_HELLO_TRIANGLE,
     SAMPLE_TRANSPARENT_VIEW,
     SAMPLE_TEXTURED_OBJECT,
     SAMPLE_MATERIAL_BUILDER,
-    SAMPLE_PAGE_CURL,
     SAMPLE_MULTI_VIEW,
-    SAMPLE_LIVE_WALLPAPER,
-    SAMPLE_SKY,
-    SAMPLE_GLTF_VIEWER,
-    MATERIAL_VIEWER,
-    MARBLE,
-    MARBLE_STEPS,
-    MARBLE_TEXTURE,
-    GRAPHICS_EFFECTS_COMPARISON,
-    REDBALL,
-    SHEEP,
-    MORPHING,
-    PARTICLE_WORD,
+    SAMPLE_IBL,
+    SAMPLE_LIT_CUBE,
 }
 
 const val UseSlidesBackground = false
@@ -114,10 +114,10 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.SAMPLE_SKY -> SkyScreen()
                     Screen.SAMPLE_GLTF_VIEWER -> GltfViewerScreen()
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
-                    Screen.MARBLE -> MarbleScreen()
+                    Screen.MARBLE_VIEWER -> MarbleScreen()
                     Screen.MARBLE_STEPS -> MarbleStepsScreen()
                     Screen.MARBLE_TEXTURE -> MarbleTextureScreen()
-                    Screen.GRAPHICS_EFFECTS_COMPARISON -> GraphicsEffectsComparisonScreen()
+                    Screen.MARBLE_COMPARISON -> GraphicsEffectsComparisonScreen()
                     Screen.REDBALL -> RedballScreen()
                     Screen.SHEEP -> SheepScreen()
                     Screen.MORPHING -> MorphingScreen()
