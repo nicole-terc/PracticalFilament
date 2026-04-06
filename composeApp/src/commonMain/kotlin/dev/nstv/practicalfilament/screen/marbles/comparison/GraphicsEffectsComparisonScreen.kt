@@ -1,4 +1,4 @@
-package dev.nstv.practicalfilament.screen.comparison
+package dev.nstv.practicalfilament.screen.marbles.comparison
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
@@ -52,7 +53,7 @@ import dev.nstv.practicalfilament.theme.Grid
 fun GraphicsEffectsComparisonScreen(
     modifier: Modifier = Modifier,
 ) {
-    var presentationMode by remember { mutableStateOf(ComparisonPresentationMode.Split) }
+    var presentationMode by remember { mutableStateOf(ComparisonPresentationMode.Reveal) }
     var effectMode by remember { mutableStateOf(Android2DEffectMode.AGSL) }
     var selectedPreset by remember { mutableStateOf(ComparisonMaterialPreset.Ceramic) }
     var animationEnabled by remember { mutableStateOf(true) }
@@ -302,7 +303,7 @@ private class RevealLayerShape(
     private val revealFraction: Float,
 ) : Shape {
     override fun createOutline(
-        size: androidx.compose.ui.geometry.Size,
+        size: Size,
         layoutDirection: LayoutDirection,
         density: Density,
     ): Outline {

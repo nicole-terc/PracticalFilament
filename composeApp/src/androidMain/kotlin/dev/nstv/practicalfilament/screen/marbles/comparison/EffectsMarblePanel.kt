@@ -1,4 +1,4 @@
-package dev.nstv.practicalfilament.screen.comparison
+package dev.nstv.practicalfilament.screen.marbles.comparison
 
 import android.os.Build
 import androidx.compose.foundation.layout.fillMaxSize

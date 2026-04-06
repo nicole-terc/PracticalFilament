@@ -1,7 +1,6 @@
-package dev.nstv.practicalfilament.screen.marbles
+package dev.nstv.practicalfilament.screen.marbles.steps.step5
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,18 +11,14 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -32,13 +27,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -46,49 +39,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CustomRenderableConfig
-import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentClipShape
+import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentHostViewMode
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
-import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.PrimitiveType
 import dev.nstv.practicalfilament.filament.VertexAttribute
 import dev.nstv.practicalfilament.filament.VertexAttributeLayout
 import dev.nstv.practicalfilament.filament.material.Material
 import dev.nstv.practicalfilament.filament.toByteArray
+import dev.nstv.practicalfilament.screen.marbles.ButtonSurfaceCamera
+import dev.nstv.practicalfilament.screen.marbles.CeramicPresetIndex
+import dev.nstv.practicalfilament.screen.marbles.MarbleAliveLights
+import dev.nstv.practicalfilament.screen.marbles.MarblePresets
+import dev.nstv.practicalfilament.screen.marbles.MarbleUiAccent
+import dev.nstv.practicalfilament.screen.marbles.MarbleUiBackground
+import dev.nstv.practicalfilament.screen.marbles.MarbleUiBackgroundFilament
+import dev.nstv.practicalfilament.screen.marbles.MarbleUiMuted
+import dev.nstv.practicalfilament.screen.marbles.MarbleUiText
+import dev.nstv.practicalfilament.screen.marbles.PickerMarbleCamera
+import dev.nstv.practicalfilament.screen.marbles.ThemePickerLights
+import dev.nstv.practicalfilament.screen.marbles.steps.components.SphereMaterialView
 import dev.nstv.practicalfilament.theme.Grid
-import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-private enum class DemoStep(
-    val label: String,
-) {
-    FLAT_CIRCLE(
-        label = "1. Flat Circle",
-    ),
-    FILAMENT_SPHERE(
-        label = "2. Filament Sphere",
-    ),
-    MATERIAL_MARBLE(
-        label = "3. Add Material",
-    ),
-    LIGHTING_ALIVE(
-        label = "4. Add Light",
-    ),
-    UI_SYSTEM(
-        label = "5. UI System",
-    ),
-}
-
+private const val DefaultButtonCurvature = -0.42f
 private val ButtonCornerRadius = 24.dp
 private val ButtonHeight = 88.dp
 private val ButtonShape = RoundedCornerShape(ButtonCornerRadius)
@@ -99,155 +82,39 @@ private const val ButtonMeshDepth = 0.52f
 private const val ButtonRimThickness = 0.14f
 private const val ButtonCurvatureRange = 1f
 private val ButtonCornerRadiusFraction = ButtonCornerRadius.value / ButtonHeight.value
-private const val DefaultButtonCurvature = -0.42f
 
 private val ButtonSurfaceLights = MarbleAliveLights
 
 @Composable
-fun MarbleUIScreen(
+fun MarbleStepFive(
     modifier: Modifier = Modifier,
 ) {
-    var selectedStep by remember { mutableStateOf(DemoStep.UI_SYSTEM) }
     var selectedPresetIndex by remember { mutableIntStateOf(CeramicPresetIndex) }
     var buttonCurvature by remember { mutableFloatStateOf(DefaultButtonCurvature) }
 
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MarbleUiBackground),
-    ) {
-        CompositionLocalProvider(LocalContentColor provides MarbleUiText) {
-            DropDownWithArrows(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Grid.Two, vertical = Grid.One),
-                options = DemoStep.entries.map { it.label },
-                selectedIndex = DemoStep.entries.indexOf(selectedStep),
-                onSelectionChanged = { selectedStep = DemoStep.entries[it] },
-                textStyle = MaterialTheme.typography.titleMedium.copy(
-                    color = MarbleUiText,
-                    fontWeight = FontWeight.Medium,
-                ),
-                loopSelection = true,
-            )
-        }
-
-        HorizontalDivider(color = MarbleUiMuted.copy(alpha = 0.2f))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(Grid.Two),
-            contentAlignment = Alignment.Center,
-        ) {
-            when (selectedStep) {
-                DemoStep.FLAT_CIRCLE -> FlatCircleView()
-                DemoStep.FILAMENT_SPHERE -> key(selectedStep) {
-                    SingleMarbleView(
-                        material = NeutralSphereMaterial,
-                        lights = SphereStepLights,
-                    )
-                }
-
-                DemoStep.MATERIAL_MARBLE -> key(selectedStep) {
-                    SingleMarbleView(
-                        material = MarblePresets[CeramicPresetIndex],
-                        lights = SphereStepLights,
-                    )
-                }
-
-                DemoStep.LIGHTING_ALIVE -> key(selectedStep) {
-                    SingleMarbleView(
-                        material = MarblePresets[CeramicPresetIndex],
-                        lights = MarbleAliveLights,
-                        autoRotate = true,
-                    )
-                }
-
-                DemoStep.UI_SYSTEM -> Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(Grid.Two),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    MarblePickerRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        selectedIndex = selectedPresetIndex,
-                        onSelectionChanged = { selectedPresetIndex = it },
-                    )
-                    SampleMarbleButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        preset = MarblePresets[selectedPresetIndex],
-                        curvature = buttonCurvature,
-                    )
-                    CurvatureSlider(
-                        modifier = Modifier.fillMaxWidth(),
-                        value = buttonCurvature,
-                        onValueChange = { buttonCurvature = it },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FlatCircleView(
-    modifier: Modifier = Modifier,
-) {
-    Box(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+        verticalArrangement = Arrangement.spacedBy(Grid.Two),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth(0.72f)
-                .aspectRatio(1f),
-        ) {
-            val radius = size.minDimension * 0.38f
-            drawCircle(
-                color = ComposeColor(0xFF5779AB),
-                radius = radius,
-                center = center,
-            )
-            drawCircle(
-                color = ComposeColor.White.copy(alpha = 0.08f),
-                radius = radius * 0.72f,
-                center = center + Offset(-radius * 0.18f, -radius * 0.16f),
-            )
-        }
+        MarblePickerRow(
+            modifier = Modifier.fillMaxWidth(),
+            selectedIndex = selectedPresetIndex,
+            onSelectionChanged = { selectedPresetIndex = it },
+        )
+        SampleMarbleButton(
+            modifier = Modifier.fillMaxWidth(),
+            preset = MarblePresets[selectedPresetIndex],
+            curvature = buttonCurvature,
+        )
+        CurvatureSlider(
+            modifier = Modifier.fillMaxWidth(),
+            value = buttonCurvature,
+            onValueChange = { buttonCurvature = it },
+        )
     }
 }
 
-@Composable
-private fun SingleMarbleView(
-    material: Material,
-    lights: List<LightConfig>,
-    modifier: Modifier = Modifier,
-    autoRotate: Boolean = false,
-) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.88f)
-                .aspectRatio(1f),
-        ) {
-            SphereMaterialView(
-                modifier = Modifier.fillMaxSize(),
-                material = material,
-                camera = SingleMarbleCamera,
-                lights = lights,
-                radius = 1.1f,
-                initialRotationX = -12f,
-                initialRotationY = 24f,
-                autoRotate = autoRotate,
-            )
-        }
-    }
-}
 
 @Composable
 private fun MarblePickerRow(
@@ -316,64 +183,6 @@ private fun MarbleOption(
 }
 
 @Composable
-private fun SphereMaterialView(
-    material: Material,
-    camera: CameraConfig,
-    lights: List<LightConfig>,
-    radius: Float,
-    initialRotationX: Float,
-    initialRotationY: Float,
-    modifier: Modifier = Modifier,
-    autoRotate: Boolean = false,
-) {
-    var engineReady by remember { mutableStateOf<FilamentEngine?>(null) }
-    var renderableHandle by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(engineReady, renderableHandle, initialRotationX, initialRotationY) {
-        val engine = engineReady ?: return@LaunchedEffect
-        if (renderableHandle == 0) return@LaunchedEffect
-        engine.setRenderableRotation(renderableHandle, initialRotationX, initialRotationY)
-        engine.requestFrame()
-    }
-
-    LaunchedEffect(engineReady, renderableHandle, autoRotate, initialRotationX, initialRotationY) {
-        val engine = engineReady ?: return@LaunchedEffect
-        if (renderableHandle == 0 || !autoRotate) return@LaunchedEffect
-        while (true) {
-            val timeSeconds = withFrameNanos { it } / 1_000_000_000f
-            engine.setRenderableRotation(
-                renderableHandle,
-                initialRotationX + 2f,
-                initialRotationY + timeSeconds * 18f,
-            )
-            engine.requestFrame()
-        }
-    }
-
-    FilamentView(
-        modifier = modifier,
-        camera = camera,
-        lights = lights,
-        backgroundColor = MarbleUiBackgroundFilament,
-        clipShape = FilamentClipShape.Circle,
-        onEngineReady = { engine ->
-            val loaded = engine.loadMaterial(material)
-            loaded.parameters.values.forEach {
-                engine.setMaterialParameter(
-                    loaded.instanceHandle,
-                    it
-                )
-            }
-            engineReady = engine
-            renderableHandle = engine.createSphereRenderable(
-                materialInstanceHandle = loaded.instanceHandle,
-                radius = radius,
-            )
-        },
-    )
-}
-
-@Composable
 private fun SampleMarbleButton(
     preset: Material,
     curvature: Float,
@@ -385,7 +194,7 @@ private fun SampleMarbleButton(
         shape = ButtonShape,
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = ComposeColor.Transparent,
+            containerColor = Color.Transparent,
             contentColor = MarbleUiText,
         ),
     ) {
@@ -525,7 +334,7 @@ private fun curvatureLabel(value: Float): String {
 @Composable
 private fun CircularMaskOverlay(
     modifier: Modifier = Modifier,
-    backgroundColor: ComposeColor = MarbleUiBackground,
+    backgroundColor: Color = MarbleUiBackground,
 ) {
     Canvas(
         modifier = modifier
@@ -534,7 +343,7 @@ private fun CircularMaskOverlay(
     ) {
         drawRect(color = backgroundColor)
         drawCircle(
-            color = ComposeColor.Transparent,
+            color = Color.Transparent,
             radius = size.minDimension * 0.5f,
             center = center,
             blendMode = BlendMode.Clear,
@@ -546,7 +355,7 @@ private fun CircularMaskOverlay(
 private fun RoundedRectMaskOverlay(
     cornerRadius: Dp,
     modifier: Modifier = Modifier,
-    backgroundColor: ComposeColor = MarbleUiBackground,
+    backgroundColor: Color = MarbleUiBackground,
 ) {
     Canvas(
         modifier = modifier
@@ -555,7 +364,7 @@ private fun RoundedRectMaskOverlay(
     ) {
         drawRect(color = backgroundColor)
         drawRoundRect(
-            color = ComposeColor.Transparent,
+            color = Color.Transparent,
             cornerRadius = CornerRadius(cornerRadius.toPx(), cornerRadius.toPx()),
             blendMode = BlendMode.Clear,
         )
@@ -843,3 +652,4 @@ private fun roundedRectRing(
     }
     return points
 }
+

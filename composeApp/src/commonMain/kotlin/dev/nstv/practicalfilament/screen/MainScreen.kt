@@ -18,10 +18,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import dev.nstv.practicalfilament.screen.comparison.GraphicsEffectsComparisonScreen
+import dev.nstv.practicalfilament.screen.marbles.comparison.GraphicsEffectsComparisonScreen
 import dev.nstv.practicalfilament.screen.marbles.MarbleScreen
 import dev.nstv.practicalfilament.screen.marbles.MarbleTextureScreen
-import dev.nstv.practicalfilament.screen.marbles.MarbleUIScreen
+import dev.nstv.practicalfilament.screen.marbles.steps.MarbleStepsScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MaterialViewerScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MorphingScreen
 import dev.nstv.practicalfilament.screen.otherViewers.RedballScreen
@@ -59,7 +59,7 @@ private enum class Screen {
     SAMPLE_GLTF_VIEWER,
     MATERIAL_VIEWER,
     MARBLE,
-    MARBLE_UI,
+    MARBLE_STEPS,
     MARBLE_TEXTURE,
     GRAPHICS_EFFECTS_COMPARISON,
     REDBALL,
@@ -78,7 +78,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by remember { mutableStateOf(Screen.MARBLE_UI) }
+        var selectedScreen by remember { mutableStateOf(Screen.MARBLE_STEPS) }
 
         Column(
             modifier = Modifier
@@ -115,7 +115,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.SAMPLE_GLTF_VIEWER -> GltfViewerScreen()
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
                     Screen.MARBLE -> MarbleScreen()
-                    Screen.MARBLE_UI -> MarbleUIScreen()
+                    Screen.MARBLE_STEPS -> MarbleStepsScreen()
                     Screen.MARBLE_TEXTURE -> MarbleTextureScreen()
                     Screen.GRAPHICS_EFFECTS_COMPARISON -> GraphicsEffectsComparisonScreen()
                     Screen.REDBALL -> RedballScreen()

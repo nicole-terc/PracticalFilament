@@ -1,4 +1,4 @@
-package dev.nstv.practicalfilament.screen.comparison
+package dev.nstv.practicalfilament.screen.marbles.comparison
 
 import android.content.Context
 import android.graphics.Canvas as AndroidCanvas

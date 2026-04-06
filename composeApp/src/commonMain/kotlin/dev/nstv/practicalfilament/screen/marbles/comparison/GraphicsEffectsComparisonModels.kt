@@ -1,4 +1,4 @@
-package dev.nstv.practicalfilament.screen.comparison
+package dev.nstv.practicalfilament.screen.marbles.comparison
 
 import androidx.compose.ui.graphics.Color as ComposeColor
 import dev.nstv.practicalfilament.filament.material.Material

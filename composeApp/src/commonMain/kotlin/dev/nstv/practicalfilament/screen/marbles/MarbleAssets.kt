@@ -1,5 +1,6 @@
 package dev.nstv.practicalfilament.screen.marbles
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color as ComposeColor
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.Color

@@ -1,7 +1,8 @@
 package dev.nstv.practicalfilament
 
-import android.app.Service
 import android.content.Context
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.opengl.Matrix
 import android.os.Build
@@ -10,6 +11,7 @@ import android.view.Choreographer
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.WindowManager
+import com.google.android.filament.Box
 import com.google.android.filament.Camera
 import com.google.android.filament.EntityManager
 import com.google.android.filament.Filament
@@ -39,6 +41,7 @@ import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.utils.KTX1Loader
 import com.google.android.filament.utils.Utils
 import dev.nstv.practicalfilament.filament.CameraConfig
+import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.ProjectionType
 import dev.nstv.practicalfilament.screen.sky.SkyWallpaperConfig
 import dev.nstv.practicalfilament.screen.sky.resolveRealtimeSkyConfig
@@ -48,6 +51,7 @@ import dev.nstv.practicalfilament.screen.wallpaper.liveWallpaperHueAt
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.atan
 import kotlin.math.cos
@@ -244,12 +248,12 @@ class FilamentLiveWallpaperService : WallpaperService() {
             }
             if (!currentPreset.usesModel) {
                 val hue = liveWallpaperHueAt(seconds)
-                val color = android.graphics.Color.HSVToColor(floatArrayOf(hue, 1f, 1f))
+                val color = Color.HSVToColor(floatArrayOf(hue, 1f, 1f))
                 scene.skybox?.setColor(
                     floatArrayOf(
-                        android.graphics.Color.red(color) / 255f,
-                        android.graphics.Color.green(color) / 255f,
-                        android.graphics.Color.blue(color) / 255f,
+                        Color.red(color) / 255f,
+                        Color.green(color) / 255f,
+                        Color.blue(color) / 255f,
                         1f,
                     ),
                 )
@@ -428,7 +432,7 @@ class FilamentLiveWallpaperService : WallpaperService() {
             RenderableManager.Builder(1)
                 .geometry(0, RenderableManager.PrimitiveType.TRIANGLES, vertexBuffer, indexBuffer)
                 .material(0, materialInstance)
-                .boundingBox(com.google.android.filament.Box(0f, 0f, 0f, 10_000f, 10_000f, 10_000f))
+                .boundingBox(Box(0f, 0f, 0f, 10_000f, 10_000f, 10_000f))
                 .culling(false)
                 .castShadows(false)
                 .receiveShadows(false)
@@ -461,9 +465,9 @@ class FilamentLiveWallpaperService : WallpaperService() {
             )
             applyCameraPose(
                 CameraConfig(
-                    position = dev.nstv.practicalfilament.filament.Float3(0f, 0f, 0f),
-                    lookAt = dev.nstv.practicalfilament.filament.Float3(1f, 0f, 0f),
-                    up = dev.nstv.practicalfilament.filament.Float3(0f, 1f, 0f),
+                    position = Float3(0f, 0f, 0f),
+                    lookAt = Float3(1f, 0f, 0f),
+                    up = Float3(0f, 1f, 0f),
                     fovDegrees = computeVerticalFovDegrees(resolvedConfig.focalLength).toDouble(),
                     near = 0.1,
                     far = 5000.0,
@@ -495,7 +499,7 @@ class FilamentLiveWallpaperService : WallpaperService() {
             }.getOrNull()
                 ?: return null
             val bitmap =
-                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
             val pixelBuffer = ByteBuffer.allocateDirect(bitmap.byteCount)
             bitmap.copyPixelsToBuffer(pixelBuffer)
             pixelBuffer.flip()
@@ -600,7 +604,7 @@ class FilamentLiveWallpaperService : WallpaperService() {
                 val display = if (Build.VERSION.SDK_INT >= 30) {
                     displayContext?.let(Api30Impl::getDisplay) ?: return
                 } else {
-                    (getSystemService(Service.WINDOW_SERVICE) as WindowManager).defaultDisplay
+                    (getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay
                 }
 
                 displayHelper.attach(renderer, display)
@@ -906,7 +910,7 @@ private fun computeEclipseFactor(
 
 private fun areaIntersection(r1: Double, r2: Double, d: Double): Double {
     if (d >= r1 + r2) return 0.0
-    if (d <= kotlin.math.abs(r1 - r2)) {
+    if (d <= abs(r1 - r2)) {
         val radius = min(r1, r2)
         return PI * radius * radius
     }
