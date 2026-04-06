@@ -1063,7 +1063,109 @@ class AndroidFilamentEngine(
         return createCustomRenderable(config)
     }
 
-    override fun loadMesh(path: String, materialInstanceHandle: Int): Int = -1
+    override fun loadMesh(path: String, materialInstanceHandle: Int): Int {
+        val eng = engine ?: return -1
+        val instance = materialInstances[materialInstanceHandle] ?: return -1
+        val rawBuffer = loadAssetBuffer(path) ?: return -1
+        rawBuffer.order(ByteOrder.LITTLE_ENDIAN)
+
+        val magicBytes = ByteArray(8)
+        rawBuffer.get(magicBytes)
+        if (String(magicBytes, Charsets.US_ASCII) != "FILAMESH") return -1
+
+        val version = rawBuffer.int
+        if (version != 1) return -1
+
+        val partCount = rawBuffer.int
+
+        val cx = rawBuffer.float; val cy = rawBuffer.float; val cz = rawBuffer.float
+        val hx = rawBuffer.float; val hy = rawBuffer.float; val hz = rawBuffer.float
+
+        val flags = rawBuffer.int
+        val isSnorm16UV = (flags and 0x2) != 0
+        val isCompressed = (flags and 0x4) != 0
+        if (isCompressed) return -1
+
+        val offsetPosition = rawBuffer.int
+        val stridePosition = rawBuffer.int
+        val offsetTangents = rawBuffer.int
+        val strideTangents = rawBuffer.int
+        val offsetColor = rawBuffer.int
+        val strideColor = rawBuffer.int
+        val offsetUV0 = rawBuffer.int
+        val strideUV0 = rawBuffer.int
+        rawBuffer.int // offsetUV1 - unused
+        rawBuffer.int // strideUV1 - unused
+        val vertexCount = rawBuffer.int
+        val vertexSize = rawBuffer.int
+        val indexType = rawBuffer.int
+        val indexCount = rawBuffer.int
+        val indexSize = rawBuffer.int
+
+        val vertexBuf = ByteBuffer.allocateDirect(vertexSize).apply {
+            order(ByteOrder.LITTLE_ENDIAN)
+            val src = rawBuffer.duplicate().also { it.limit(rawBuffer.position() + vertexSize) }
+            put(src)
+            flip()
+        }
+        rawBuffer.position(rawBuffer.position() + vertexSize)
+
+        val indexBuf = ByteBuffer.allocateDirect(indexSize).apply {
+            order(ByteOrder.LITTLE_ENDIAN)
+            val src = rawBuffer.duplicate().also { it.limit(rawBuffer.position() + indexSize) }
+            put(src)
+            flip()
+        }
+        rawBuffer.position(rawBuffer.position() + indexSize)
+
+        data class Part(val offset: Int, val count: Int, val minIdx: Int, val maxIdx: Int)
+        val parts = Array(partCount) {
+            val pOff = rawBuffer.int
+            val pCount = rawBuffer.int
+            val pMin = rawBuffer.int
+            val pMax = rawBuffer.int
+            rawBuffer.int // materialID
+            rawBuffer.position(rawBuffer.position() + 24) // skip part aabb
+            Part(pOff, pCount, pMin, pMax)
+        }
+
+        val ib = IndexBuffer.Builder()
+            .indexCount(indexCount)
+            .bufferType(if (indexType == 1) IndexBuffer.Builder.IndexType.USHORT else IndexBuffer.Builder.IndexType.UINT)
+            .build(eng)
+        ib.setBuffer(eng, indexBuf)
+        indexBuffers.add(ib)
+
+        val uvAttrType = if (isSnorm16UV) VertexBuffer.AttributeType.SHORT2 else VertexBuffer.AttributeType.HALF2
+        val vb = VertexBuffer.Builder()
+            .vertexCount(vertexCount)
+            .bufferCount(1)
+            .attribute(VertexBuffer.VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.HALF4, offsetPosition, stridePosition)
+            .normalized(VertexBuffer.VertexAttribute.TANGENTS)
+            .attribute(VertexBuffer.VertexAttribute.TANGENTS, 0, VertexBuffer.AttributeType.SHORT4, offsetTangents, strideTangents)
+            .normalized(VertexBuffer.VertexAttribute.COLOR)
+            .attribute(VertexBuffer.VertexAttribute.COLOR, 0, VertexBuffer.AttributeType.UBYTE4, offsetColor, strideColor)
+            .attribute(VertexBuffer.VertexAttribute.UV0, 0, uvAttrType, offsetUV0, strideUV0)
+            .normalized(VertexBuffer.VertexAttribute.UV0, isSnorm16UV)
+            .build(eng)
+        vb.setBufferAt(eng, 0, vertexBuf)
+        vertexBuffers.add(vb)
+
+        val entity = EntityManager.get().create()
+        val builder = RenderableManager.Builder(partCount)
+            .boundingBox(com.google.android.filament.Box(cx, cy, cz, hx, hy, hz))
+        parts.forEachIndexed { i, part ->
+            builder.geometry(i, RenderableManager.PrimitiveType.TRIANGLES, vb, ib, part.offset, part.minIdx, part.maxIdx, part.count)
+            builder.material(i, instance)
+        }
+        builder.build(eng, entity)
+        scene?.addEntity(entity)
+
+        val handle = nextHandle++
+        renderables[handle] = entity
+        renderableBuffers[handle] = RenderableBuffers(vb)
+        return handle
+    }
 
     override fun createMorphRenderable(
         materialInstanceHandle: Int,

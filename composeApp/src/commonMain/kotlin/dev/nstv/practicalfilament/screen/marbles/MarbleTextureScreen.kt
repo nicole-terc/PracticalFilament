@@ -35,6 +35,7 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
+import practicalfilament.composeapp.generated.resources.Res
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
@@ -54,6 +55,8 @@ private val MarbleTextureMaterials = listOf(
     brownMudLeavesMaterial(),
     mossMaterial(),
 )
+
+private val sphereFilamesh ="files/models/sphere.filamesh"
 
 
 @Composable
@@ -172,9 +175,9 @@ fun MarbleTextureScreen(
                             }
                     }
                     renderableHandle = if (loaded.instanceHandle > 0) {
-                        engine.createSphereRenderable(
+                        engine.loadMesh(
+                            path = Res.getUri(sphereFilamesh),
                             materialInstanceHandle = loaded.instanceHandle,
-                            radius = 1f,
                         )
                     } else {
                         -1
@@ -242,9 +245,9 @@ fun MarbleTextureScreen(
                         .forEach { parameter ->
                             engine.setMaterialParameter(loaded.instanceHandle, parameter)
                         }
-                    renderableHandle = engine.createSphereRenderable(
+                    renderableHandle = engine.loadMesh(
+                        path = Res.getUri(sphereFilamesh),
                         materialInstanceHandle = loaded.instanceHandle,
-                        radius = 1f,
                     )
                     if (renderableHandle <= 0) {
                         notice = "The textured sphere could not be created on this platform."

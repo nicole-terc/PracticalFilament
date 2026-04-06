@@ -296,7 +296,9 @@ class IosFilamentEngine(
         )
     }
 
-    override fun loadMesh(path: String, materialInstanceHandle: Int): Int = -1
+    override fun loadMesh(path: String, materialInstanceHandle: Int): Int {
+        return bridge.loadMeshFromPath(path, materialInstanceHandle = materialInstanceHandle)
+    }
 
     override fun createMorphRenderable(
         materialInstanceHandle: Int,
@@ -466,6 +468,7 @@ interface FilamentBridgeProtocol {
     fun createTextureWithWidth(width: Int, height: Int, pixels: ByteArray): Int
     fun loadTextureFromPath(path: String, colorFormat: Int): Int
     fun setTextureParam(instanceHandle: Int, name: String, textureHandle: Int)
+    fun loadMeshFromPath(path: String, materialInstanceHandle: Int): Int
     fun createPlaneWithMaterial(instanceHandle: Int, width: Float, height: Float): Int
     fun createSphereWithMaterial(instanceHandle: Int, radius: Float): Int
     fun createCustomRenderableWithMaterial(

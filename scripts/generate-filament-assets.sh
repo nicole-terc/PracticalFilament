@@ -110,7 +110,7 @@ build_models(){
         mkdir -p "$output_parent"
         rm -rf "$output_base"
         echo "filamesh $relative_path -> ${output_base#"$ROOT_DIR"/}/"
-        "$FILAMESH" --compress "$source_file" "$output_base">/dev/null
+        "$FILAMESH" "$source_file" "$output_base">/dev/null
     done < <(find "$MODELS_SOURCE_DIR" -type f -name '*.obj' | LC_ALL=C sort)
 
     if [[ "$found" -eq 0 ]]; then

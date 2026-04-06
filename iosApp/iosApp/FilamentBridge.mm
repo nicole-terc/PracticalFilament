@@ -2,6 +2,7 @@
 
 #import <UIKit/UIKit.h>
 
+#import <filameshio/MeshReader.h>
 #import <filament/Engine.h>
 #import <filament/Renderer.h>
 #import <filament/Scene.h>
@@ -929,6 +930,33 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
         TextureSampler::WrapMode::REPEAT
     );
     instIt->second->setParameter(name.UTF8String, texIt->second, sampler);
+}
+
+- (int)loadMeshFromPath:(NSString *)path materialInstanceHandle:(int)instanceHandle {
+    if (!_engine) return -1;
+    auto instIt = _materialInstances.find(instanceHandle);
+    if (instIt == _materialInstances.end()) return -1;
+
+    NSData *data = PFLoadDataFromPathOrUri(path);
+    if (!data) return -1;
+
+    filamesh::MeshReader::Mesh mesh = filamesh::MeshReader::loadMeshFromBuffer(
+        _engine,
+        data.bytes,
+        nullptr,
+        nullptr,
+        instIt->second
+    );
+
+    if (mesh.renderable.isNull()) return -1;
+
+    _scene->addEntity(mesh.renderable);
+    _vertexBuffers.push_back(mesh.vertexBuffer);
+    _indexBuffers.push_back(mesh.indexBuffer);
+
+    int handle = _nextHandle++;
+    _renderables[handle] = mesh.renderable;
+    return handle;
 }
 
 - (int)createPlaneWithMaterial:(int)instanceHandle width:(float)width height:(float)height {
