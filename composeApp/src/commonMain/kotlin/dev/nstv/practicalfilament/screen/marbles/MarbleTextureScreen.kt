@@ -35,6 +35,8 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
+import dev.nstv.practicalfilament.screen.marbles.components.LoadedEnvironment
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleTextureBackgrounds
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import dev.nstv.practicalfilament.theme.components.SampleNotice
@@ -50,36 +52,13 @@ private val MarbleTextureBaseCamera = CameraConfig(
     lookAt = Float3(0f, 0f, 0f),
 )
 
-private data class EnvironmentOption(
-    val label: String,
-    val iblPath: String? = null,
-    val skyboxPath: String? = null,
-)
-
-private data class LoadedEnvironment(
-    val indirectLightHandle: Int,
-    val skyboxHandle: Int,
-)
 
 private val MarbleTextureMaterials = listOf(
     brownMudLeavesMaterial(),
     mossMaterial(),
 )
 
-private val MarbleTextureBackgrounds = listOf(
-    EnvironmentOption(label = "None"),
-    environmentOption("flower_road_2k"),
-    environmentOption("flower_road_no_sun_2k"),
-    environmentOption("graffiti_shelter_2k"),
-    environmentOption("lightroom_14b"),
-    environmentOption("noon_grass_2k"),
-    environmentOption("parking_garage_2k"),
-    environmentOption("pillars_2k"),
-    environmentOption("studio_small_02_2k"),
-    environmentOption("syferfontein_18d_clear_2k"),
-    environmentOption("the_sky_is_on_fire_2k"),
-    environmentOption("venetian_crossroads_2k"),
-)
+
 
 @Composable
 fun MarbleTextureScreen(
@@ -374,14 +353,6 @@ fun MarbleTextureScreen(
                 text = "Drag to orbit and pinch to zoom.",
             )
         },
-    )
-}
-
-private fun environmentOption(name: String): EnvironmentOption {
-    return EnvironmentOption(
-        label = name,
-        iblPath = "files/envs/$name/${name}_ibl.ktx",
-        skyboxPath = "files/envs/$name/${name}_skybox.ktx",
     )
 }
 

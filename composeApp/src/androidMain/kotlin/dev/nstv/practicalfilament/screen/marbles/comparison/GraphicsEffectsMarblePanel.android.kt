@@ -30,8 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightType
-import dev.nstv.practicalfilament.screen.marbles.ComparisonMarbleCamera
-import dev.nstv.practicalfilament.screen.marbles.MarbleAliveLights
+import dev.nstv.practicalfilament.screen.marbles.components.ComparisonMarbleCamera
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleAliveLights
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt

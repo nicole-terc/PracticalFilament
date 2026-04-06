@@ -15,7 +15,7 @@ import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.material.Material
-import dev.nstv.practicalfilament.screen.marbles.MarbleUiBackgroundFilament
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackgroundFilament
 
 @Composable
 internal fun SphereMaterialView(

@@ -9,7 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.material.Material
-import dev.nstv.practicalfilament.screen.marbles.SingleMarbleCamera
+import dev.nstv.practicalfilament.screen.marbles.components.SingleMarbleCamera
 
 
 @Composable

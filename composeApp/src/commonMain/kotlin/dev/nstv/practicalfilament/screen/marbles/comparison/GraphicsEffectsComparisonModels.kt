@@ -2,9 +2,9 @@ package dev.nstv.practicalfilament.screen.marbles.comparison
 
 import androidx.compose.ui.graphics.Color
 import dev.nstv.practicalfilament.filament.material.Material
-import dev.nstv.practicalfilament.screen.marbles.MarbleCeramicMaterial
-import dev.nstv.practicalfilament.screen.marbles.MarbleGlassMaterial
-import dev.nstv.practicalfilament.screen.marbles.MarbleMetalMaterial
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleCeramicMaterial
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleGlassMaterial
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleMetalMaterial
 
 internal enum class ComparisonPresentationMode(
     val label: String,

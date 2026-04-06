@@ -43,9 +43,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.nstv.practicalfilament.filament.FilamentHostViewMode
-import dev.nstv.practicalfilament.screen.marbles.MarbleUiAccent
-import dev.nstv.practicalfilament.screen.marbles.MarbleUiBackground
-import dev.nstv.practicalfilament.screen.marbles.MarbleUiMuted
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiAccent
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackground
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiMuted
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 

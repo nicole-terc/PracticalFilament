@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import dev.nstv.practicalfilament.screen.marbles.MarbleUiText
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiText
 
 @Composable
 internal actual fun EffectsMarblePanel(

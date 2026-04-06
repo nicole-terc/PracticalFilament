@@ -1,11 +1,11 @@
 package dev.nstv.practicalfilament.components.materials
 
-import dev.nstv.practicalfilament.screen.marbles.MarbleCeramicMaterial
-import dev.nstv.practicalfilament.screen.marbles.MarbleClayMaterial
-import dev.nstv.practicalfilament.screen.marbles.MarbleGlassMaterial
-import dev.nstv.practicalfilament.screen.marbles.MarbleMetalMaterial
-import dev.nstv.practicalfilament.screen.marbles.MarbleStoneMaterial
-import dev.nstv.practicalfilament.screen.marbles.MarbleVelvetMaterial
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleCeramicMaterial
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleClayMaterial
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleGlassMaterial
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleMetalMaterial
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleStoneMaterial
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleVelvetMaterial
 
 val MaterialOverridesList = listOf(
     MarbleClayMaterial,
@@ -23,6 +23,7 @@ val MaterialOverridesList = listOf(
     sheepFluffMaterial(),
     sheepBodyMaterial(),
     brownMudLeavesMaterial(),
+    mossMaterial(),
 )
 
 val MaterialFilesList = MaterialOverridesList

@@ -35,13 +35,13 @@ import dev.nstv.practicalfilament.filament.FilamentClipShape
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentHostViewMode
 import dev.nstv.practicalfilament.filament.FilamentView
-import dev.nstv.practicalfilament.screen.marbles.ComparisonMarbleCamera
-import dev.nstv.practicalfilament.screen.marbles.MarbleAliveLights
-import dev.nstv.practicalfilament.screen.marbles.MarbleUiAccent
-import dev.nstv.practicalfilament.screen.marbles.MarbleUiBackground
-import dev.nstv.practicalfilament.screen.marbles.MarbleUiBackgroundFilament
-import dev.nstv.practicalfilament.screen.marbles.MarbleUiMuted
-import dev.nstv.practicalfilament.screen.marbles.MarbleUiText
+import dev.nstv.practicalfilament.screen.marbles.components.ComparisonMarbleCamera
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleAliveLights
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiAccent
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackground
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackgroundFilament
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiMuted
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiText
 import dev.nstv.practicalfilament.theme.Grid
 import practicalfilament.composeapp.generated.resources.Res
 
