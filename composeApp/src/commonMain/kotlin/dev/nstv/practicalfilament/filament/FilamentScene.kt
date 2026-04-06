@@ -4,7 +4,7 @@ enum class LightType { DIRECTIONAL, POINT, SPOT, SUN }
 
 data class LightConfig(
     val type: LightType,
-    val color: Color = Color(1f, 1f, 1f),
+    val color: FilamentColor = FilamentColor(1f, 1f, 1f),
     val intensity: Float = 100_000f,
     val position: Float3 = Float3(0f, 0f, 0f),
     val falloffRadius: Float = 1f,

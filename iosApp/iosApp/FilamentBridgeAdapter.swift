@@ -390,13 +390,6 @@ private extension KotlinShortArray {
     }
 }
 
-private extension KotlinByteArray {
-    func toData() -> Data {
-        let count = Int(size)
-        return Data((0..<count).map { UInt8(bitPattern: get(index: Int32($0))) })
-    }
-}
-
 private extension KotlinIntArray {
     func toInt32Data() -> Data {
         let count = Int(size)

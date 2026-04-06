@@ -22,7 +22,7 @@ class IosFilamentEngine(
     override val supportsMaterialBuilder: Boolean = false
     override val isInitialized: Boolean get() = _isInitialized
 
-    fun setClearColor(color: Color) {
+    fun setClearColor(color: FilamentColor) {
         bridge.setClearColorRGBA(color.r, g = color.g, b = color.b, a = color.a)
     }
 
@@ -177,7 +177,7 @@ class IosFilamentEngine(
             is UInt3 -> bridge.setInt3Param(instanceHandle, name = param.name, x = value.x.toInt(), y = value.y.toInt(), z = value.z.toInt())
             is UInt4 -> bridge.setInt4Param(instanceHandle, name = param.name, x = value.x.toInt(), y = value.y.toInt(), z = value.z.toInt(), w = value.w.toInt())
             is FloatArray -> setFloatArrayParam(instanceHandle, param.name, value, definition)
-            is Color -> bridge.setFloat3Param(instanceHandle, name = param.name, x = value.r, y = value.g, z = value.b)
+            is FilamentColor -> bridge.setFloat3Param(instanceHandle, name = param.name, x = value.r, y = value.g, z = value.b)
             is IntArray, is UIntArray, is BooleanArray -> error("Array material parameters are not yet supported by the iOS bridge for ${param.name}")
             else -> error("Unsupported material parameter value for ${param.name}: ${value::class.simpleName}")
         }

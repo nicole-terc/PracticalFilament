@@ -21,7 +21,7 @@ Current repo snapshot:
 - `composeApp/` shared Kotlin Multiplatform module
 - `androidApp/` Android application host project
 - `iosApp/` native iOS host project and Xcode project
-- `iosApp/Frameworks/filament/` vendored iOS Filament SDK headers and static libraries used by the Xcode project
+- `tools/filament/1.70.1/ios/` vendored iOS Filament SDK headers and static libraries used by the Xcode project
 - `gradle/libs.versions.toml` centralized dependency and plugin versions
 
 ## Architecture
@@ -78,7 +78,7 @@ Runtime material editing is metadata-driven:
 ./gradlew iosSimulatorArm64Test
 ```
 
-For iOS app development, open `iosApp/iosApp.xcodeproj` in Xcode. The current project is linked against the vendored Filament SDK in `iosApp/Frameworks/filament`.
+For iOS app development, open `iosApp/iosApp.xcodeproj` in Xcode. The current project is linked against the vendored Filament SDK in `tools/filament/1.70.1/ios`.
 
 ## Notable Implementation Areas
 
@@ -90,7 +90,7 @@ For iOS app development, open `iosApp/iosApp.xcodeproj` in Xcode. The current pr
 - `composeApp/src/iosMain/kotlin/dev/nstv/practicalfilament/filament/` Kotlin iOS engine hooks, Metal layer hosting, and the `FilamentBridgeProtocol`
 - `iosApp/iosApp/FilamentBridge.mm` and related bridge files for native iOS interop with Filament C++
 - `iosApp/iosApp/FilamentBridgeAdapter.swift` Swift adapter that conforms to the Kotlin-exported bridge protocol and delegates to the ObjC++ bridge
-- `iosApp/Frameworks/filament/` local Filament iOS distribution consumed by the Xcode project
+- `tools/filament/1.70.1/ios/` local Filament iOS distribution consumed by the Xcode project
 
 ## Dependency Notes
 
@@ -108,7 +108,7 @@ Managed in `gradle/libs.versions.toml`:
 
 Filament dependency setup is platform-specific:
 - Android uses the Filament Android artifacts from Gradle
-- iOS currently uses the vendored SDK under `iosApp/Frameworks/filament` with Xcode `HEADER_SEARCH_PATHS` / `LIBRARY_SEARCH_PATHS`
+- iOS currently uses the vendored SDK under `tools/filament/1.70.1/ios` with Xcode `HEADER_SEARCH_PATHS` / `LIBRARY_SEARCH_PATHS`
 
 ## Known Tooling Note
 

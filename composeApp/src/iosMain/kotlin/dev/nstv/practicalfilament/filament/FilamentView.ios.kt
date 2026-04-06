@@ -8,14 +8,13 @@ import androidx.compose.ui.interop.UIKitView
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
-import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSizeMake
 import platform.Metal.MTLCreateSystemDefaultDevice
 import platform.Metal.MTLPixelFormatBGRA8Unorm
 import platform.QuartzCore.CAMetalLayer
 import platform.UIKit.UIColor
-import platform.UIKit.UIView
 import platform.UIKit.UIScreen
+import platform.UIKit.UIView
 
 /**
  * Singleton holder for the FilamentBridge instance.
@@ -34,7 +33,7 @@ actual fun FilamentView(
     modifier: Modifier,
     camera: CameraConfig,
     lights: List<LightConfig>,
-    backgroundColor: Color,
+    backgroundColor: FilamentColor,
     clipShape: FilamentClipShape?,
     isOpaque: Boolean,
     hostViewMode: FilamentHostViewMode,

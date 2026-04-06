@@ -16,14 +16,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.filament.SwapChainFlags
 import com.google.android.filament.android.UiHelper
-import kotlin.math.min
 
 @Composable
 actual fun FilamentView(
     modifier: Modifier,
     camera: CameraConfig,
     lights: List<LightConfig>,
-    backgroundColor: Color,
+    backgroundColor: FilamentColor,
     clipShape: FilamentClipShape?,
     isOpaque: Boolean,
     hostViewMode: FilamentHostViewMode,

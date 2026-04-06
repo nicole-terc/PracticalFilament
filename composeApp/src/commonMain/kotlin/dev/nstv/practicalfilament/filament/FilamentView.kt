@@ -15,7 +15,7 @@ expect fun FilamentView(
     modifier: Modifier = Modifier,
     camera: CameraConfig = CameraConfig(),
     lights: List<LightConfig> = listOf(LightConfig(type = LightType.DIRECTIONAL)),
-    backgroundColor: Color = Color(0f, 0f, 0f, 1f),
+    backgroundColor: FilamentColor = FilamentColor(0f, 0f, 0f, 1f),
     clipShape: FilamentClipShape? = null,
     isOpaque: Boolean = true,
     hostViewMode: FilamentHostViewMode = FilamentHostViewMode.Auto,
