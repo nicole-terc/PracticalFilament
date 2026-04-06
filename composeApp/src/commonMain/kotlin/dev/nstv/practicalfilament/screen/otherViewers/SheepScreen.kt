@@ -47,6 +47,7 @@ import dev.nstv.practicalfilament.filament.VertexAttributeLayout
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.toByteArray
+import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.SampleNotice
 import practicalfilament.composeapp.generated.resources.Res
@@ -376,6 +377,9 @@ fun SheepScreen(
                 .padding(Grid.Two),
         ) {
             supportNotice?.let { SampleNotice(it) }
+            EnvironmentSelectionField(
+                filamentEngine = filamentEngine,
+            )
             Text("Fluff Material")
             materialParameterDefinitions.forEach { definition ->
                 val parameter = materialParameters[definition.name] ?: return@forEach
