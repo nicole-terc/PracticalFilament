@@ -51,6 +51,11 @@ enum class PrimitiveType {
     POINTS,
 }
 
+enum class TextureColorFormat {
+    RGBA8,
+    SRGB8_A8,
+}
+
 enum class MaterialBlendingMode {
     OPAQUE,
     TRANSPARENT,

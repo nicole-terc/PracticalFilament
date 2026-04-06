@@ -32,6 +32,7 @@
 #import <geometry/SurfaceOrientation.h>
 
 #include <cmath>
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstring>
@@ -73,18 +74,41 @@ static void *PFMakeOwnedCopy(const void *source, size_t size) {
     return copy;
 }
 
+typedef NS_ENUM(NSInteger, PFTextureColorFormat) {
+    PFTextureColorFormatRgba8 = 0,
+    PFTextureColorFormatSrgb8A8 = 1,
+};
+
+static uint8_t PFMipLevelCount(uint32_t width, uint32_t height) {
+    uint32_t maxDimension = std::max(width, height);
+    uint8_t levels = 1;
+    while (maxDimension > 1) {
+        maxDimension >>= 1;
+        levels++;
+    }
+    return levels;
+}
+
 static Texture *PFCreateTextureFromRgbaBytes(
         Engine *engine,
         uint32_t width,
         uint32_t height,
         void *pixelData,
-        size_t byteCount) {
+        size_t byteCount,
+        PFTextureColorFormat colorFormat) {
+    auto mipLevelCount = PFMipLevelCount(width, height);
+    auto usage = Texture::Usage(Texture::Usage::DEFAULT | Texture::Usage::GEN_MIPMAPPABLE);
     auto *texture = Texture::Builder()
         .width(width)
         .height(height)
         .sampler(Texture::Sampler::SAMPLER_2D)
-        .format(Texture::InternalFormat::RGBA8)
-        .levels(1)
+        .usage(usage)
+        .format(
+            colorFormat == PFTextureColorFormatSrgb8A8
+                ? Texture::InternalFormat::SRGB8_A8
+                : Texture::InternalFormat::RGBA8
+        )
+        .levels(mipLevelCount)
         .build(*engine);
 
     Texture::PixelBufferDescriptor buffer(
@@ -93,6 +117,7 @@ static Texture *PFCreateTextureFromRgbaBytes(
         [](void *buffer, size_t, void *) { free(buffer); }
     );
     texture->setImage(*engine, 0, std::move(buffer));
+    texture->generateMipmaps(*engine);
     return texture;
 }
 
@@ -823,7 +848,8 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
         (uint32_t)width,
         (uint32_t)height,
         pixelCopy,
-        size
+        size,
+        PFTextureColorFormatRgba8
     );
 
     int handle = _nextHandle++;
@@ -831,7 +857,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     return handle;
 }
 
-- (int)loadTextureFromPath:(NSString *)path {
+- (int)loadTextureFromPath:(NSString *)path colorFormat:(int)colorFormat {
     if (!_engine) return -1;
 
     NSData *data = PFLoadDataFromPathOrUri(path);
@@ -882,7 +908,8 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
         (uint32_t)width,
         (uint32_t)height,
         pixelCopy,
-        byteCount
+        byteCount,
+        static_cast<PFTextureColorFormat>(colorFormat)
     );
 
     int handle = _nextHandle++;
@@ -897,7 +924,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     if (texIt == _textures.end()) return;
 
     TextureSampler sampler(
-        TextureSampler::MinFilter::LINEAR,
+        TextureSampler::MinFilter::LINEAR_MIPMAP_LINEAR,
         TextureSampler::MagFilter::LINEAR,
         TextureSampler::WrapMode::REPEAT
     );
@@ -972,8 +999,8 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     auto it = _materialInstances.find(instanceHandle);
     if (it == _materialInstances.end()) return -1;
 
-    const int stacks = 24;
-    const int slices = 24;
+    const int stacks = 64;
+    const int slices = 64;
     const int vertexCount = (stacks + 1) * (slices + 1);
 
     // Generate positions, normals, and UVs

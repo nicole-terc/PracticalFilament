@@ -79,7 +79,7 @@
                    m30:(float)m30 m31:(float)m31 m32:(float)m32 m33:(float)m33;
 
 - (int)createTextureWithWidth:(int)width height:(int)height pixels:(NSData * _Nonnull)pixels;
-- (int)loadTextureFromPath:(NSString * _Nonnull)path;
+- (int)loadTextureFromPath:(NSString * _Nonnull)path colorFormat:(int)colorFormat;
 - (void)setTextureParam:(int)instanceHandle name:(NSString * _Nonnull)name textureHandle:(int)textureHandle;
 
 - (int)createPlaneWithMaterial:(int)instanceHandle width:(float)width height:(float)height;

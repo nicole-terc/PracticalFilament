@@ -27,6 +27,7 @@ import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
+import dev.nstv.practicalfilament.filament.TextureColorFormat
 import dev.nstv.practicalfilament.filament.VertexAttribute
 import dev.nstv.practicalfilament.filament.VertexAttributeLayout
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
@@ -127,7 +128,10 @@ fun PageCurlScreen(
                         notice = "The page material does not expose a sampler parameter."
                         return@FilamentView
                     }
-                    val textureHandle = readyEngine.loadTexture(Res.getUri(PageTexturePath))
+                    val textureHandle = readyEngine.loadTexture(
+                        Res.getUri(PageTexturePath),
+                        TextureColorFormat.SRGB8_A8,
+                    )
                     if (textureHandle <= 0) {
                         notice = "The page texture could not be loaded."
                         return@FilamentView

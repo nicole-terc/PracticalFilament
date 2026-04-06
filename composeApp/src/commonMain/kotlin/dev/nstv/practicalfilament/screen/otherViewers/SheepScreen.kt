@@ -29,6 +29,9 @@ import dev.nstv.composablesheep.library.model.FluffStyle
 import dev.nstv.practicalfilament.components.ParameterInputField
 import dev.nstv.practicalfilament.components.materials.sheepBodyMaterial
 import dev.nstv.practicalfilament.components.materials.sheepFluffMaterial
+import dev.nstv.practicalfilament.components.utils.OrbitQuaternion
+import dev.nstv.practicalfilament.components.utils.orbitCameraConfig
+import dev.nstv.practicalfilament.components.utils.orbitCameraControls
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CameraConfig
@@ -80,6 +83,11 @@ private const val SheepExplosionDistanceMin = 0f
 private const val SheepExplosionDistanceMax = 4f
 private const val SheepExplosionProgressMin = 0f
 private const val SheepExplosionProgressMax = 1f
+private val SheepBaseCamera = CameraConfig(
+    position = Float3(0f, 0f, SheepDefaultCameraDistance),
+    lookAt = Float3(0f, 0f, 0f),
+    fovDegrees = 45.0,
+)
 
 private data class FluffChunk(
     val center: Float3,
@@ -143,47 +151,13 @@ private class SheepExplosionState {
     }
 }
 
-private data class SheepQuaternion(
-    val x: Float,
-    val y: Float,
-    val z: Float,
-    val w: Float,
-) {
-    operator fun times(other: SheepQuaternion): SheepQuaternion {
-        return multiplyRaw(other).normalized()
-    }
-
-    private fun multiplyRaw(other: SheepQuaternion): SheepQuaternion {
-        return SheepQuaternion(
-            x = w * other.x + x * other.w + y * other.z - z * other.y,
-            y = w * other.y - x * other.z + y * other.w + z * other.x,
-            z = w * other.z + x * other.y - y * other.x + z * other.w,
-            w = w * other.w - x * other.x - y * other.y - z * other.z,
-        )
-    }
-
-    fun normalized(): SheepQuaternion {
-        val magnitude = sqrt(x * x + y * y + z * z + w * w)
-        if (magnitude <= 1e-6f) return SheepQuaternion(0f, 0f, 0f, 1f)
-        return SheepQuaternion(x / magnitude, y / magnitude, z / magnitude, w / magnitude)
-    }
-
-    fun conjugate(): SheepQuaternion = SheepQuaternion(-x, -y, -z, w)
-
-    fun rotate(vector: Float3): Float3 {
-        val quaternionVector = SheepQuaternion(vector.x, vector.y, vector.z, 0f)
-        val rotated = multiplyRaw(quaternionVector).multiplyRaw(conjugate())
-        return Float3(rotated.x, rotated.y, rotated.z)
-    }
-}
-
 @Composable
 fun SheepScreen(
     modifier: Modifier = Modifier,
 ) {
     var filamentEngine by remember { mutableStateOf<FilamentEngine?>(null) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
-    var orientation by remember { mutableStateOf(initialSheepOrientation()) }
+    var orientation by remember { mutableStateOf(OrbitQuaternion.Identity) }
     var cameraDistance by remember { mutableFloatStateOf(SheepDefaultCameraDistance) }
     var animationSpeed by remember { mutableFloatStateOf(0.5f) }
     var explosionDistanceScale by remember { mutableFloatStateOf(1f) }
@@ -209,7 +183,8 @@ fun SheepScreen(
     SideEffect {
         val currentEngine = filamentEngine ?: return@SideEffect
         currentEngine.updateCamera(
-            sheepCameraForOrientation(
+            orbitCameraConfig(
+                baseCamera = SheepBaseCamera,
                 orientation = orientation,
                 distance = cameraDistance,
             )
@@ -289,27 +264,18 @@ fun SheepScreen(
                             },
                         )
                     }
-                    .pointerInput(renderables.size, viewportSize) {
-                        detectTransformGestures(
-                            panZoomLock = true,
-                        ) { centroid, pan, zoom, _ ->
-                            val previousCentroid = centroid - pan
-                            val previousPoint = previousCentroid.toSheepArcballPoint(viewportSize)
-                            val currentPoint = centroid.toSheepArcballPoint(viewportSize)
-                            if (previousPoint != null && currentPoint != null) {
-                                orientation =
-                                    sheepArcballDelta(previousPoint, currentPoint) * orientation
-                            }
-
-                            if (zoom > 0f) {
-                                cameraDistance = (cameraDistance / zoom).coerceIn(
-                                    SheepMinCameraDistance,
-                                    SheepMaxCameraDistance,
-                                )
-                            }
-                        }
-                    },
-                camera = sheepCameraForOrientation(
+                    .orbitCameraControls(
+                        viewportSize = viewportSize,
+                        orientation = orientation,
+                        onOrientationChange = { orientation = it },
+                        distance = cameraDistance,
+                        onDistanceChange = { cameraDistance = it },
+                        minDistance = SheepMinCameraDistance,
+                        maxDistance = SheepMaxCameraDistance,
+                        enabled = renderables.isNotEmpty(),
+                    ),
+                camera = orbitCameraConfig(
+                    baseCamera = SheepBaseCamera,
                     orientation = orientation,
                     distance = cameraDistance,
                 ),
@@ -330,7 +296,7 @@ fun SheepScreen(
                     }
 
                     filamentEngine = engine
-                    orientation = initialSheepOrientation()
+                    orientation = OrbitQuaternion.Identity
                     cameraDistance = SheepDefaultCameraDistance
                     explosionState.reset()
                     explosionProgressControl = 0f
@@ -1139,74 +1105,6 @@ private fun sheepGeometryAttributes(): List<VertexAttributeLayout> = listOf(
     ),
 )
 
-private fun initialSheepOrientation(): SheepQuaternion = SheepQuaternion(0f, 0f, 0f, 1f)
-
-private fun sheepCameraForOrientation(
-    orientation: SheepQuaternion,
-    distance: Float = SheepDefaultCameraDistance,
-): CameraConfig {
-    val orbit = orientation.conjugate()
-    return CameraConfig(
-        position = orbit.rotate(Float3(0f, 0f, distance)),
-        lookAt = Float3(0f, 0f, 0f),
-        up = orbit.rotate(Float3(0f, 1f, 0f)),
-        fovDegrees = 45.0,
-    )
-}
-
-private fun sheepArcballDelta(from: Float3, to: Float3): SheepQuaternion {
-    val dot = (from sheepDot to).coerceIn(-1f, 1f)
-    val cross = from sheepCross to
-    val magnitude = cross.lengthSheep()
-    if (magnitude <= 1e-6f) {
-        return if (dot < 0f) {
-            val fallbackAxis = if (abs(from.x) < 0.9f) {
-                Float3(1f, 0f, 0f) sheepCross from
-            } else {
-                Float3(0f, 1f, 0f) sheepCross from
-            }.normalizedSheep()
-            SheepQuaternion(fallbackAxis.x, fallbackAxis.y, fallbackAxis.z, 0f)
-        } else {
-            SheepQuaternion(0f, 0f, 0f, 1f)
-        }
-    }
-    return SheepQuaternion(
-        x = cross.x,
-        y = cross.y,
-        z = cross.z,
-        w = 1f + dot,
-    ).normalized()
-}
-
-private fun Offset.toSheepArcballPoint(size: IntSize): Float3? {
-    if (size.width <= 0 || size.height <= 0) return null
-    val scale = minOf(size.width, size.height).toFloat()
-    val x = (2f * this.x - size.width) / scale
-    val y = (size.height - 2f * this.y) / scale
-    val lengthSquared = x * x + y * y
-    return if (lengthSquared <= 1f) {
-        Float3(x, y, sqrt(1f - lengthSquared))
-    } else {
-        val inverseLength = 1f / sqrt(lengthSquared)
-        Float3(x * inverseLength, y * inverseLength, 0f)
-    }
-}
-
-private infix fun Float3.sheepDot(other: Float3): Float = x * other.x + y * other.y + z * other.z
-
-private infix fun Float3.sheepCross(other: Float3): Float3 = Float3(
-    x = y * other.z - z * other.y,
-    y = z * other.x - x * other.z,
-    z = x * other.y - y * other.x,
-)
-
-private fun Float3.lengthSheep(): Float = sqrt(x * x + y * y + z * z)
-
-private fun Float3.normalizedSheep(): Float3 {
-    val length = lengthSheep()
-    if (length <= 1e-6f) return Float3(0f, 0f, 1f)
-    return Float3(x / length, y / length, z / length)
-}
 
 private fun point3(x: Float, y: Float, z: Float): Float3 = Float3(x, y, z)
 
@@ -1310,6 +1208,12 @@ private fun sheepExplosionOffset(baseTransform: FloatArray, index: Int): Float3 
         y = direction.y * SheepExplosionDistance * distanceScale,
         z = direction.z * SheepExplosionDistance * distanceScale,
     )
+}
+
+private fun Float3.normalizedSheep(): Float3 {
+    val length = sqrt(x * x + y * y + z * z)
+    if (length <= 1e-6f) return Float3(0f, 0f, 1f)
+    return Float3(x / length, y / length, z / length)
 }
 
 private fun extractTranslation(matrix: FloatArray): Float3 = Float3(

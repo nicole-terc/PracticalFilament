@@ -212,8 +212,8 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
         return bridge.createTexture(withWidth: width, height: height, pixels: data)
     }
 
-    func loadTextureFromPath(path: String) -> Int32 {
-        bridge.loadTexture(fromPath: path)
+    func loadTextureFromPath(path: String, colorFormat: Int32) -> Int32 {
+        bridge.loadTexture(fromPath: path, colorFormat: colorFormat)
     }
 
     func setTextureParam(instanceHandle: Int32, name: String, textureHandle: Int32) {

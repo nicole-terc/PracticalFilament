@@ -1,5 +1,6 @@
 package dev.nstv.practicalfilament.components.materials
 
+import dev.nstv.practicalfilament.filament.TextureColorFormat
 import dev.nstv.practicalfilament.filament.material.Material.TextureMaterial
 import dev.nstv.practicalfilament.filament.material.Material.TextureMaterial.TextureBinding
 
@@ -10,26 +11,27 @@ private const val BrownMudLeavesTextureRoot = "files/textures/brown_mud_leaves_0
 fun brownMudLeavesMaterial() = TextureMaterial(
     label = "Brown Mud Leaves",
     materialPath = TextureMaterialPath,
+    overrides = mapOf(
+        "uvScale" to 4.5f,
+        "normalStrength" to 1.8f,
+    ),
     textureBindings = listOf(
         TextureBinding(
-            parameterName = "baseColorMap",
+            parameterName = "baseColor",
             texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_diff_2k.jpg",
             label = "Base Color",
         ),
         TextureBinding(
-            parameterName = "normalMap",
+            parameterName = "normal",
             texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_nor_gl_2k.jpg",
             label = "Normal (GL)",
+            colorFormat = TextureColorFormat.RGBA8,
         ),
         TextureBinding(
-            parameterName = "roughnessMap",
-            texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_rough_2k.jpg",
-            label = "Roughness",
-        ),
-        TextureBinding(
-            parameterName = "aoMap",
-            texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_ao_2k.jpg",
-            label = "Ambient Occlusion",
+            parameterName = "aoRoughnessMetallic",
+            texturePath = "$BrownMudLeavesTextureRoot/brown_mud_leaves_01_arm_2k.jpg",
+            label = "ARM",
+            colorFormat = TextureColorFormat.RGBA8,
         ),
     ),
 )

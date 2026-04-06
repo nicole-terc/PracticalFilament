@@ -1,5 +1,7 @@
 package dev.nstv.practicalfilament.filament.material
 
+import dev.nstv.practicalfilament.filament.TextureColorFormat
+
 sealed interface Material {
     val label: String
     val materialPath: String
@@ -21,6 +23,7 @@ sealed interface Material {
             val parameterName: String,
             val texturePath: String,
             val label: String,
+            val colorFormat: TextureColorFormat = TextureColorFormat.SRGB8_A8,
         )
     }
 }
