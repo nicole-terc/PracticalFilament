@@ -2,12 +2,13 @@ material {
     name : TextureMaterial,
     shadingModel : lit,
     specularAntiAliasing : true,
+    multiBounceAmbientOcclusion : true,
+    specularAmbientOcclusion : simple,
     requires : [ uv0 ],
     parameters : [
-        { type : sampler2d, name : albedoTex },
-        { type : sampler2d, name : normalTex },
-        { type : sampler2d, name : roughnessTex },
-        { type : sampler2d, name : aoTex },
+        { type : sampler2d, name : baseColor },
+        { type : sampler2d, name : aoRoughnessMetallic },
+        { type : sampler2d, name : normal },
         { type : float, name : uvScale },
         { type : float, name : normalStrength }
     ]
@@ -15,22 +16,23 @@ material {
 
 fragment {
     void material(inout MaterialInputs material) {
-        vec2 uv = fract(getUV0() * materialParams.uvScale);
-        vec4 baseColor = texture(materialParams_albedoTex, uv);
-        vec3 normalSample = texture(materialParams_normalTex, uv).xyz * 2.0 - 1.0;
-        float roughness = texture(materialParams_roughnessTex, uv).r;
-        float ao = texture(materialParams_aoTex, uv).r;
+        vec2 uv = getUV0() * materialParams.uvScale;
+
+        vec3 normalSample = texture(materialParams_normal, uv).xyz * 2.0 - 1.0;
         material.normal = normalize(
             vec3(
                 normalSample.xy * materialParams.normalStrength,
                 normalSample.z
             )
         );
+
         prepareMaterial(material);
-        material.baseColor = baseColor;
-        material.roughness = clamp(roughness, 0.28, 1.0);
-        material.ambientOcclusion = ao;
-        material.metallic = 0.0;
-        material.reflectance = 0.25;
+
+        material.baseColor = texture(materialParams_baseColor, uv);
+
+        vec3 arm = texture(materialParams_aoRoughnessMetallic, uv).rgb;
+        material.ambientOcclusion = arm.r;
+        material.roughness        = arm.g;
+        material.metallic         = arm.b;
     }
 }

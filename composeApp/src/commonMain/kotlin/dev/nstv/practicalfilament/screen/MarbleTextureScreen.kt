@@ -20,6 +20,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import dev.nstv.practicalfilament.components.materials.brownMudLeavesMaterial
+import dev.nstv.practicalfilament.components.materials.mossMaterial
 import dev.nstv.practicalfilament.components.utils.OrbitQuaternion
 import dev.nstv.practicalfilament.components.utils.orbitCameraConfig
 import dev.nstv.practicalfilament.components.utils.orbitCameraControls
@@ -58,6 +59,7 @@ private data class LoadedEnvironment(
 
 private val MarbleTextureMaterials = listOf(
     brownMudLeavesMaterial(),
+    mossMaterial(),
 )
 
 private val MarbleTextureBackgrounds = listOf(

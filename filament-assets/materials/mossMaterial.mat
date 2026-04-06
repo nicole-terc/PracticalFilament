@@ -1,0 +1,37 @@
+material {
+    name : MossMaterial,
+    shadingModel : lit,
+    specularAntiAliasing : true,
+    multiBounceAmbientOcclusion : true,
+    specularAmbientOcclusion : simple,
+    requires : [ uv0 ],
+    parameters : [
+        { type : sampler2d, name : baseColor },
+        { type : sampler2d, name : normal },
+        { type : sampler2d, name : ao },
+        { type : sampler2d, name : roughness },
+        { type : float, name : uvScale },
+        { type : float, name : normalStrength }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        vec2 uv = getUV0() * materialParams.uvScale;
+
+        vec3 normalSample = texture(materialParams_normal, uv).xyz * 2.0 - 1.0;
+        material.normal = normalize(
+            vec3(
+                normalSample.xy * materialParams.normalStrength,
+                normalSample.z
+            )
+        );
+
+        prepareMaterial(material);
+
+        material.baseColor = texture(materialParams_baseColor, uv);
+        material.ambientOcclusion = texture(materialParams_ao, uv).r;
+        material.roughness = texture(materialParams_roughness, uv).r;
+        material.metallic = 0.0;
+    }
+}
