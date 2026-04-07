@@ -41,6 +41,7 @@ import practicalfilament.composeapp.generated.resources.Res
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.screen.marbles.components.MeshSelectionField
 import dev.nstv.practicalfilament.screen.marbles.components.MeshList
+import dev.nstv.practicalfilament.screen.marbles.components.MonkeyMesh
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import dev.nstv.practicalfilament.theme.components.SampleNotice
@@ -63,12 +64,12 @@ private val MarbleTextureMaterials = listOf(
 )
 
 @Composable
-fun MarbleTextureScreen(
+fun MarbleFilameshScreen(
     modifier: Modifier = Modifier,
 ) {
     var filamentEngine by remember { mutableStateOf<FilamentEngine?>(null) }
-    var selectedMesh by remember { mutableStateOf(MeshList.first()) }
-    var selectedMaterialIndex by remember { mutableIntStateOf(0) }
+    var selectedMesh by remember { mutableStateOf(MonkeyMesh) }
+    var selectedMaterialIndex by remember { mutableIntStateOf(2) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var orientation by remember { mutableStateOf(OrbitQuaternion.Identity) }
     var cameraDistance by remember { mutableStateOf(MarbleTextureBaseCamera.orbitDistance()) }
@@ -261,6 +262,7 @@ fun MarbleTextureScreen(
         controls = {
             notice?.let { SampleNotice(it) }
             MeshSelectionField(
+                selectedMeshIndex = MeshList.indexOf(selectedMesh),
                 onMeshSelectionChanged = {
                     selectedMesh = it
                     refreshScene()
@@ -282,7 +284,7 @@ fun MarbleTextureScreen(
             EnvironmentSelectionField(
                 filamentEngine = filamentEngine,
                 updateNotice = { notice = it },
-                selectedBackground = 8,
+                selectedBackground = 4,
             )
 
             Text(

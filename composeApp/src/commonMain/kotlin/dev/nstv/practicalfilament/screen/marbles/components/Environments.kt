@@ -29,24 +29,25 @@ internal data class LoadedEnvironment(
 
 internal val MarbleTextureBackgrounds = listOf(
     EnvironmentOption(label = "None"),
-    environmentOption("flower_road_2k"),
-    environmentOption("flower_road_no_sun_2k"),
-    environmentOption("graffiti_shelter_2k"),
-    environmentOption("lightroom_14b"),
-    environmentOption("noon_grass_2k"),
-    environmentOption("parking_garage_2k"),
-    environmentOption("pillars_2k"),
-    environmentOption("studio_small_02_2k"),
-    environmentOption("syferfontein_18d_clear_2k"),
-    environmentOption("the_sky_is_on_fire_2k"),
-    environmentOption("venetian_crossroads_2k"),
+    environmentOption(fileName = "flower_road_2k", label = "Flower Road"),
+    environmentOption(fileName = "flower_road_no_sun_2k", label = "Flower Road No Sun"),
+    environmentOption(fileName = "graffiti_shelter_2k", label = "Graffiti Shelter"),
+    environmentOption(fileName = "lightroom_14b", label = "Lightroom 14"),
+    environmentOption(fileName = "noon_grass_2k", label = "Noon Grass"),
+    environmentOption(fileName = "parking_garage_2k", label = "Parking Garage"),
+    environmentOption(fileName = "pillars_2k", label = "Pillars"),
+    environmentOption(fileName = "studio_small_02_2k", label = "Studio Small"),
+    environmentOption(fileName = "syferfontein_18d_clear_2k", label = "Syferfontein 18d Clear"),
+    environmentOption(fileName = "the_sky_is_on_fire_2k", label = "The Sky Is On Fire"),
+    environmentOption(fileName = "venetian_crossroads_2k", label = "Venetian Crossroads"),
+
 )
 
-internal fun environmentOption(name: String): EnvironmentOption {
+internal fun environmentOption(fileName: String, label: String = fileName): EnvironmentOption {
     return EnvironmentOption(
-        label = name,
-        iblPath = "files/envs/$name/${name}_ibl.ktx",
-        skyboxPath = "files/envs/$name/${name}_skybox.ktx",
+        label = label,
+        iblPath = "files/envs/$fileName/${fileName}_ibl.ktx",
+        skyboxPath = "files/envs/$fileName/${fileName}_skybox.ktx",
     )
 }
 

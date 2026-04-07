@@ -19,7 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.screen.marbles.MarbleScreen
-import dev.nstv.practicalfilament.screen.marbles.MarbleTextureScreen
+import dev.nstv.practicalfilament.screen.marbles.MarbleFilameshScreen
 import dev.nstv.practicalfilament.screen.marbles.comparison.GraphicsEffectsComparisonScreen
 import dev.nstv.practicalfilament.screen.marbles.steps.MarbleStepsScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MaterialViewerScreen
@@ -47,7 +47,7 @@ import dev.nstv.practicalfilament.theme.slidesBackground
 private enum class Screen {
     MATERIAL_VIEWER,
     MARBLE_VIEWER,
-    MARBLE_TEXTURE,
+    MARBLE_FILAMESH,
     MARBLE_STEPS,
     MARBLE_COMPARISON,
     REDBALL,
@@ -78,7 +78,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by remember { mutableStateOf(Screen.MARBLE_TEXTURE) }
+        var selectedScreen by remember { mutableStateOf(Screen.MARBLE_FILAMESH) }
 
         Column(
             modifier = Modifier
@@ -116,7 +116,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
                     Screen.MARBLE_VIEWER -> MarbleScreen()
                     Screen.MARBLE_STEPS -> MarbleStepsScreen()
-                    Screen.MARBLE_TEXTURE -> MarbleTextureScreen()
+                    Screen.MARBLE_FILAMESH -> MarbleFilameshScreen()
                     Screen.MARBLE_COMPARISON -> GraphicsEffectsComparisonScreen()
                     Screen.REDBALL -> RedballScreen()
                     Screen.SHEEP -> SheepScreen()
