@@ -22,12 +22,12 @@ import dev.nstv.practicalfilament.screen.marbles.MarbleScreen
 import dev.nstv.practicalfilament.screen.marbles.MarbleFilameshScreen
 import dev.nstv.practicalfilament.screen.marbles.comparison.GraphicsEffectsComparisonScreen
 import dev.nstv.practicalfilament.screen.marbles.steps.MarbleStepsScreen
+import dev.nstv.practicalfilament.screen.otherViewers.GltfViewerScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MaterialViewerScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MorphingScreen
 import dev.nstv.practicalfilament.screen.otherViewers.RedballScreen
 import dev.nstv.practicalfilament.screen.otherViewers.SheepScreen
 import dev.nstv.practicalfilament.screen.particles.ParticleWordScreen
-import dev.nstv.practicalfilament.screen.samples.GltfViewerScreen
 import dev.nstv.practicalfilament.screen.samples.HelloTriangleScreen
 import dev.nstv.practicalfilament.screen.samples.IBLScreen
 import dev.nstv.practicalfilament.screen.samples.LitCubeScreen

@@ -1,5 +1,8 @@
 package dev.nstv.practicalfilament.screen.otherViewers
 
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,17 +11,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
@@ -89,6 +99,31 @@ private val SheepBaseCamera = CameraConfig(
     fovDegrees = 45.0,
 )
 
+private enum class SheepBuildGroup {
+    FLUFF_CORE,
+    FLUFF_SHELL,
+    LEGS,
+    HEAD,
+    GLASSES,
+}
+
+private enum class SheepBuildStep {
+    NONE,
+    FLUFF_CORE,
+    FLUFF_ALL,
+    LEGS,
+    HEAD,
+    GLASSES;
+
+    companion object {
+        val entries_indexed = entries.toTypedArray()
+        fun fromIndex(index: Int): SheepBuildStep =
+            entries_indexed[index.coerceIn(0, entries_indexed.lastIndex)]
+    }
+}
+
+private const val SheepBuildAnimationDuration = 400
+
 private data class FluffChunk(
     val center: Float3,
     val radius: Float,
@@ -116,6 +151,7 @@ private data class SheepRenderable(
     val handle: Int,
     val baseTransform: FloatArray,
     val explosionOffset: Float3,
+    val buildGroup: SheepBuildGroup,
 )
 
 private class SheepExplosionState {
@@ -170,6 +206,32 @@ fun SheepScreen(
     var materialParameters by remember { mutableStateOf<Map<String, MaterialParameter>>(emptyMap()) }
     var supportNotice by remember { mutableStateOf<String?>(null) }
     val explosionState = remember { SheepExplosionState() }
+
+    val buildScope = rememberCoroutineScope()
+    var buildJob by remember { mutableStateOf<Job?>(null) }
+    var buildStep by remember { mutableStateOf(SheepBuildStep.GLASSES) }
+    var buildSliderIndex by remember { mutableIntStateOf(SheepBuildStep.GLASSES.ordinal) }
+    val buildTransition = updateTransition(targetState = buildStep, label = "sheepBuild")
+    val fluffCoreProgress by buildTransition.animateFloat(
+        label = "fluffCore",
+        transitionSpec = { tween(SheepBuildAnimationDuration) },
+    ) { step -> if (step >= SheepBuildStep.FLUFF_CORE) 1f else 0f }
+    val fluffShellProgress by buildTransition.animateFloat(
+        label = "fluffShell",
+        transitionSpec = { tween(SheepBuildAnimationDuration) },
+    ) { step -> if (step >= SheepBuildStep.FLUFF_ALL) 1f else 0f }
+    val legsProgress by buildTransition.animateFloat(
+        label = "legs",
+        transitionSpec = { tween(SheepBuildAnimationDuration) },
+    ) { step -> if (step >= SheepBuildStep.LEGS) 1f else 0f }
+    val headProgress by buildTransition.animateFloat(
+        label = "head",
+        transitionSpec = { tween(SheepBuildAnimationDuration) },
+    ) { step -> if (step >= SheepBuildStep.HEAD) 1f else 0f }
+    val glassesProgress by buildTransition.animateFloat(
+        label = "glasses",
+        transitionSpec = { tween(SheepBuildAnimationDuration) },
+    ) { step -> if (step >= SheepBuildStep.GLASSES) 1f else 0f }
 
     SideEffect {
         val currentEngine = filamentEngine ?: return@SideEffect
@@ -228,6 +290,13 @@ fun SheepScreen(
             )
             val explosionProgress = smoothStep(explosionState.progress)
             renderables.forEach { renderable ->
+                val groupProgress = when (renderable.buildGroup) {
+                    SheepBuildGroup.FLUFF_CORE -> fluffCoreProgress
+                    SheepBuildGroup.FLUFF_SHELL -> fluffShellProgress
+                    SheepBuildGroup.LEGS -> legsProgress
+                    SheepBuildGroup.HEAD -> headProgress
+                    SheepBuildGroup.GLASSES -> glassesProgress
+                }
                 currentEngine.setRenderableTransform(
                     renderable.handle,
                     sheepTransformForProgress(
@@ -235,6 +304,7 @@ fun SheepScreen(
                         renderable = renderable,
                         explosionProgress = explosionProgress,
                         explosionDistanceScale = explosionDistanceScale,
+                        buildProgress = groupProgress,
                     ),
                 )
             }
@@ -283,7 +353,8 @@ fun SheepScreen(
                 backgroundColor = FilamentColor(0f, 0f, 0f, 1f),
                 onEngineReady = { engine ->
                     val fluffMaterial = engine.loadMaterial(sheepFluffMaterial())
-                    val indirectLightHandle = engine.loadIndirectLight(Res.getUri(SheepIndirectLightPath))
+                    val indirectLightHandle =
+                        engine.loadIndirectLight(Res.getUri(SheepIndirectLightPath))
                     if (indirectLightHandle > 0) {
                         engine.setIndirectLight(
                             handle = indirectLightHandle,
@@ -361,6 +432,7 @@ fun SheepScreen(
                                 renderable = renderable,
                                 explosionProgress = explosionState.progress,
                                 explosionDistanceScale = explosionDistanceScale,
+                                buildProgress = 1f,
                             ),
                         )
                     }
@@ -389,8 +461,8 @@ fun SheepScreen(
                     value = parameter.value,
                 ) { updatedValue ->
                     materialParameters = materialParameters + (
-                        definition.name to MaterialParameter(definition.name, updatedValue)
-                    )
+                            definition.name to MaterialParameter(definition.name, updatedValue)
+                            )
                 }
             }
 
@@ -424,6 +496,49 @@ fun SheepScreen(
                 onValueChange = { value ->
                     explosionProgressControl = value
                     explosionState.snapTo(value)
+                },
+            )
+
+            Button(
+                modifier = Modifier.padding(top = Grid.Two),
+                onClick = {
+                    buildJob?.cancel()
+                    val goingDown = buildStep == SheepBuildStep.GLASSES
+                    buildJob = buildScope.launch {
+                        if (goingDown) {
+                            for (i in buildStep.ordinal - 1 downTo 0) {
+                                delay(SheepBuildAnimationDuration.toLong() + 100)
+                                val step = SheepBuildStep.fromIndex(i)
+                                buildStep = step
+                                buildSliderIndex = i
+                            }
+                        } else {
+                            for (i in buildStep.ordinal + 1..SheepBuildStep.GLASSES.ordinal) {
+                                delay(SheepBuildAnimationDuration.toLong() + 100)
+                                val step = SheepBuildStep.fromIndex(i)
+                                buildStep = step
+                                buildSliderIndex = i
+                            }
+                        }
+                        buildJob = null
+                    }
+                },
+            ) {
+                Text(if (buildStep == SheepBuildStep.GLASSES) "Deconstruct" else "Build")
+            }
+
+            Text(
+                modifier = Modifier.padding(top = Grid.Two),
+                text = "Build Step",
+            )
+            Slider(
+                value = buildSliderIndex.toFloat(),
+                valueRange = 0f..SheepBuildStep.GLASSES.ordinal.toFloat(),
+                steps = SheepBuildStep.GLASSES.ordinal - 1,
+                onValueChange = { value ->
+                    val index = value.toInt()
+                    buildSliderIndex = index
+                    buildStep = SheepBuildStep.fromIndex(index)
                 },
             )
         }
@@ -471,6 +586,7 @@ private fun buildSheepRenderables(
         handle = fluffCoreHandle,
         baseTransform = identityMatrix4(),
         explosionOffset = Float3(0f, 0f, 0f),
+        buildGroup = SheepBuildGroup.FLUFF_CORE,
     )
 
     fluffSphereSpecs(FluffStyle.Uniform(10), SheepFluffRadius).forEach { chunk ->
@@ -482,6 +598,7 @@ private fun buildSheepRenderables(
             handle = handle,
             baseTransform = translationMatrix(chunk.center.x, chunk.center.y, chunk.center.z),
             explosionOffset = Float3(0f, 0f, 0f),
+            buildGroup = SheepBuildGroup.FLUFF_SHELL,
         )
     }
 
@@ -500,6 +617,7 @@ private fun buildSheepRenderables(
             scaleMatrix(1f, 2f / 3f, 0.75f),
         ),
         explosionOffset = Float3(0f, 0f, 0f),
+        buildGroup = SheepBuildGroup.HEAD,
     )
 
     listOf(
@@ -514,6 +632,7 @@ private fun buildSheepRenderables(
             handle = eyeHandle,
             baseTransform = translationMatrix(eyePosition.x, eyePosition.y, eyePosition.z),
             explosionOffset = Float3(0f, 0f, 0f),
+            buildGroup = SheepBuildGroup.HEAD,
         )
         val pupilHandle = engine.createSphereRenderable(
             materialInstanceHandle = pupilInstanceHandle,
@@ -526,6 +645,7 @@ private fun buildSheepRenderables(
                 scaleMatrix(0.28f, 0.45f, 1f),
             ),
             explosionOffset = Float3(0f, 0f, 0f),
+            buildGroup = SheepBuildGroup.HEAD,
         )
     }
 
@@ -562,6 +682,7 @@ private fun buildSheepRenderables(
             handle = handle,
             baseTransform = translationMatrix(legAttachment.x, legAttachment.y, legAttachment.z),
             explosionOffset = Float3(0f, 0f, 0f),
+            buildGroup = SheepBuildGroup.LEGS,
         )
     }
 
@@ -596,6 +717,7 @@ private fun buildSheepRenderables(
                 ),
             ),
             explosionOffset = Float3(0f, 0f, 0f),
+            buildGroup = SheepBuildGroup.GLASSES,
         )
     }
 
@@ -632,6 +754,7 @@ private fun buildSheepRenderables(
             rotationXMatrix(90f),
         ),
         explosionOffset = Float3(0f, 0f, 0f),
+        buildGroup = SheepBuildGroup.GLASSES,
     )
 
     return renderables.mapIndexed { index, renderable ->
@@ -658,7 +781,7 @@ private data class HeadLayout(
 private fun buildHeadLayout(radius: Float = SheepFluffRadius): HeadLayout {
     val headWidth = SheepHeadRadiusX * 2f
     val headHeight = SheepHeadRadiusY * 2f
-    val headTopLeftX = -radius - headWidth /3f
+    val headTopLeftX = -radius - headWidth / 3f
     val headTopLeftY = -headHeight / 4f
     val headCenter2DX = headTopLeftX + headWidth / 2f
     val headCenter2DY = headTopLeftY + headHeight / 2f
@@ -771,7 +894,14 @@ private fun fluffSphereSpecs(
         addAll(fluffBandSpecs(sampleAngles(centeredAngles, 5), shellRadius, 44f, 0))
         addAll(fluffBandSpecs(boundaryAngles, shellRadius, 16f, 1))
         addAll(fluffBandSpecs(centeredAngles, shellRadius, -16f, 2))
-        addAll(fluffBandSpecs(sampleAngles(boundaryAngles, 5, PI.toFloat() / 10f), shellRadius, -44f, 3))
+        addAll(
+            fluffBandSpecs(
+                sampleAngles(boundaryAngles, 5, PI.toFloat() / 10f),
+                shellRadius,
+                -44f,
+                3
+            )
+        )
         add(FluffChunk(Float3(0f, -shellRadius * 0.84f, 0f), SheepFluffChunkRadius * 1.06f))
     }
 }
@@ -791,7 +921,7 @@ private fun headFrontSurfacePoint(
     val localZ = facePoint.sideOffset
     val normalized =
         (localY * localY) / (SheepHeadRadiusY * SheepHeadRadiusY) +
-            (localZ * localZ) / (SheepHeadRadiusZ * SheepHeadRadiusZ)
+                (localZ * localZ) / (SheepHeadRadiusZ * SheepHeadRadiusZ)
     val localX = -SheepHeadRadiusX * sqrt((1f - normalized).coerceAtLeast(0f)) - forwardOffset
     val radians = headRotationDegrees * PI.toFloat() / 180f
     val cosAngle = cos(radians)
@@ -1163,9 +1293,9 @@ private fun multiplyMatrix4(left: FloatArray, right: FloatArray): FloatArray {
         for (row in 0 until 4) {
             result[column * 4 + row] =
                 left[row] * right[column * 4] +
-                left[4 + row] * right[column * 4 + 1] +
-                left[8 + row] * right[column * 4 + 2] +
-                left[12 + row] * right[column * 4 + 3]
+                        left[4 + row] * right[column * 4 + 1] +
+                        left[8 + row] * right[column * 4 + 2] +
+                        left[12 + row] * right[column * 4 + 3]
         }
     }
     return result
@@ -1176,19 +1306,51 @@ private fun sheepTransformForProgress(
     renderable: SheepRenderable,
     explosionProgress: Float,
     explosionDistanceScale: Float,
+    buildProgress: Float,
 ): FloatArray {
-    if (explosionProgress <= 1e-4f) {
-        return multiplyMatrix4(rootTransform, renderable.baseTransform)
+    val buildTransform = when {
+        buildProgress >= 1f - 1e-4f -> identityMatrix4()
+        buildProgress <= 1e-4f -> scaleMatrix(0f, 0f, 0f)
+        renderable.buildGroup == SheepBuildGroup.LEGS -> {
+            // Legs slide down from fluff: start at y=0 (inside fluff), end at base position
+            val legDrop = 0.56f
+            translationMatrix(0f, legDrop * (1f - buildProgress), 0f)
+        }
+
+        renderable.buildGroup == SheepBuildGroup.GLASSES -> {
+            // Glasses appear (scale in) and slide down from above the head onto the eyes
+            val t = smoothStep(buildProgress)
+            val slideDistance = 0.5f
+            multiplyMatrix4(
+                translationMatrix(0f, slideDistance * (1f - t), 0f),
+                scaleMatrix(t, t, t),
+            )
+        }
+
+        else -> {
+            // Scale in from center of the renderable's position
+            val s = smoothStep(buildProgress)
+            scaleMatrix(s, s, s)
+        }
     }
-    val scaledProgress = explosionProgress * explosionDistanceScale
-    val explosionTransform = translationMatrix(
-        x = renderable.explosionOffset.x * scaledProgress,
-        y = renderable.explosionOffset.y * scaledProgress,
-        z = renderable.explosionOffset.z * scaledProgress,
-    )
+
+    val explosionTransform = if (explosionProgress <= 1e-4f) {
+        identityMatrix4()
+    } else {
+        val scaledProgress = explosionProgress * explosionDistanceScale
+        translationMatrix(
+            x = renderable.explosionOffset.x * scaledProgress,
+            y = renderable.explosionOffset.y * scaledProgress,
+            z = renderable.explosionOffset.z * scaledProgress,
+        )
+    }
+
     return multiplyMatrix4(
         rootTransform,
-        multiplyMatrix4(explosionTransform, renderable.baseTransform),
+        multiplyMatrix4(
+            explosionTransform,
+            multiplyMatrix4(renderable.baseTransform, buildTransform),
+        ),
     )
 }
 
