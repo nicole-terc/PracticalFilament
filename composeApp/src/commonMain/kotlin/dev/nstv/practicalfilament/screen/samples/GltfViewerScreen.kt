@@ -1,8 +1,11 @@
-// Migrated sample from https://github.com/google/filament/tree/main/android/samples/sample-gltf-viewer
+// Modified sample from https://github.com/google/filament/tree/main/android/samples/sample-gltf-viewer
 package dev.nstv.practicalfilament.screen.samples
 
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,26 +28,28 @@ import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
+import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import dev.nstv.practicalfilament.theme.components.SampleNotice
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.sqrt
 
-private const val DemoIblPath = "files/envs/pillars_2k/pillars_2k_ibl.ktx"
-private const val DemoSkyboxPath = "files/envs/pillars_2k/pillars_2k_skybox.ktx"
-
 private enum class SampleGltfAsset(
     val label: String,
     val path: String,
 ) {
     HELMET(
-        label = "helmet.glb",
+        label = "helmet",
         path = "files/models/helmet.glb",
     ),
-    SCENE(
-        label = "scene.gltf",
+    DRONE(
+        label = "drone",
         path = "files/models/BusterDrone/scene.gltf",
+    ),
+    FOX(
+        label = "fox",
+        path = "files/models/fox/Fox.gltf",
     ),
 }
 
@@ -55,6 +60,7 @@ fun GltfViewerScreen(
     var engine by remember { mutableStateOf<FilamentEngine?>(null) }
     var assetHandle by remember { mutableIntStateOf(0) }
     var animationCount by remember { mutableIntStateOf(0) }
+    var animationIndex by remember { mutableIntStateOf(0) }
     var notice by remember { mutableStateOf<String?>(null) }
     var animationTime by remember { mutableFloatStateOf(0f) }
     var selectedAsset by remember { mutableStateOf(SampleGltfAsset.HELMET) }
@@ -70,6 +76,7 @@ fun GltfViewerScreen(
             assetHandle = 0
         }
         animationCount = 0
+        animationIndex = 0
         notice = null
         val nextHandle = currentEngine.loadGltfAsset(Res.getUri(selectedAsset.path))
         if (nextHandle <= 0) {
@@ -81,7 +88,8 @@ fun GltfViewerScreen(
         currentEngine.addGltfToScene(assetHandle)
         animationCount = currentEngine.getGltfAnimationCount(assetHandle)
         if (animationCount == 0) {
-            notice = "${selectedAsset.label} loaded successfully. This asset does not contain animations."
+            notice =
+                "${selectedAsset.label} loaded successfully. This asset does not contain animations."
         }
     }
 
@@ -90,15 +98,17 @@ fun GltfViewerScreen(
         currentEngine.updateCamera(gltfCameraForOrientation(orientation))
     }
 
-    LaunchedEffect(engine, assetHandle, animationCount) {
+    LaunchedEffect(engine, assetHandle, animationCount, animationIndex) {
         val currentEngine = engine ?: return@LaunchedEffect
         if (assetHandle <= 0) return@LaunchedEffect
         if (animationCount == 0) return@LaunchedEffect
         while (true) {
             val time = withFrameNanos { it } / 1_000_000_000f
-            val duration = currentEngine.getGltfAnimationDuration(assetHandle, 0).coerceAtLeast(0.01f)
+            val duration =
+                currentEngine.getGltfAnimationDuration(assetHandle, animationIndex)
+                    .coerceAtLeast(0.01f)
             animationTime = time % duration
-            currentEngine.applyGltfAnimation(assetHandle, 0, animationTime)
+            currentEngine.applyGltfAnimation(assetHandle, animationIndex, animationTime)
             currentEngine.updateGltfBoneMatrices(assetHandle)
         }
     }
@@ -145,14 +155,6 @@ fun GltfViewerScreen(
                 backgroundColor = FilamentColor(0.03f, 0.03f, 0.05f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
-                    val indirectLightHandle = readyEngine.loadIndirectLight(Res.getUri(DemoIblPath))
-                    if (indirectLightHandle > 0) {
-                        readyEngine.setIndirectLight(indirectLightHandle, intensity = 30_000f)
-                    }
-                    val skyboxHandle = readyEngine.loadSkybox(Res.getUri(DemoSkyboxPath))
-                    if (skyboxHandle > 0) {
-                        readyEngine.setSkybox(skyboxHandle)
-                    }
                     readyEngine.updateCamera(gltfCameraForOrientation(orientation))
                     engine = readyEngine
                 },
@@ -161,11 +163,25 @@ fun GltfViewerScreen(
         controls = {
             notice?.let { SampleNotice(it) }
             DropDownWithArrows(
+                label = "model",
                 options = SampleGltfAsset.entries.map { it.label },
                 selectedIndex = SampleGltfAsset.entries.indexOf(selectedAsset),
                 onSelectionChanged = { selectedAsset = SampleGltfAsset.entries[it] },
             )
+            EnvironmentSelectionField(
+                filamentEngine = engine,
+                updateNotice = { notice = it },
+                selectedBackground = 7
+            )
             if (assetHandle > 0 && animationCount > 0) {
+                if (animationCount > 1) {
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { animationIndex = (animationIndex + 1) % animationCount },
+                    ) {
+                        Text("Next animation")
+                    }
+                }
                 Text("Animation time: ${animationTime.toString().take(4)}s")
             }
         },
