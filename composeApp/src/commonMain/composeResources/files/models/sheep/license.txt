@@ -1,0 +1,6 @@
+Model Information:
+* title:	Sheep
+* source:	https://sketchfab.com/3d-models/sheep-08b05ae799d947f1a68c49b2d661eb53
+* author:	kenchoo (https://sketchfab.com/kenchoo)
+
+This work is based on "Sheep" (https://sketchfab.com/3d-models/sheep-08b05ae799d947f1a68c49b2d661eb53) by kenchoo (https://sketchfab.com/kenchoo) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

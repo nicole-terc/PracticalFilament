@@ -5,7 +5,9 @@ Sample code using Google's [Filament](https://github.com/google/filament) framew
 
 ## Interesting Links
 - Framework repository: [google/filament](https://github.com/google/filament/tree/main)
-- Trove of assets: [polyhaven.com](https://polyhaven.com/)
+- Trove of assets: 
+    - textures, models, https://polyhaven.com/
+    - gltf models: https://github.com/KhronosGroup/glTF-Sample-Models/
 
 ## Asset generation
 

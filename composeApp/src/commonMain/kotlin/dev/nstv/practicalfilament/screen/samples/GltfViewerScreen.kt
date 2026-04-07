@@ -51,6 +51,10 @@ private enum class SampleGltfAsset(
         label = "fox",
         path = "files/models/fox/Fox.gltf",
     ),
+    SHEEP(
+        label = "sheep",
+        path = "files/models/sheep/scene.gltf",
+    )
 }
 
 @Composable
@@ -63,7 +67,7 @@ fun GltfViewerScreen(
     var animationIndex by remember { mutableIntStateOf(0) }
     var notice by remember { mutableStateOf<String?>(null) }
     var animationTime by remember { mutableFloatStateOf(0f) }
-    var selectedAsset by remember { mutableStateOf(SampleGltfAsset.HELMET) }
+    var selectedAsset by remember { mutableStateOf(SampleGltfAsset.SHEEP) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var lastDragPoint by remember { mutableStateOf<Float3?>(null) }
     var orientation by remember { mutableStateOf(initialGltfOrientation()) }
