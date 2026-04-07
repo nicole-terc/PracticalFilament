@@ -1,8 +1,5 @@
-// Modified sample from https://github.com/google/filament/tree/main/android/samples/sample-gltf-viewer
-package dev.nstv.practicalfilament.screen.samples
+package dev.nstv.practicalfilament.screen.otherViewers
 
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
@@ -17,10 +14,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import dev.nstv.practicalfilament.components.utils.OrbitQuaternion
+import dev.nstv.practicalfilament.components.utils.orbitCameraControls
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -33,7 +30,6 @@ import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import dev.nstv.practicalfilament.theme.components.SampleNotice
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 import practicalfilament.composeapp.generated.resources.Res
-import kotlin.math.sqrt
 
 private enum class SampleGltfAsset(
     val label: String,
@@ -54,7 +50,11 @@ private enum class SampleGltfAsset(
     SHEEP(
         label = "sheep",
         path = "files/models/sheep/scene.gltf",
-    )
+    ),
+    SHEEP_2(
+        label = "sheep 2",
+        path = "files/models/sheep2/scene.gltf",
+    ),
 }
 
 @Composable
@@ -69,8 +69,8 @@ fun GltfViewerScreen(
     var animationTime by remember { mutableFloatStateOf(0f) }
     var selectedAsset by remember { mutableStateOf(SampleGltfAsset.SHEEP) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
-    var lastDragPoint by remember { mutableStateOf<Float3?>(null) }
-    var orientation by remember { mutableStateOf(initialGltfOrientation()) }
+    var orientation by remember { mutableStateOf(OrbitQuaternion()) }
+    var cameraDistance by remember { mutableFloatStateOf(4f) }
 
     LaunchedEffect(engine, selectedAsset) {
         val currentEngine = engine ?: return@LaunchedEffect
@@ -97,9 +97,9 @@ fun GltfViewerScreen(
         }
     }
 
-    LaunchedEffect(engine, orientation) {
+    LaunchedEffect(engine, orientation, cameraDistance) {
         val currentEngine = engine ?: return@LaunchedEffect
-        currentEngine.updateCamera(gltfCameraForOrientation(orientation))
+        currentEngine.updateCamera(gltfCameraForOrientation(orientation, cameraDistance))
     }
 
     LaunchedEffect(engine, assetHandle, animationCount, animationIndex) {
@@ -125,30 +125,14 @@ fun GltfViewerScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .onSizeChanged { viewportSize = it }
-                    .pointerInput(viewportSize, selectedAsset) {
-                        detectDragGestures(
-                            onDragStart = { start ->
-                                lastDragPoint = start.toGltfArcballPoint(viewportSize)
-                            },
-                            onDragEnd = {
-                                lastDragPoint = null
-                            },
-                            onDragCancel = {
-                                lastDragPoint = null
-                            },
-                        ) { change, _ ->
-                            val previousPoint = lastDragPoint
-                                ?: change.previousPosition.toGltfArcballPoint(viewportSize)
-                            val currentPoint = change.position.toGltfArcballPoint(viewportSize)
-                            if (previousPoint != null && currentPoint != null) {
-                                orientation =
-                                    gltfArcballDelta(previousPoint, currentPoint) * orientation
-                                lastDragPoint = currentPoint
-                            }
-                            change.consume()
-                        }
-                    },
-                camera = gltfCameraForOrientation(orientation),
+                    .orbitCameraControls(
+                        viewportSize = viewportSize,
+                        orientation = orientation,
+                        onOrientationChange = { orientation = it },
+                        distance = cameraDistance,
+                        onDistanceChange = { cameraDistance = it },
+                    ),
+                camera = gltfCameraForOrientation(orientation, cameraDistance),
                 lights = listOf(
                     LightConfig(
                         type = LightType.SUN,
@@ -159,7 +143,7 @@ fun GltfViewerScreen(
                 backgroundColor = FilamentColor(0.03f, 0.03f, 0.05f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
-                    readyEngine.updateCamera(gltfCameraForOrientation(orientation))
+                    readyEngine.updateCamera(gltfCameraForOrientation(orientation, cameraDistance))
                     engine = readyEngine
                 },
             )
@@ -192,109 +176,15 @@ fun GltfViewerScreen(
     )
 }
 
-private data class GltfQuaternion(
-    val x: Float,
-    val y: Float,
-    val z: Float,
-    val w: Float,
-) {
-    operator fun times(other: GltfQuaternion): GltfQuaternion {
-        return multiplyRaw(other).normalized()
-    }
-
-    private fun multiplyRaw(other: GltfQuaternion): GltfQuaternion {
-        return GltfQuaternion(
-            x = w * other.x + x * other.w + y * other.z - z * other.y,
-            y = w * other.y - x * other.z + y * other.w + z * other.x,
-            z = w * other.z + x * other.y - y * other.x + z * other.w,
-            w = w * other.w - x * other.x - y * other.y - z * other.z,
-        )
-    }
-
-    fun normalized(): GltfQuaternion {
-        val magnitude = sqrt(x * x + y * y + z * z + w * w)
-        if (magnitude <= 1e-6f) return GltfQuaternion(0f, 0f, 0f, 1f)
-        return GltfQuaternion(x / magnitude, y / magnitude, z / magnitude, w / magnitude)
-    }
-
-    fun conjugate(): GltfQuaternion = GltfQuaternion(-x, -y, -z, w)
-
-    fun rotate(vector: Float3): Float3 {
-        val quaternionVector = GltfQuaternion(vector.x, vector.y, vector.z, 0f)
-        val rotated = multiplyRaw(quaternionVector).multiplyRaw(conjugate())
-        return Float3(rotated.x, rotated.y, rotated.z)
-    }
-}
-
-private fun initialGltfOrientation(): GltfQuaternion {
-    return GltfQuaternion(0f, 0f, 0f, 1f)
-}
-
-private fun gltfCameraForOrientation(orientation: GltfQuaternion): CameraConfig {
+private fun gltfCameraForOrientation(
+    orientation: OrbitQuaternion,
+    cameraDistance: Float
+): CameraConfig {
     val orbit = orientation.conjugate()
     return CameraConfig(
-        position = orbit.rotate(Float3(0f, 0.5f, 4f)),
+        position = orbit.rotate(Float3(0f, 0.5f, cameraDistance)),
         lookAt = Float3(0f, 0f, 0f),
         up = orbit.rotate(Float3(0f, 1f, 0f)),
         fovDegrees = 28.0,
     )
-}
-
-private fun gltfArcballDelta(from: Float3, to: Float3): GltfQuaternion {
-    val dot = (from gltfDot to).coerceIn(-1f, 1f)
-    val cross = from gltfCross to
-    val magnitude = cross.gltfLength()
-    if (magnitude <= 1e-6f) {
-        return if (dot < 0f) {
-            val fallbackAxis = if (kotlin.math.abs(from.x) < 0.9f) {
-                Float3(1f, 0f, 0f) gltfCross from
-            } else {
-                Float3(0f, 1f, 0f) gltfCross from
-            }.gltfNormalized()
-            GltfQuaternion(fallbackAxis.x, fallbackAxis.y, fallbackAxis.z, 0f)
-        } else {
-            GltfQuaternion(0f, 0f, 0f, 1f)
-        }
-    }
-    return GltfQuaternion(
-        x = cross.x,
-        y = cross.y,
-        z = cross.z,
-        w = 1f + dot,
-    ).normalized()
-}
-
-private fun Offset.toGltfArcballPoint(viewportSize: IntSize): Float3? {
-    if (viewportSize.width <= 0 || viewportSize.height <= 0) return null
-    val x = ((this.x / viewportSize.width.toFloat()) * 2f) - 1f
-    val y = 1f - ((this.y / viewportSize.height.toFloat()) * 2f)
-    val lengthSquared = x * x + y * y
-    return if (lengthSquared <= 1f) {
-        Float3(x, y, sqrt(1f - lengthSquared))
-    } else {
-        val invLength = 1f / sqrt(lengthSquared)
-        Float3(x * invLength, y * invLength, 0f)
-    }
-}
-
-private infix fun Float3.gltfDot(other: Float3): Float {
-    return x * other.x + y * other.y + z * other.z
-}
-
-private infix fun Float3.gltfCross(other: Float3): Float3 {
-    return Float3(
-        x = y * other.z - z * other.y,
-        y = z * other.x - x * other.z,
-        z = x * other.y - y * other.x,
-    )
-}
-
-private fun Float3.gltfLength(): Float {
-    return sqrt(x * x + y * y + z * z)
-}
-
-private fun Float3.gltfNormalized(): Float3 {
-    val length = gltfLength()
-    if (length <= 1e-6f) return Float3(0f, 0f, 1f)
-    return Float3(x / length, y / length, z / length)
 }

@@ -14,10 +14,10 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 data class OrbitQuaternion(
-    val x: Float,
-    val y: Float,
-    val z: Float,
-    val w: Float,
+    val x: Float = 0f,
+    val y: Float = 0f,
+    val z: Float = 0f,
+    val w: Float = 1f,
 ) {
     operator fun times(other: OrbitQuaternion): OrbitQuaternion {
         return multiplyRaw(other).normalized()
@@ -57,8 +57,8 @@ fun Modifier.orbitCameraControls(
     onOrientationChange: (OrbitQuaternion) -> Unit,
     distance: Float,
     onDistanceChange: (Float) -> Unit,
-    minDistance: Float,
-    maxDistance: Float,
+    minDistance: Float = 2f,
+    maxDistance: Float = 8f,
     enabled: Boolean = true,
 ): Modifier = composed {
     if (!enabled) return@composed this
