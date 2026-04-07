@@ -1,5 +1,6 @@
 package dev.nstv.practicalfilament.theme.components
 
+import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +35,7 @@ internal fun SampleScreenLayout(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(Grid.Two),
+            verticalArrangement = spacedBy(Grid.One),
         ) {
             Text(
                 text = title,
