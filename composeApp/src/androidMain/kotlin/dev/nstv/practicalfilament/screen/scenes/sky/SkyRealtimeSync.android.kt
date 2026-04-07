@@ -1,4 +1,4 @@
-package dev.nstv.practicalfilament.screen.sky
+package dev.nstv.practicalfilament.screen.scenes.sky
 
 import android.Manifest
 import android.content.Context

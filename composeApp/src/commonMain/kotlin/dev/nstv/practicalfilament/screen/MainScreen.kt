@@ -37,7 +37,7 @@ import dev.nstv.practicalfilament.screen.samples.PageCurlScreen
 import dev.nstv.practicalfilament.screen.samples.StressTestScreen
 import dev.nstv.practicalfilament.screen.samples.TexturedObjectScreen
 import dev.nstv.practicalfilament.screen.samples.TransparentViewScreen
-import dev.nstv.practicalfilament.screen.sky.SkyScreen
+import dev.nstv.practicalfilament.screen.scenes.sky.SkyScreen
 import dev.nstv.practicalfilament.screen.wallpaper.LiveWallpaperScreen
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows

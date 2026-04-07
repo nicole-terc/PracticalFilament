@@ -1,7 +1,7 @@
 package dev.nstv.practicalfilament.screen.wallpaper
 
 import android.content.Context
-import dev.nstv.practicalfilament.screen.sky.SkyWallpaperConfig
+import dev.nstv.practicalfilament.screen.scenes.sky.SkyWallpaperConfig
 
 object LiveWallpaperPreferences {
     private const val PreferencesName = "live_wallpaper_preferences"

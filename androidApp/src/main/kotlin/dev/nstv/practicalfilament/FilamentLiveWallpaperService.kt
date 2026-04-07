@@ -43,8 +43,8 @@ import com.google.android.filament.utils.Utils
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.ProjectionType
-import dev.nstv.practicalfilament.screen.sky.SkyWallpaperConfig
-import dev.nstv.practicalfilament.screen.sky.resolveRealtimeSkyConfig
+import dev.nstv.practicalfilament.screen.scenes.sky.SkyWallpaperConfig
+import dev.nstv.practicalfilament.screen.scenes.sky.resolveRealtimeSkyConfig
 import dev.nstv.practicalfilament.screen.wallpaper.LiveWallpaperPreferences
 import dev.nstv.practicalfilament.screen.wallpaper.LiveWallpaperPreset
 import dev.nstv.practicalfilament.screen.wallpaper.liveWallpaperHueAt

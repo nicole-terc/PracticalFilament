@@ -1,5 +1,5 @@
 // Modified from sample https://github.com/google/filament/tree/main/web/examples/sky
-package dev.nstv.practicalfilament.screen.sky
+package dev.nstv.practicalfilament.screen.scenes.sky
 
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,6 +49,7 @@ import practicalfilament.composeapp.generated.resources.Res
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.acos
+import kotlin.math.atan
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.max
@@ -1333,7 +1334,7 @@ private fun areaIntersection(
     d: Double,
 ): Double {
     if (d >= r1 + r2) return 0.0
-    if (d <= kotlin.math.abs(r1 - r2)) {
+    if (d <= abs(r1 - r2)) {
         val radius = min(r1, r2)
         return PI * radius * radius
     }
@@ -1447,7 +1448,7 @@ private fun computeVerticalFovDegrees(
 ): Float {
     val focal = focalLengthMm.coerceAtLeast(1f).toDouble()
     val sensor = sensorHeightMm.toDouble()
-    return ((2.0 * kotlin.math.atan(sensor / (2.0 * focal))) * 180.0 / PI).toFloat()
+    return ((2.0 * atan(sensor / (2.0 * focal))) * 180.0 / PI).toFloat()
 }
 
 private fun skyCameraLookDirection(

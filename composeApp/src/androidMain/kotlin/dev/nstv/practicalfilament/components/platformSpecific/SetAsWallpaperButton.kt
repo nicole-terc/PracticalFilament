@@ -9,7 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import dev.nstv.practicalfilament.screen.sky.SkyWallpaperConfig
+import dev.nstv.practicalfilament.screen.scenes.sky.SkyWallpaperConfig
 import dev.nstv.practicalfilament.screen.wallpaper.LiveWallpaperPreferences
 import dev.nstv.practicalfilament.screen.wallpaper.LiveWallpaperPreset
 

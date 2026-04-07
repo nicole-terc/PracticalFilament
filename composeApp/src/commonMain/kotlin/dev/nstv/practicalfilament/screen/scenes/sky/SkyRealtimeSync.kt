@@ -1,4 +1,4 @@
-package dev.nstv.practicalfilament.screen.sky
+package dev.nstv.practicalfilament.screen.scenes.sky
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -6,7 +6,9 @@ import kotlin.math.PI
 import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.sin
+import kotlin.math.tan
 
 fun resolveRealtimeSkyConfig(
     config: SkyWallpaperConfig,
@@ -58,7 +60,7 @@ fun computeManualSkyValues(
     longitudeDegrees: Float,
 ): SkyRealtimeValues {
     val utcHours = localTimeHours - longitudeDegrees / 15f
-    val utcDayStartMillis = kotlin.math.floor(currentTimeMillis / MillisPerDay).toLong() * MillisPerDay.toLong()
+    val utcDayStartMillis = floor(currentTimeMillis / MillisPerDay).toLong() * MillisPerDay.toLong()
     val manualTimeMillis = utcDayStartMillis + (utcHours * MillisPerHour).toLong()
     return computeRealtimeSkyValues(
         currentTimeMillis = manualTimeMillis,
@@ -216,7 +218,7 @@ private fun radiansToDegrees(value: Double): Double = value * 180.0 / PI
 private fun rightAscension(eclipticLongitude: Double, eclipticLatitude: Double): Double {
     return atan2(
         sin(eclipticLongitude) * cos(EarthObliquityRadians) -
-            kotlin.math.tan(eclipticLatitude) * sin(EarthObliquityRadians),
+            tan(eclipticLatitude) * sin(EarthObliquityRadians),
         cos(eclipticLongitude),
     )
 }
@@ -241,7 +243,7 @@ private fun altitude(
 
 private fun astroRefraction(altitudeRadians: Double): Double {
     val clampedAltitude = if (altitudeRadians < 0.0) 0.0 else altitudeRadians
-    return 0.0002967 / kotlin.math.tan(clampedAltitude + 0.00312536 / (clampedAltitude + 0.08901179))
+    return 0.0002967 / tan(clampedAltitude + 0.00312536 / (clampedAltitude + 0.08901179))
 }
 
 private fun sinDeg(degrees: Double): Double = sin(degrees * PI / 180.0)

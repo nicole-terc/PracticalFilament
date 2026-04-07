@@ -22,7 +22,7 @@ import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
-import dev.nstv.practicalfilament.screen.sky.ConfiguredSkyRealtimeStatus
+import dev.nstv.practicalfilament.screen.scenes.sky.ConfiguredSkyRealtimeStatus
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import dev.nstv.practicalfilament.theme.components.SampleNotice
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout

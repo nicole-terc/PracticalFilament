@@ -1,4 +1,4 @@
-package dev.nstv.practicalfilament.screen.sky
+package dev.nstv.practicalfilament.screen.scenes.sky
 
 data class SkyWallpaperConfig(
     val sunAzimuth: Float = 0f,

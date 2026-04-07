@@ -3,7 +3,7 @@ package dev.nstv.practicalfilament.components.platformSpecific
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import dev.nstv.practicalfilament.screen.sky.SkyWallpaperConfig
+import dev.nstv.practicalfilament.screen.scenes.sky.SkyWallpaperConfig
 import dev.nstv.practicalfilament.screen.wallpaper.LiveWallpaperPreset
 
 @Composable

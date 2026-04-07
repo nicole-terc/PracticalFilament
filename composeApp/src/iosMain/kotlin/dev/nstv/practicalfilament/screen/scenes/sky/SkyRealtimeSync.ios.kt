@@ -1,4 +1,4 @@
-package dev.nstv.practicalfilament.screen.sky
+package dev.nstv.practicalfilament.screen.scenes.sky
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
