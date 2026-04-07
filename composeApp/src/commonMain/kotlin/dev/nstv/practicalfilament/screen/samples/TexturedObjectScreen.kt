@@ -10,7 +10,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.FilamentColor
@@ -39,9 +39,8 @@ fun TexturedObjectScreen(
     LaunchedEffect(engine, renderableHandle) {
         val currentEngine = engine ?: return@LaunchedEffect
         if (renderableHandle == 0) return@LaunchedEffect
-        while (true) {
-            val time = withFrameNanos { it } / 1_000_000_000f
-            currentEngine.setRenderableRotation(renderableHandle, 0f, time * 24f)
+        withFrameSeconds { elapsed, _ ->
+            currentEngine.setRenderableRotation(renderableHandle, 0f, elapsed * 24f)
         }
     }
 

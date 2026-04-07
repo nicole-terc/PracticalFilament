@@ -12,7 +12,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
@@ -106,12 +106,11 @@ fun GltfViewerScreen(
         val currentEngine = engine ?: return@LaunchedEffect
         if (assetHandle <= 0) return@LaunchedEffect
         if (animationCount == 0) return@LaunchedEffect
-        while (true) {
-            val time = withFrameNanos { it } / 1_000_000_000f
+        withFrameSeconds { elapsed, _ ->
             val duration =
                 currentEngine.getGltfAnimationDuration(assetHandle, animationIndex)
                     .coerceAtLeast(0.01f)
-            animationTime = time % duration
+            animationTime = elapsed % duration
             currentEngine.applyGltfAnimation(assetHandle, animationIndex, animationTime)
             currentEngine.updateGltfBoneMatrices(assetHandle)
         }

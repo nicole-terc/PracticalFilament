@@ -26,7 +26,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,10 +65,9 @@ fun GraphicsEffectsComparisonScreen(
 
     LaunchedEffect(animationEnabled) {
         if (!animationEnabled) return@LaunchedEffect
-        val originNanos = withFrameNanos { it } - (animationTimeSeconds * 1_000_000_000f).toLong()
-        while (true) {
-            val now = withFrameNanos { it }
-            animationTimeSeconds = ((now - originNanos).coerceAtLeast(0L)) / 1_000_000_000f
+        val startTime = animationTimeSeconds
+        withFrameSeconds { elapsed, _ ->
+            animationTimeSeconds = startTime + elapsed
         }
     }
 

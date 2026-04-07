@@ -20,7 +20,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -98,9 +98,8 @@ fun MorphingScreen(
 
     LaunchedEffect(autoPlay, animationSpeed) {
         if (!autoPlay) return@LaunchedEffect
-        while (true) {
-            val timeSeconds = withFrameNanos { it } / 1_000_000_000f
-            val phase = timeSeconds * animationSpeed
+        withFrameSeconds { elapsed, _ ->
+            val phase = elapsed * animationSpeed
             morphWeightA = 0.5f + 0.5f * sin(phase * 1.2f)
             morphWeightB = 0.5f + 0.5f * cos((phase * 0.75f) + (PI.toFloat() * 0.35f))
         }

@@ -11,7 +11,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
@@ -40,9 +40,8 @@ fun MultiViewScreen(
     LaunchedEffect(engine, cubeHandle) {
         val currentEngine = engine ?: return@LaunchedEffect
         if (cubeHandle == 0) return@LaunchedEffect
-        while (true) {
-            val time = withFrameNanos { it } / 1_000_000_000f
-            currentEngine.setRenderableRotation(cubeHandle, 15f, time * 22f)
+        withFrameSeconds { elapsed, _ ->
+            currentEngine.setRenderableRotation(cubeHandle, 15f, elapsed * 22f)
         }
     }
 

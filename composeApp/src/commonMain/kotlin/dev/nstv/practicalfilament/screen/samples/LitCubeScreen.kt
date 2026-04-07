@@ -12,7 +12,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
@@ -41,9 +41,8 @@ fun LitCubeScreen(
 
     LaunchedEffect(engine, cubeHandle, rotationSpeed) {
         if (cubeHandle == 0) return@LaunchedEffect
-        while (true) {
-            val time = withFrameNanos { it } / 1_000_000_000f
-            engine?.setRenderableRotation(cubeHandle, 20f, time * rotationSpeed)
+        withFrameSeconds { elapsed, _ ->
+            engine?.setRenderableRotation(cubeHandle, 20f, elapsed * rotationSpeed)
         }
     }
 

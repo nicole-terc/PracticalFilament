@@ -25,7 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -263,26 +263,17 @@ fun SheepScreen(
         val currentEngine = filamentEngine ?: return@LaunchedEffect
         if (renderables.isEmpty()) return@LaunchedEffect
 
-        var previousFrameNanos = 0L
-        while (true) {
-            val frameNanos = withFrameNanos { it }
-            val seconds = frameNanos / 1_000_000_000f
-            val deltaSeconds = if (previousFrameNanos == 0L) {
-                1f / 60f
-            } else {
-                ((frameNanos - previousFrameNanos) / 1_000_000_000f).coerceAtMost(0.1f)
-            }
-            previousFrameNanos = frameNanos
+        withFrameSeconds { elapsedSeconds, deltaSeconds ->
             explosionState.step(deltaSeconds)
             val bobOffset = if (animationSpeed <= 0.01f) {
                 0f
             } else {
-                sin(seconds * (1.6f + animationSpeed * 2.2f)) * 0.14f * animationSpeed
+                sin(elapsedSeconds * (1.6f + animationSpeed * 2.2f)) * 0.14f * animationSpeed
             }
             val swayDegrees = if (animationSpeed <= 0.01f) {
                 0f
             } else {
-                sin(seconds * (1.1f + animationSpeed * 1.6f)) * 6f * animationSpeed
+                sin(elapsedSeconds * (1.1f + animationSpeed * 1.6f)) * 6f * animationSpeed
             }
             val rootTransform = multiplyMatrix4(
                 translationMatrix(0f, bobOffset, 0f),

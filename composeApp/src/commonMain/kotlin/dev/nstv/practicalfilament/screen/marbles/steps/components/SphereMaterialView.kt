@@ -7,7 +7,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.FilamentClipShape
@@ -41,12 +41,11 @@ internal fun SphereMaterialView(
     LaunchedEffect(engineReady, renderableHandle, autoRotate, initialRotationX, initialRotationY) {
         val engine = engineReady ?: return@LaunchedEffect
         if (renderableHandle == 0 || !autoRotate) return@LaunchedEffect
-        while (true) {
-            val timeSeconds = withFrameNanos { it } / 1_000_000_000f
+        withFrameSeconds { elapsed, _ ->
             engine.setRenderableRotation(
                 renderableHandle,
                 initialRotationX + 2f,
-                initialRotationY + timeSeconds * 18f,
+                initialRotationY + elapsed * 18f,
             )
             engine.requestFrame()
         }

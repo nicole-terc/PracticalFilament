@@ -28,7 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -536,18 +536,9 @@ private suspend fun animateFormSequence(
     var phase = ParticleWordPhase.SCATTER
     var phaseElapsed = 0f
     var simulationTime = 0f
-    var previousFrameNanos = 0L
 
-    while (true) {
-        val frameNanos = withFrameNanos { it }
-        if (previousFrameNanos == 0L) {
-            previousFrameNanos = frameNanos
-            continue
-        }
-
-        val dt = ((frameNanos - previousFrameNanos) / 1_000_000_000f)
-            .coerceAtMost(0.05f) * animationSpeed().coerceAtLeast(0.1f)
-        previousFrameNanos = frameNanos
+    withFrameSeconds { _, rawDelta ->
+        val dt = rawDelta.coerceAtMost(0.05f) * animationSpeed().coerceAtLeast(0.1f)
         simulationTime += dt
         phaseElapsed += dt
 
@@ -605,18 +596,9 @@ private suspend fun runPulseSequence(
     pushParticleFrame(engine, renderableHandle, particleSystem, particleSize())
 
     var simulationTime = 0f
-    var previousFrameNanos = 0L
 
-    while (true) {
-        val frameNanos = withFrameNanos { it }
-        if (previousFrameNanos == 0L) {
-            previousFrameNanos = frameNanos
-            continue
-        }
-
-        val dt = ((frameNanos - previousFrameNanos) / 1_000_000_000f)
-            .coerceAtMost(0.05f) * animationSpeed().coerceAtLeast(0.1f)
-        previousFrameNanos = frameNanos
+    withFrameSeconds { _, rawDelta ->
+        val dt = rawDelta.coerceAtMost(0.05f) * animationSpeed().coerceAtLeast(0.1f)
         simulationTime += dt
 
         particleSystem.step(

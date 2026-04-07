@@ -14,7 +14,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.filament.CameraConfig
@@ -66,15 +66,14 @@ fun StressTestScreen(
     LaunchedEffect(engine, cubes) {
         val currentEngine = engine ?: return@LaunchedEffect
         if (cubes.isEmpty()) return@LaunchedEffect
-        while (true) {
-            val timeSeconds = withFrameNanos { it } / 1_000_000_000f
+        withFrameSeconds { elapsed, _ ->
             cubes.forEach { cube ->
-                val scale = 0.72f + 0.18f * sin(timeSeconds * 1.7f + cube.phase)
+                val scale = 0.72f + 0.18f * sin(elapsed * 1.7f + cube.phase)
                 currentEngine.setRenderableTransform(
                     cube.handle,
                     stressTransform(
                         x = cube.baseX,
-                        y = cube.baseY + (0.08f * sin(timeSeconds * 1.2f + cube.phase)),
+                        y = cube.baseY + (0.08f * sin(elapsed * 1.2f + cube.phase)),
                         z = cube.baseZ,
                         scale = scale,
                     ),
@@ -90,7 +89,6 @@ fun StressTestScreen(
         loadingMessage = "Loading stress material..."
         supportNotice = null
 
-        withFrameNanos { }
         val materialHandle = currentEngine.loadMaterial(Res.getUri(StressMaterialPath))
         if (materialHandle <= 0) {
             loadingMessage = null
@@ -101,7 +99,6 @@ fun StressTestScreen(
         val createdCubes = mutableListOf<StressCube>()
         cubeSpecs.chunked(StressChunkSize).forEachIndexed { chunkIndex, chunk ->
             loadingMessage = "Creating cubes ${chunkIndex * StressChunkSize + 1}-${(chunkIndex * StressChunkSize + chunk.size)} of ${cubeSpecs.size}..."
-            withFrameNanos { }
             chunk.forEach { spec ->
                 val instanceHandle = currentEngine.createMaterialInstance(materialHandle)
                 currentEngine.setMaterialParameter(

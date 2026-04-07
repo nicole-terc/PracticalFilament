@@ -13,7 +13,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.components.materials.redballMaterial
 import dev.nstv.practicalfilament.filament.CameraConfig
@@ -52,12 +52,11 @@ fun IBLScreen(
 
     LaunchedEffect(engine, sphereHandle, rotationSpeed) {
         if (sphereHandle == 0) return@LaunchedEffect
-        while (true) {
-            val time = withFrameNanos { it } / 1_000_000_000f
+        withFrameSeconds { elapsed, _ ->
             engine?.setRenderableRotation(
                 handle = sphereHandle,
                 rotationXDegrees = 12f,
-                rotationYDegrees = time * rotationSpeed,
+                rotationYDegrees = elapsed * rotationSpeed,
             )
         }
     }

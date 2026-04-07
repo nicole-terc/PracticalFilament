@@ -12,7 +12,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
@@ -50,9 +50,8 @@ fun HelloTriangleScreen(
 
     LaunchedEffect(engine, renderableHandle, rotationSpeed) {
         if (renderableHandle == 0) return@LaunchedEffect
-        while (true) {
-            val time = withFrameNanos { it } / 1_000_000_000f
-            engine?.setRenderableRotation(renderableHandle, 0f, time * rotationSpeed)
+        withFrameSeconds { elapsed, _ ->
+            engine?.setRenderableRotation(renderableHandle, 0f, elapsed * rotationSpeed)
         }
     }
 

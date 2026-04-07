@@ -12,7 +12,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.components.platformSpecific.SetAsWallpaperButton
 import dev.nstv.practicalfilament.filament.CameraConfig
@@ -123,9 +123,8 @@ fun LiveWallpaperScreen(
         }
         if (!selectedPreset.usesModel) {
             if (rainbowSkyboxHandle <= 0) return@LaunchedEffect
-            while (true) {
-                val seconds = withFrameNanos { it } / 1_000_000_000f
-                val hue = liveWallpaperHueAt(seconds)
+            withFrameSeconds { elapsed, _ ->
+                val hue = liveWallpaperHueAt(elapsed)
                 val (r, g, b) = hsvToRgb(hue, 1f, 1f)
                 currentEngine.setSkyboxColor(rainbowSkyboxHandle, r, g, b, 1f)
                 currentEngine.requestFrame()
@@ -133,12 +132,11 @@ fun LiveWallpaperScreen(
         }
 
         if (assetHandle <= 0) return@LaunchedEffect
-        while (true) {
-            val seconds = withFrameNanos { it } / 1_000_000_000f
-            currentEngine.updateCamera(selectedPreset.cameraAt(seconds))
+        withFrameSeconds { elapsed, _ ->
+            currentEngine.updateCamera(selectedPreset.cameraAt(elapsed))
             if (animationCount > 0) {
                 val duration = currentEngine.getGltfAnimationDuration(assetHandle, 0).coerceAtLeast(0.01f)
-                animationTime = seconds % duration
+                animationTime = elapsed % duration
                 currentEngine.applyGltfAnimation(assetHandle, 0, animationTime)
                 currentEngine.updateGltfBoneMatrices(assetHandle)
             }
