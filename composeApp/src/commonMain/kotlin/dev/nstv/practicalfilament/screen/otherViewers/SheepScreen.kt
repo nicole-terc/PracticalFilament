@@ -829,18 +829,25 @@ private fun buildHeadLayout(radius: Float = SheepFluffRadius): HeadLayout {
             headRotationDegrees = faceRotation,
             forwardOffset = SheepEyeDepthOffset,
         ),
-        leftPupilCenter = headFrontSurfacePoint(
-            facePoint = leftPupilFace,
-            headCenter = headCenter,
-            headRotationDegrees = faceRotation,
-            forwardOffset = SheepEyeDepthOffset + SheepPupilDepthOffset,
-        ),
-        rightPupilCenter = headFrontSurfacePoint(
-            facePoint = rightPupilFace,
-            headCenter = headCenter,
-            headRotationDegrees = faceRotation,
-            forwardOffset = SheepEyeDepthOffset + SheepPupilDepthOffset,
-        ),
+        leftPupilCenter = run {
+            val eye = headFrontSurfacePoint(
+                facePoint = leftEyeFace,
+                headCenter = headCenter,
+                headRotationDegrees = faceRotation,
+                forwardOffset = SheepEyeDepthOffset,
+            )
+            // Push pupil forward from eye center (negative X = forward)
+            Float3(x = eye.x - eyeRadius * 0.85f, y = eye.y, z = eye.z)
+        },
+        rightPupilCenter = run {
+            val eye = headFrontSurfacePoint(
+                facePoint = rightEyeFace,
+                headCenter = headCenter,
+                headRotationDegrees = faceRotation,
+                forwardOffset = SheepEyeDepthOffset,
+            )
+            Float3(x = eye.x - eyeRadius * 0.85f, y = eye.y, z = eye.z)
+        },
         eyeRadius = eyeRadius,
         leftGlassCenter = headFrontSurfacePoint(
             facePoint = leftGlassFace,
