@@ -4,25 +4,49 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 
+data class Mesh(
+    val name: String,
+    val path: String,
+    val scale: Float = 1f,
+)
 
-val MeshList = mapOf(
-    "sphere" to "files/models/sphere.filamesh",
-    "monkey" to "files/models/monkey.filamesh",
+val SphereMesh = Mesh(
+    name = "Sphere",
+    path = "files/models/sphere.filamesh",
+    scale = 2f,
+)
+
+val MonkeyMesh = Mesh(
+    name = "Monkey",
+    path = "files/models/monkey.filamesh",
+)
+
+
+val StreetRatMesh = Mesh(
+    name = "Street Rat",
+    path = "files/models/street_rat.filamesh",
+    scale = 50f,
+)
+
+val MeshList = listOf(
+    SphereMesh,
+    MonkeyMesh,
+    StreetRatMesh,
 )
 
 
 @Composable
 fun MeshSelectionField(
     modifier: Modifier = Modifier,
-    meshList: Map<String, String> = MeshList,
+    meshList: List<Mesh> = MeshList,
     selectedMeshIndex: Int = 0,
-    onMeshSelectionChanged: (String) -> Unit,
+    onMeshSelectionChanged: (Mesh) -> Unit,
 ){
     DropDownWithArrows(
         label = "Mesh",
-        options = meshList.keys.toList(),
+        options = meshList.map { it.name },
         onSelectionChanged = {
-            onMeshSelectionChanged(meshList.values.toList()[it])
+            onMeshSelectionChanged(meshList[it])
         },
         modifier = modifier,
         selectedIndex = selectedMeshIndex,

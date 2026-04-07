@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.IntSize
 import dev.nstv.practicalfilament.components.materials.textured.brownMudLeavesMaterial
 import dev.nstv.practicalfilament.components.materials.textured.monkeyMaterial
 import dev.nstv.practicalfilament.components.materials.textured.mossMaterial
+import dev.nstv.practicalfilament.components.materials.textured.ratMaterial
 import dev.nstv.practicalfilament.components.utils.OrbitQuaternion
 import dev.nstv.practicalfilament.components.utils.orbitCameraConfig
 import dev.nstv.practicalfilament.components.utils.orbitCameraControls
@@ -57,7 +58,8 @@ private val MarbleTextureBaseCamera = CameraConfig(
 private val MarbleTextureMaterials = listOf(
     brownMudLeavesMaterial(),
     mossMaterial(),
-    monkeyMaterial()
+    monkeyMaterial(),
+    ratMaterial(),
 )
 
 @Composable
@@ -65,7 +67,7 @@ fun MarbleTextureScreen(
     modifier: Modifier = Modifier,
 ) {
     var filamentEngine by remember { mutableStateOf<FilamentEngine?>(null) }
-    var selectedMeshName by remember { mutableStateOf(MeshList.values.toList()[0]) }
+    var selectedMesh by remember { mutableStateOf(MeshList.first()) }
     var selectedMaterialIndex by remember { mutableIntStateOf(0) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var orientation by remember { mutableStateOf(OrbitQuaternion.Identity) }
@@ -135,13 +137,13 @@ fun MarbleTextureScreen(
                 engine.setMaterialParameter(loaded.instanceHandle, parameter)
             }
         renderableHandle = engine.loadMesh(
-            path = Res.getUri(selectedMeshName),
+            path = Res.getUri(selectedMesh.path),
             materialInstanceHandle = loaded.instanceHandle,
-            scale = 2f,
+            scale = selectedMesh.scale,
         )
         if (renderableHandle <= 0) {
             notice =
-                "The textured $selectedMeshName could not be created on this platform."
+                "The textured ${selectedMesh.name} could not be created on this platform."
             return
         }
         if (gestureLightHandle != 0) {
@@ -224,9 +226,9 @@ fun MarbleTextureScreen(
                     }
                     renderableHandle = if (loaded.instanceHandle > 0) {
                         engine.loadMesh(
-                            path = Res.getUri(selectedMeshName),
+                            path = Res.getUri(selectedMesh.path),
                             materialInstanceHandle = loaded.instanceHandle,
-                            scale = 2f,
+                            scale = selectedMesh.scale,
                         )
                     } else {
                         -1
@@ -260,7 +262,7 @@ fun MarbleTextureScreen(
             notice?.let { SampleNotice(it) }
             MeshSelectionField(
                 onMeshSelectionChanged = {
-                    selectedMeshName = it
+                    selectedMesh = it
                     refreshScene()
                 },
             )

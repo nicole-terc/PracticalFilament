@@ -5,42 +5,42 @@ import dev.nstv.practicalfilament.filament.material.Material.TextureMaterial
 import dev.nstv.practicalfilament.filament.material.Material.TextureMaterial.TextureBinding
 
 
-private const val MonkeyMaterialPath = "files/materials/monkeyTexture.filamat"
-private const val MonkeyTextureRoot = "files/textures/monkey"
+private const val MaterialPath = "files/materials/monkeyTexture.filamat"
+private const val TextureRoot = "files/textures/monkey"
 
 fun monkeyMaterial() = TextureMaterial(
     label = "Monkey",
-    materialPath = MonkeyMaterialPath,
+    materialPath = MaterialPath,
     overrides = mapOf(
         "clearCoat" to 1.0f,
     ),
     textureBindings = listOf(
         TextureBinding(
             parameterName = "albedo",
-            texturePath = "$MonkeyTextureRoot/color.ktx",
+            texturePath = "$TextureRoot/color.ktx",
             label = "Albedo",
         ),
         TextureBinding(
             parameterName = "normal",
-            texturePath = "$MonkeyTextureRoot/normal.ktx",
+            texturePath = "$TextureRoot/normal.ktx",
             label = "Normal",
             colorFormat = TextureColorFormat.RGBA8,
         ),
         TextureBinding(
             parameterName = "ao",
-            texturePath = "$MonkeyTextureRoot/ao.ktx",
+            texturePath = "$TextureRoot/ao.ktx",
             label = "Ambient Occlusion",
             colorFormat = TextureColorFormat.RGBA8,
         ),
         TextureBinding(
             parameterName = "roughness",
-            texturePath = "$MonkeyTextureRoot/roughness.ktx",
+            texturePath = "$TextureRoot/roughness.ktx",
             label = "Roughness",
             colorFormat = TextureColorFormat.RGBA8,
         ),
         TextureBinding(
             parameterName = "metallic",
-            texturePath = "$MonkeyTextureRoot/metallic.ktx",
+            texturePath = "$TextureRoot/metallic.ktx",
             label = "Metallic",
             colorFormat = TextureColorFormat.RGBA8,
         ),

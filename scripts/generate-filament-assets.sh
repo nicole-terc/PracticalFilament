@@ -51,11 +51,11 @@ _texture_is_linear() {
     name="$(basename "$1" | tr '[:upper:]' '[:lower:]')"
     # Match both prefixed names (e.g. moss_normal.png) and bare names (e.g. normal.png).
     case "$name" in
-        normal.*|*_nor_*|*[_-]normal.*|\
-        roughness.*|*[_-]rough*|\
-        ao.*|*[_-]ao.*|\
-        metallic.*|*[_-]metallic.*|\
-        *[_-]arm.*|*[_-]disp.*|*[_-]height.*) return 0 ;;
+        normal*|*_nor_*|*[_-]normal*|\
+        roughness*|*[_-]rough*|\
+        ao*|*[_-]ao*|\
+        metallic*|*[_-]metallic*|\
+        *[_-]arm*|*[_-]disp*|*[_-]height*) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -65,7 +65,7 @@ _texture_is_normal() {
     local name
     name="$(basename "$1" | tr '[:upper:]' '[:lower:]')"
     case "$name" in
-        normal.*|*_nor_*|*[_-]normal.*) return 0 ;;
+        normal*|*_nor_*|*[_-]normal*) return 0 ;;
         *) return 1 ;;
     esac
 }
