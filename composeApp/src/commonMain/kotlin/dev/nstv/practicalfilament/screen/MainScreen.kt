@@ -18,8 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import dev.nstv.practicalfilament.screen.marbles.MarbleScreen
 import dev.nstv.practicalfilament.screen.marbles.MarbleFilameshScreen
+import dev.nstv.practicalfilament.screen.marbles.MarbleScreen
 import dev.nstv.practicalfilament.screen.marbles.comparison.GraphicsEffectsComparisonScreen
 import dev.nstv.practicalfilament.screen.marbles.steps.MarbleStepsScreen
 import dev.nstv.practicalfilament.screen.otherViewers.GltfViewerScreen
@@ -38,6 +38,7 @@ import dev.nstv.practicalfilament.screen.samples.StressTestScreen
 import dev.nstv.practicalfilament.screen.samples.TexturedObjectScreen
 import dev.nstv.practicalfilament.screen.samples.TransparentViewScreen
 import dev.nstv.practicalfilament.screen.scenes.sky.SkyScreen
+import dev.nstv.practicalfilament.screen.scenes.water.WaterScreen
 import dev.nstv.practicalfilament.screen.wallpaper.LiveWallpaperScreen
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
@@ -50,12 +51,13 @@ private enum class Screen {
     MARBLE_FILAMESH,
     MARBLE_STEPS,
     MARBLE_COMPARISON,
+    WATER,
     REDBALL,
     SHEEP,
     MORPHING,
     PARTICLE_WORD,
-    SAMPLE_SKY,
-    SAMPLE_GLTF_VIEWER,
+    SKY,
+    GLTF_VIEWER,
     SAMPLE_LIVE_WALLPAPER,
     SAMPLE_PAGE_CURL,
     SAMPLE_STRESS_TEST,
@@ -101,6 +103,18 @@ fun MainScreen(modifier: Modifier = Modifier) {
                 animationSpec = tween(durationMillis = 500)
             ) { screen ->
                 when (screen) {
+                    Screen.WATER -> WaterScreen()
+                    Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
+                    Screen.MARBLE_VIEWER -> MarbleScreen()
+                    Screen.MARBLE_STEPS -> MarbleStepsScreen()
+                    Screen.MARBLE_FILAMESH -> MarbleFilameshScreen()
+                    Screen.MARBLE_COMPARISON -> GraphicsEffectsComparisonScreen()
+                    Screen.REDBALL -> RedballScreen()
+                    Screen.SHEEP -> SheepScreen()
+                    Screen.MORPHING -> MorphingScreen()
+                    Screen.PARTICLE_WORD -> ParticleWordScreen()
+                    Screen.GLTF_VIEWER -> GltfViewerScreen()
+                    Screen.SKY -> SkyScreen()
                     Screen.SAMPLE_IBL -> IBLScreen()
                     Screen.SAMPLE_LIT_CUBE -> LitCubeScreen()
                     Screen.SAMPLE_STRESS_TEST -> StressTestScreen()
@@ -111,17 +125,6 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.SAMPLE_PAGE_CURL -> PageCurlScreen()
                     Screen.SAMPLE_MULTI_VIEW -> MultiViewScreen()
                     Screen.SAMPLE_LIVE_WALLPAPER -> LiveWallpaperScreen()
-                    Screen.SAMPLE_SKY -> SkyScreen()
-                    Screen.SAMPLE_GLTF_VIEWER -> GltfViewerScreen()
-                    Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
-                    Screen.MARBLE_VIEWER -> MarbleScreen()
-                    Screen.MARBLE_STEPS -> MarbleStepsScreen()
-                    Screen.MARBLE_FILAMESH -> MarbleFilameshScreen()
-                    Screen.MARBLE_COMPARISON -> GraphicsEffectsComparisonScreen()
-                    Screen.REDBALL -> RedballScreen()
-                    Screen.SHEEP -> SheepScreen()
-                    Screen.MORPHING -> MorphingScreen()
-                    Screen.PARTICLE_WORD -> ParticleWordScreen()
                 }
             }
         }

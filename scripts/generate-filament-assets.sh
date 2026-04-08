@@ -15,6 +15,7 @@ MODELS_OUTPUT_DIR="${MODELS_OUTPUT_DIR:-$RESOURCES_DIR/models}"
 TEXTURES_OUTPUT_DIR="${TEXTURES_OUTPUT_DIR:-$RESOURCES_DIR/textures}"
 CMGEN_SIZE="${CMGEN_SIZE:-256}"
 CMGEN_EXTRACT_BLUR="${CMGEN_EXTRACT_BLUR:-0.1}"
+FORCE=0
 
 MATC="$FILAMENT_DIR/bin/matc"
 CMGEN="$FILAMENT_DIR/bin/cmgen"
@@ -23,9 +24,11 @@ MIPGEN="$FILAMENT_DIR/bin/mipgen"
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [all|materials|environments|textures]
+Usage: $(basename "$0") [--force] [all|materials|environments|textures]
 
 Compiles Filament source assets into Compose resources.
+By default, skips assets whose output file already exists.
+Use --force to rebuild all assets regardless.
 
 Defaults:
   Filament SDK: $FILAMENT_DIR
@@ -91,6 +94,11 @@ build_textures() {
 
         mkdir -p "$output_dir"
 
+        if [[ "$FORCE" -eq 0 && -f "$output_file" ]]; then
+            echo "skip   $relative_path (already exists)"
+            continue
+        fi
+
         mipgen_flags="--format=ktx"
         if _texture_is_linear "$source_file"; then
             mipgen_flags="$mipgen_flags --linear"
@@ -138,6 +146,12 @@ build_materials() {
         output_dir="$(dirname "$output_file")"
 
         mkdir -p "$output_dir"
+
+        if [[ "$FORCE" -eq 0 && -f "$output_file" ]]; then
+            echo "skip   $relative_path (already exists)"
+            continue
+        fi
+
         echo "matc  $relative_path -> ${output_file#"$ROOT_DIR"/}"
         "$MATC" -p mobile -a all -o "$output_file" "$source_file"
     done < <(find "$MATERIALS_SOURCE_DIR" -type f -name '*.mat' | LC_ALL=C sort)
@@ -163,6 +177,12 @@ build_environments() {
         output_parent="$(dirname "$output_base")"
 
         mkdir -p "$output_parent"
+
+        if [[ "$FORCE" -eq 0 && -d "$output_base" ]]; then
+            echo "skip   $relative_path (already exists)"
+            continue
+        fi
+
         rm -rf "$output_base"
         echo "cmgen $relative_path -> ${output_base#"$ROOT_DIR"/}/"
         "$CMGEN" -x "$output_base" --format=ktx --size="$CMGEN_SIZE" --extract-blur="$CMGEN_EXTRACT_BLUR" "$source_file" >/dev/null
@@ -189,6 +209,12 @@ build_models(){
         output_parent="$(dirname "$output_base")"
 
         mkdir -p "$output_parent"
+
+        if [[ "$FORCE" -eq 0 && -f "$output_base" ]]; then
+            echo "skip   $relative_path (already exists)"
+            continue
+        fi
+
         rm -rf "$output_base"
         echo "filamesh $relative_path -> ${output_base#"$ROOT_DIR"/}/"
         "$FILAMESH" "$source_file" "$output_base">/dev/null
@@ -200,6 +226,15 @@ build_models(){
 }
 
 main() {
+    while [[ "${1:-}" == --* ]]; do
+        case "$1" in
+            --force) FORCE=1 ;;
+            --help) usage; return 0 ;;
+            *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
+        esac
+        shift
+    done
+
     local mode="${1:-all}"
     mkdir -p "$RESOURCES_DIR" "$MATERIALS_OUTPUT_DIR" "$ENVIRONMENT_OUTPUT_DIR" "$TEXTURES_OUTPUT_DIR"
 

@@ -21,10 +21,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import dev.nstv.practicalfilament.components.materials.textured.blueTileMaterial
 import dev.nstv.practicalfilament.components.materials.textured.brownMudLeavesMaterial
 import dev.nstv.practicalfilament.components.materials.textured.monkeyMaterial
 import dev.nstv.practicalfilament.components.materials.textured.mossMaterial
 import dev.nstv.practicalfilament.components.materials.textured.ratMaterial
+import dev.nstv.practicalfilament.components.materials.textured.stripedCottonMaterial
 import dev.nstv.practicalfilament.components.utils.OrbitQuaternion
 import dev.nstv.practicalfilament.components.utils.orbitCameraConfig
 import dev.nstv.practicalfilament.components.utils.orbitCameraControls
@@ -61,6 +63,8 @@ private val MarbleTextureMaterials = listOf(
     mossMaterial(),
     monkeyMaterial(),
     ratMaterial(),
+    stripedCottonMaterial(),
+    blueTileMaterial(),
 )
 
 @Composable

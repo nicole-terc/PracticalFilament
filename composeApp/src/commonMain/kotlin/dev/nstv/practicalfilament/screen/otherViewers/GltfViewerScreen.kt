@@ -55,6 +55,10 @@ private enum class SampleGltfAsset(
         label = "sheep 2",
         path = "files/models/sheep2/scene.gltf",
     ),
+    LUCY(
+        label = "lucy",
+        path = "files/models/lucy/lucy.glb",
+    ),
 }
 
 @Composable
