@@ -6,6 +6,7 @@ import android.opengl.Matrix
 import android.util.Log
 import android.view.Choreographer
 import android.view.Surface
+import com.google.android.filament.Box
 import com.google.android.filament.Camera
 import com.google.android.filament.Engine
 import com.google.android.filament.EntityManager
@@ -817,7 +818,7 @@ class AndroidFilamentEngine(
             vertexBuffer = vertexBuffer,
             indexBuffer = indexBuffer,
             materialInstance = instance,
-            boundingBox = com.google.android.filament.Box(0f, 0f, 0f, hw, hh, 0.01f),
+            boundingBox = Box(0f, 0f, 0f, hw, hh, 0.01f),
         )
     }
 
@@ -901,7 +902,7 @@ class AndroidFilamentEngine(
             vertexBuffer = vertexBuffer,
             indexBuffer = indexBuffer,
             materialInstance = instance,
-            boundingBox = com.google.android.filament.Box(0f, 0f, 0f, radius, radius, radius),
+            boundingBox = Box(0f, 0f, 0f, radius, radius, radius),
         )
     }
 
@@ -975,7 +976,7 @@ class AndroidFilamentEngine(
             vertexBuffer = vertexBuffer,
             indexBuffer = indexBuffer,
             materialInstance = instance,
-            boundingBox = com.google.android.filament.Box(0f, 0f, 0f, half, half, half),
+            boundingBox = Box(0f, 0f, 0f, half, half, half),
         )
     }
 
@@ -996,7 +997,7 @@ class AndroidFilamentEngine(
             vertexBuffer = vertexBuffer,
             indexBuffer = indexBuffer,
             materialInstance = instance,
-            boundingBox = com.google.android.filament.Box(
+            boundingBox = Box(
                 config.boundingBox.center.x,
                 config.boundingBox.center.y,
                 config.boundingBox.center.z,
@@ -1053,7 +1054,7 @@ class AndroidFilamentEngine(
                 vertexBuffer = vertexBuffer,
                 indexBuffer = indexBuffer,
                 materialInstance = instance,
-                boundingBox = com.google.android.filament.Box(
+                boundingBox = Box(
                     config.boundingBox.center.x,
                     config.boundingBox.center.y,
                     config.boundingBox.center.z,
@@ -1137,7 +1138,7 @@ class AndroidFilamentEngine(
             vertexBuffer = vertexBuffer,
             indexBuffer = indexBuffer,
             materialInstance = instance,
-            boundingBox = com.google.android.filament.Box(
+            boundingBox = Box(
                 bounds.center.x,
                 bounds.center.y,
                 bounds.center.z,
@@ -1640,7 +1641,7 @@ class AndroidFilamentEngine(
         vertexBuffer: VertexBuffer,
         indexBuffer: IndexBuffer,
         materialInstance: MaterialInstance,
-        boundingBox: com.google.android.filament.Box,
+        boundingBox: Box,
         morphTargetBuffer: MorphTargetBuffer? = null,
     ): Int {
         val eng = engine ?: return -1
