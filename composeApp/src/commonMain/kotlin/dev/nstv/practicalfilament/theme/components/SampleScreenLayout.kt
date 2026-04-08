@@ -12,12 +12,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import dev.nstv.practicalfilament.screen.HideOptions
 import dev.nstv.practicalfilament.theme.Grid
 
 @Composable
 internal fun SampleScreenLayout(
     title: String,
     modifier: Modifier = Modifier,
+    showControls: Boolean = !HideOptions,
     view: @Composable () -> Unit,
     controls: @Composable () -> Unit = {},
 ) {
@@ -29,19 +31,21 @@ internal fun SampleScreenLayout(
         ) {
             view()
         }
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(Grid.Two),
-            verticalArrangement = spacedBy(Grid.One),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            controls()
+        if (showControls) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(Grid.Two),
+                verticalArrangement = spacedBy(Grid.One),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                controls()
+            }
         }
     }
 }
