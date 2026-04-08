@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.screen.marbles.MarbleFilameshScreen
+import dev.nstv.practicalfilament.screen.marbles.MarbleLightScreen
 import dev.nstv.practicalfilament.screen.marbles.MarbleScreen
 import dev.nstv.practicalfilament.screen.marbles.comparison.GraphicsEffectsComparisonScreen
 import dev.nstv.practicalfilament.screen.marbles.steps.MarbleStepsScreen
@@ -49,6 +50,7 @@ private enum class Screen {
     MATERIAL_VIEWER,
     MARBLE_VIEWER,
     MARBLE_FILAMESH,
+    MARBLE_LIGHT,
     MARBLE_STEPS,
     MARBLE_COMPARISON,
     WATER,
@@ -108,6 +110,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.MARBLE_VIEWER -> MarbleScreen()
                     Screen.MARBLE_STEPS -> MarbleStepsScreen()
                     Screen.MARBLE_FILAMESH -> MarbleFilameshScreen()
+                    Screen.MARBLE_LIGHT -> MarbleLightScreen()
                     Screen.MARBLE_COMPARISON -> GraphicsEffectsComparisonScreen()
                     Screen.REDBALL -> RedballScreen()
                     Screen.SHEEP -> SheepScreen()
