@@ -27,6 +27,7 @@ import dev.nstv.practicalfilament.components.materials.textured.monkeyMaterial
 import dev.nstv.practicalfilament.components.materials.textured.mossMaterial
 import dev.nstv.practicalfilament.components.materials.textured.ratMaterial
 import dev.nstv.practicalfilament.components.materials.textured.stripedCottonMaterial
+import dev.nstv.practicalfilament.components.materials.textured.woodTableMaterial
 import dev.nstv.practicalfilament.components.utils.OrbitQuaternion
 import dev.nstv.practicalfilament.components.utils.orbitCameraConfig
 import dev.nstv.practicalfilament.components.utils.orbitCameraControls
@@ -65,6 +66,7 @@ private val MarbleTextureMaterials = listOf(
     ratMaterial(),
     stripedCottonMaterial(),
     blueTileMaterial(),
+    woodTableMaterial()
 )
 
 @Composable
