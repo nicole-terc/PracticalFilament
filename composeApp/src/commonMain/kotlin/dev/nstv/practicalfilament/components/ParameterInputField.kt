@@ -1,5 +1,6 @@
 package dev.nstv.practicalfilament.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +25,7 @@ import dev.nstv.practicalfilament.filament.UInt2
 import dev.nstv.practicalfilament.filament.UInt3
 import dev.nstv.practicalfilament.filament.UInt4
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
+import dev.nstv.practicalfilament.filament.material.LoadedTextureParameterValue
 import dev.nstv.practicalfilament.filament.material.MaterialParameterType
 import dev.nstv.practicalfilament.filament.material.identityMat3
 import dev.nstv.practicalfilament.filament.material.identityMat4
@@ -36,6 +38,7 @@ fun ParameterInputField(
     name: String,
     type: MaterialParameterType,
     value: Any,
+    overrideSamplers: Boolean = false,
     onValueChange: (Any) -> Unit,
 ) {
     when (type) {
@@ -356,20 +359,50 @@ fun ParameterInputField(
         is MaterialParameterType.Sampler2dArray,
         is MaterialParameterType.SamplerExternal,
         is MaterialParameterType.SamplerCubemap -> {
-            val textures = BuiltInTexture.entries
-            val current = value as? BuiltInTexture ?: BuiltInTexture.NONE
-            DropDownWithArrows(
-                options = textures.map(BuiltInTexture::displayName),
-                onSelectionChanged = { index ->
-                    onValueChange(textures[index])
-                },
-                selectedIndex = textures.indexOf(current).coerceAtLeast(0),
-                label = name,
-                loopSelection = false,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-            )
+            if (overrideSamplers) {
+                val textures = BuiltInTexture.entries
+                val currentLoadedTexture = value as? LoadedTextureParameterValue
+                val currentBuiltInTexture = value as? BuiltInTexture ?: BuiltInTexture.NONE
+                val options = buildList {
+                    currentLoadedTexture?.let { add(it.displayName) }
+                    addAll(textures.map(BuiltInTexture::displayName))
+                }
+                val builtInOffset = if (currentLoadedTexture != null) 1 else 0
+                DropDownWithArrows(
+                    options = options,
+                    onSelectionChanged = { index ->
+                        if (currentLoadedTexture != null && index == 0) {
+                            onValueChange(currentLoadedTexture)
+                        } else {
+                            onValueChange(textures[index - builtInOffset])
+                        }
+                    },
+                    selectedIndex = if (currentLoadedTexture != null) {
+                        0
+                    } else {
+                        textures.indexOf(currentBuiltInTexture).coerceAtLeast(0)
+                    },
+                    label = name,
+                    loopSelection = false,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                )
+            } else {
+                val displayValue = when (value) {
+                    is BuiltInTexture -> value.displayName
+                    is LoadedTextureParameterValue -> value.displayName
+                    else -> value.toString()
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(name)
+                    Text(displayValue)
+                }
+
+            }
         }
     }
 }

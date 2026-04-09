@@ -1,8 +1,15 @@
 package dev.nstv.practicalfilament.screen.marbles.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 
 data class Mesh(
     val name: String,
@@ -39,16 +46,23 @@ val MeshList = listOf(
 fun MeshSelectionField(
     modifier: Modifier = Modifier,
     meshList: List<Mesh> = MeshList,
-    selectedMeshIndex: Int = 0,
+    selectedMesh: Mesh = meshList.first(),
     onMeshSelectionChanged: (Mesh) -> Unit,
 ){
+    var selectedMeshIndex by remember(selectedMesh, meshList) {
+        mutableIntStateOf(meshList.indexOf(selectedMesh).coerceAtLeast(0))
+    }
+
     DropDownWithArrows(
         label = "Mesh",
         options = meshList.map { it.name },
         onSelectionChanged = {
+            selectedMeshIndex = it
             onMeshSelectionChanged(meshList[it])
         },
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = Grid.One),
         selectedIndex = selectedMeshIndex,
     )
 }

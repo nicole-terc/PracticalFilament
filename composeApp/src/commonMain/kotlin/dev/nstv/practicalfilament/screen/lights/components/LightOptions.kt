@@ -202,12 +202,14 @@ internal fun LightSelectionField(
     modifier: Modifier = Modifier,
     presets: List<LightOption> = LightPresets,
     initialSelectedIndex: Int = 1,
+    enabled: Boolean = true,
 ) {
     var selectedPresetIndex by remember { mutableIntStateOf(initialSelectedIndex) }
     ObserveLightPreset(
         filamentEngine = filamentEngine,
         selectedPresetIndex = selectedPresetIndex,
         presets = presets,
+        enabled = enabled,
     )
     DropDownWithArrows(
         modifier = modifier
@@ -225,10 +227,15 @@ private fun ObserveLightPreset(
     filamentEngine: FilamentEngine?,
     selectedPresetIndex: Int,
     presets: List<LightOption>,
+    enabled: Boolean,
 ) {
-    LaunchedEffect(filamentEngine, selectedPresetIndex) {
+    LaunchedEffect(filamentEngine, selectedPresetIndex, enabled) {
         val engine = filamentEngine ?: return@LaunchedEffect
         engine.clearLights()
+        if (!enabled) {
+            engine.requestFrame()
+            return@LaunchedEffect
+        }
         val preset = presets.getOrNull(selectedPresetIndex) ?: return@LaunchedEffect
         preset.lights.forEach { engine.addLight(it) }
         engine.requestFrame()

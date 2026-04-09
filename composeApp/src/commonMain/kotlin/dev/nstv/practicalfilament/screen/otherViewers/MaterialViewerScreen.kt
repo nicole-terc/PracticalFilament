@@ -25,6 +25,7 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
+import dev.nstv.practicalfilament.filament.material.LoadedTextureParameterValue
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.generateTexturePixels
@@ -73,6 +74,14 @@ fun MaterialViewerScreen(
                         materialInstanceHandle,
                         parameter.name,
                         textureHandle
+                    )
+                }
+
+                is LoadedTextureParameterValue -> {
+                    currentEngine.setTextureParameter(
+                        materialInstanceHandle,
+                        parameter.name,
+                        value.textureHandle
                     )
                 }
 

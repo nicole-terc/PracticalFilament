@@ -20,6 +20,7 @@ internal fun SampleScreenLayout(
     title: String,
     modifier: Modifier = Modifier,
     showControls: Boolean = !HideOptions,
+    showControlsTitle: Boolean = true,
     view: @Composable () -> Unit,
     controls: @Composable () -> Unit = {},
 ) {
@@ -40,10 +41,12 @@ internal fun SampleScreenLayout(
                     .padding(Grid.Two),
                 verticalArrangement = spacedBy(Grid.One),
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                )
+                if (showControlsTitle) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                }
                 controls()
             }
         }

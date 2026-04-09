@@ -33,11 +33,22 @@ data class LoadedMaterial(
     val definitions: List<MaterialParameterDefinition>,
     val parameters: Map<String, MaterialParameter>,
     val textureHandles: Map<String, Int> = emptyMap(),
+    val isTexturedMaterial: Boolean = textureHandles.isNotEmpty(),
 )
+
+data class LoadedTextureParameterValue(
+    val textureHandle: Int,
+    val texturePath: String,
+) {
+    val displayName: String = texturePath
+        .substringAfterLast('/')
+        .substringBeforeLast('.')
+}
 
 internal fun buildMaterialParameters(
     definitions: List<MaterialParameterDefinition>,
     material: Material,
+    loadedTextureParameters: Map<String, LoadedTextureParameterValue> = emptyMap(),
 ): Map<String, MaterialParameter> {
     return definitions.associate { definition ->
         val defaultValue = when {
@@ -46,10 +57,7 @@ internal fun buildMaterialParameters(
                 value = material.overrides.getValue(definition.name),
             ) ?: defaultMaterialParameter(definition).value
 
-            definition.type is MaterialParameterType.Sampler2d ||
-                    definition.type is MaterialParameterType.Sampler2dArray ||
-                    definition.type is MaterialParameterType.SamplerCubemap ||
-                    definition.type is MaterialParameterType.SamplerExternal -> BuiltInTexture.CHECKERBOARD
+            definition.name in loadedTextureParameters -> loadedTextureParameters.getValue(definition.name)
 
             else -> defaultMaterialParameter(definition).value
         }
@@ -83,7 +91,11 @@ internal fun coerceOverrideValue(
         is MaterialParameterType.Sampler2d,
         is MaterialParameterType.Sampler2dArray,
         is MaterialParameterType.SamplerCubemap,
-        is MaterialParameterType.SamplerExternal -> value as? BuiltInTexture
+        is MaterialParameterType.SamplerExternal -> when (value) {
+            is BuiltInTexture -> value
+            is LoadedTextureParameterValue -> value
+            else -> null
+        }
     }
 }
 

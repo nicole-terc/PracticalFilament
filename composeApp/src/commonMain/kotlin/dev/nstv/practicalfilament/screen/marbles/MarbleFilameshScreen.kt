@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import dev.nstv.practicalfilament.components.materials.AllMaterialsList
 import dev.nstv.practicalfilament.components.materials.textured.blueTileMaterial
 import dev.nstv.practicalfilament.components.materials.textured.brownMudLeavesMaterial
 import dev.nstv.practicalfilament.components.materials.textured.monkeyMaterial
@@ -40,10 +41,11 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
+import dev.nstv.practicalfilament.filament.material.LoadedTextureParameterValue
+import dev.nstv.practicalfilament.filament.material.Material
 import practicalfilament.composeapp.generated.resources.Res
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.screen.marbles.components.MeshSelectionField
-import dev.nstv.practicalfilament.screen.marbles.components.MeshList
 import dev.nstv.practicalfilament.screen.marbles.components.MonkeyMesh
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
@@ -58,16 +60,7 @@ private val MarbleTextureBaseCamera = CameraConfig(
     lookAt = Float3(0f, 0f, 0f),
 )
 
-
-private val MarbleTextureMaterials = listOf(
-    brownMudLeavesMaterial(),
-    mossMaterial(),
-    monkeyMaterial(),
-    ratMaterial(),
-    stripedCottonMaterial(),
-    blueTileMaterial(),
-    woodTableMaterial()
-)
+val MarbleTextureMaterials = AllMaterialsList
 
 @Composable
 fun MarbleFilameshScreen(
@@ -75,7 +68,7 @@ fun MarbleFilameshScreen(
 ) {
     var filamentEngine by remember { mutableStateOf<FilamentEngine?>(null) }
     var selectedMesh by remember { mutableStateOf(MonkeyMesh) }
-    var selectedMaterialIndex by remember { mutableIntStateOf(2) }
+    var selectedMaterialIndex by remember { mutableStateOf(MarbleTextureMaterials.indexOf(monkeyMaterial()) )}
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var orientation by remember { mutableStateOf(OrbitQuaternion.Identity) }
     var cameraDistance by remember { mutableStateOf(MarbleTextureBaseCamera.orbitDistance()) }
@@ -130,7 +123,7 @@ fun MarbleFilameshScreen(
         val loaded = engine.loadMaterial(material)
         notice = when {
             loaded.instanceHandle <= 0 -> "The textured material could not be loaded."
-            loaded.textureHandles.size != material.textureBindings.size ->
+            material is Material.TextureMaterial && loaded.textureHandles.size != material.textureBindings.size ->
                 "Some textures could not be loaded."
 
             else -> null
@@ -139,7 +132,10 @@ fun MarbleFilameshScreen(
             return
         }
         loaded.parameters.values
-            .filter { parameter -> parameter.value !is BuiltInTexture }
+            .filter {
+                it.value !is BuiltInTexture &&
+                    it.value !is LoadedTextureParameterValue
+            }
             .forEach { parameter ->
                 engine.setMaterialParameter(loaded.instanceHandle, parameter)
             }
@@ -219,14 +215,17 @@ fun MarbleFilameshScreen(
                     val loaded = engine.loadMaterial(material)
                     notice = when {
                         loaded.instanceHandle <= 0 -> "The textured material could not be loaded."
-                        loaded.textureHandles.size != material.textureBindings.size ->
+                        material is Material.TextureMaterial && loaded.textureHandles.size != material.textureBindings.size ->
                             "Some textures could not be loaded."
 
                         else -> null
                     }
                     if (loaded.instanceHandle > 0) {
                         loaded.parameters.values
-                            .filter { parameter -> parameter.value !is BuiltInTexture }
+                            .filter {
+                                it.value !is BuiltInTexture &&
+                                    it.value !is LoadedTextureParameterValue
+                            }
                             .forEach { parameter ->
                                 engine.setMaterialParameter(loaded.instanceHandle, parameter)
                             }
@@ -268,7 +267,7 @@ fun MarbleFilameshScreen(
         controls = {
             notice?.let { SampleNotice(it) }
             MeshSelectionField(
-                selectedMeshIndex = MeshList.indexOf(selectedMesh),
+                selectedMesh = selectedMesh,
                 onMeshSelectionChanged = {
                     selectedMesh = it
                     refreshScene()
