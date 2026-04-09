@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,7 +58,7 @@ private enum class DemoStep(
 fun MarbleStepsScreen(
     modifier: Modifier = Modifier,
 ) {
-    var selectedStep by remember { mutableStateOf(DemoStep.FIVE) }
+    var selectedStep by rememberSaveable { mutableStateOf(DemoStep.FIVE) }
 
     Column(
         modifier = modifier
@@ -95,14 +96,14 @@ fun MarbleStepsScreen(
                 DemoStep.TWO -> key(selectedStep) {
                     SingleMarbleView(
                         material = NeutralSphereMaterial,
-                       // lights = SphereStepLights,
+                        // lights = SphereStepLights,
                     )
                 }
 
                 DemoStep.THREE -> key(selectedStep) {
                     SingleMarbleView(
                         material = MarblePresets[CeramicPresetIndex],
-                      //  lights = SphereStepLights,
+                        //  lights = SphereStepLights,
                     )
                 }
 

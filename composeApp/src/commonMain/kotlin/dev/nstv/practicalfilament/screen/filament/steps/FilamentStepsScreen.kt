@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.screen.HideOptions
@@ -35,7 +36,7 @@ private enum class DemoStep(val label: String) {
 fun FilamentStepsScreen(
     modifier: Modifier = Modifier,
 ) {
-    var selectedStep by remember { mutableStateOf(DemoStep.ONE) }
+    var selectedStep by rememberSaveable { mutableStateOf(DemoStep.ONE) }
 
     Column(
         modifier = modifier.fillMaxSize(),
