@@ -77,7 +77,7 @@ private enum class Screen {
 
 const val UseSlidesBackground = false
 const val HideOptions = false
-const val HideTopDropDown = true
+const val HideTopDropDown = false
 const val SheepIt = false
 
 @Composable
@@ -86,7 +86,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by rememberSaveable { mutableStateOf(Screen.FILAMENT_STEPS) }
+        var selectedScreen by rememberSaveable { mutableStateOf(Screen.MARBLE_FILAMESH) }
 
         Column(
             modifier = Modifier
