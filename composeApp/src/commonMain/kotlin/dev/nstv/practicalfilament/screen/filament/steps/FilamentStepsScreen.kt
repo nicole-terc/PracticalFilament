@@ -13,7 +13,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.screen.HideOptions
 import dev.nstv.practicalfilament.screen.filament.steps.step1.FilamentStepOne
@@ -57,9 +56,7 @@ fun FilamentStepsScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .padding(Grid.Two),
-            contentAlignment = Alignment.Center,
+                .weight(1f),
         ) {
             key(selectedStep) {
                 when (selectedStep) {

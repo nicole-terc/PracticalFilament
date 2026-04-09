@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import dev.nstv.practicalfilament.components.materials.AllMaterialsList
 import dev.nstv.practicalfilament.components.materials.textured.blueTileMaterial
 import dev.nstv.practicalfilament.components.materials.textured.brownMudLeavesMaterial
 import dev.nstv.practicalfilament.components.materials.textured.monkeyMaterial
@@ -39,6 +40,7 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
+import dev.nstv.practicalfilament.filament.material.Material
 import practicalfilament.composeapp.generated.resources.Res
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.screen.marbles.components.MeshSelectionField
@@ -57,15 +59,7 @@ private val MarbleTextureBaseCamera = CameraConfig(
     lookAt = Float3(0f, 0f, 0f),
 )
 
-
-private val MarbleTextureMaterials = listOf(
-    brownMudLeavesMaterial(),
-    mossMaterial(),
-    monkeyMaterial(),
-    ratMaterial(),
-    stripedCottonMaterial(),
-    blueTileMaterial(),
-)
+val MarbleTextureMaterials = AllMaterialsList
 
 @Composable
 fun MarbleFilameshScreen(
@@ -73,7 +67,7 @@ fun MarbleFilameshScreen(
 ) {
     var filamentEngine by remember { mutableStateOf<FilamentEngine?>(null) }
     var selectedMesh by remember { mutableStateOf(MonkeyMesh) }
-    var selectedMaterialIndex by remember { mutableIntStateOf(2) }
+    var selectedMaterialIndex by remember { mutableStateOf(MarbleTextureMaterials.indexOf(monkeyMaterial()) )}
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var orientation by remember { mutableStateOf(OrbitQuaternion.Identity) }
     var cameraDistance by remember { mutableStateOf(MarbleTextureBaseCamera.orbitDistance()) }
@@ -128,7 +122,7 @@ fun MarbleFilameshScreen(
         val loaded = engine.loadMaterial(material)
         notice = when {
             loaded.instanceHandle <= 0 -> "The textured material could not be loaded."
-            loaded.textureHandles.size != material.textureBindings.size ->
+            material is Material.TextureMaterial && loaded.textureHandles.size != material.textureBindings.size ->
                 "Some textures could not be loaded."
 
             else -> null
@@ -217,7 +211,7 @@ fun MarbleFilameshScreen(
                     val loaded = engine.loadMaterial(material)
                     notice = when {
                         loaded.instanceHandle <= 0 -> "The textured material could not be loaded."
-                        loaded.textureHandles.size != material.textureBindings.size ->
+                        material is Material.TextureMaterial && loaded.textureHandles.size != material.textureBindings.size ->
                             "Some textures could not be loaded."
 
                         else -> null

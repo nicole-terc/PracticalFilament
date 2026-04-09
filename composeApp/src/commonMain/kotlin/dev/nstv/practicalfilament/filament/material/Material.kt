@@ -33,6 +33,7 @@ data class LoadedMaterial(
     val definitions: List<MaterialParameterDefinition>,
     val parameters: Map<String, MaterialParameter>,
     val textureHandles: Map<String, Int> = emptyMap(),
+    val isTexturedMaterial: Boolean = textureHandles.isNotEmpty(),
 )
 
 internal fun buildMaterialParameters(

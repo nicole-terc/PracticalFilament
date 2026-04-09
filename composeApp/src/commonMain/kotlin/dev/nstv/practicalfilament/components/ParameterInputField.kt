@@ -1,5 +1,6 @@
 package dev.nstv.practicalfilament.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,6 +37,7 @@ fun ParameterInputField(
     name: String,
     type: MaterialParameterType,
     value: Any,
+    overrideSamplers: Boolean = false,
     onValueChange: (Any) -> Unit,
 ) {
     when (type) {
@@ -356,20 +358,31 @@ fun ParameterInputField(
         is MaterialParameterType.Sampler2dArray,
         is MaterialParameterType.SamplerExternal,
         is MaterialParameterType.SamplerCubemap -> {
-            val textures = BuiltInTexture.entries
-            val current = value as? BuiltInTexture ?: BuiltInTexture.NONE
-            DropDownWithArrows(
-                options = textures.map(BuiltInTexture::displayName),
-                onSelectionChanged = { index ->
-                    onValueChange(textures[index])
-                },
-                selectedIndex = textures.indexOf(current).coerceAtLeast(0),
-                label = name,
-                loopSelection = false,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-            )
+            if (overrideSamplers) {
+                val textures = BuiltInTexture.entries
+                val current = value as? BuiltInTexture ?: BuiltInTexture.NONE
+                DropDownWithArrows(
+                    options = textures.map(BuiltInTexture::displayName),
+                    onSelectionChanged = { index ->
+                        onValueChange(textures[index])
+                    },
+                    selectedIndex = textures.indexOf(current).coerceAtLeast(0),
+                    label = name,
+                    loopSelection = false,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(name)
+                    Text("$value")
+                }
+
+            }
         }
     }
 }

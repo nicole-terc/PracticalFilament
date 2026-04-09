@@ -14,33 +14,53 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import dev.nstv.practicalfilament.filament.FilamentClipShape
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
-import dev.nstv.practicalfilament.screen.filament.steps.components.FilamentStepView
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackgroundFilament
 import dev.nstv.practicalfilament.screen.marbles.components.NeutralSphereMaterial
 import dev.nstv.practicalfilament.screen.marbles.components.SingleMarbleCamera
 import dev.nstv.practicalfilament.screen.marbles.components.SphereStepLights
 import dev.nstv.practicalfilament.theme.Grid
+import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 
 @Composable
 internal fun FilamentStepThree(
     modifier: Modifier = Modifier,
 ) {
-    var showLight by remember { mutableStateOf(false) }
+    var showLight by remember { mutableStateOf(true) }
     var engine by remember { mutableStateOf<FilamentEngine?>(null) }
 
     LaunchedEffect(engine, showLight) {
-        val e = engine ?: return@LaunchedEffect
-        e.clearLights()
-        if (showLight) SphereStepLights.forEach { e.addLight(it) }
-        e.requestFrame()
+        val currentEngine = engine ?: return@LaunchedEffect
+        currentEngine.clearLights()
+        if (showLight) {
+            SphereStepLights.forEach(currentEngine::addLight)
+        }
+        currentEngine.requestFrame()
     }
 
-    FilamentStepView(
+    SampleScreenLayout(
+        title = "3. Geometry",
         modifier = modifier,
-        footer = {
+        view = {
+            FilamentView(
+                modifier = Modifier.fillMaxSize(),
+                camera = SingleMarbleCamera,
+                backgroundColor = MarbleUiBackgroundFilament,
+                onEngineReady = { readyEngine ->
+                    val loaded = readyEngine.loadMaterial(NeutralSphereMaterial)
+                    loaded.parameters.values.forEach { parameter ->
+                        readyEngine.setMaterialParameter(loaded.instanceHandle, parameter)
+                    }
+                    readyEngine.createSphereRenderable(
+                        materialInstanceHandle = loaded.instanceHandle,
+                        radius = 1.1f,
+                    )
+                    engine = readyEngine
+                },
+            )
+        },
+        controls = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = showLight, onCheckedChange = { showLight = it })
                 Text(
@@ -50,23 +70,5 @@ internal fun FilamentStepThree(
                 )
             }
         },
-    ) {
-        FilamentView(
-            modifier = Modifier.fillMaxSize(),
-            camera = SingleMarbleCamera,
-            backgroundColor = MarbleUiBackgroundFilament,
-            clipShape = FilamentClipShape.Circle,
-            onEngineReady = { e ->
-                val loaded = e.loadMaterial(NeutralSphereMaterial)
-                loaded.parameters.values.forEach {
-                    e.setMaterialParameter(loaded.instanceHandle, it)
-                }
-                e.createSphereRenderable(
-                    materialInstanceHandle = loaded.instanceHandle,
-                    radius = 1.1f,
-                )
-                engine = e
-            },
-        )
-    }
+    )
 }

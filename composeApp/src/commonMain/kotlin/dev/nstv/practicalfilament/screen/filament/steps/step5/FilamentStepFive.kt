@@ -9,16 +9,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import dev.nstv.practicalfilament.filament.FilamentClipShape
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.withFrameSeconds
-import dev.nstv.practicalfilament.screen.filament.steps.components.FilamentStepView
 import dev.nstv.practicalfilament.screen.marbles.components.CeramicPresetIndex
+import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleAliveLights
 import dev.nstv.practicalfilament.screen.marbles.components.MarblePresets
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackgroundFilament
 import dev.nstv.practicalfilament.screen.marbles.components.SingleMarbleCamera
+import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
 
 @Composable
 internal fun FilamentStepFive(
@@ -34,31 +34,37 @@ internal fun FilamentStepFive(
         withFrameSeconds { elapsed, _ ->
             engine.setRenderableRotation(
                 renderableHandle,
-                -12f + 2f,
+                -10f,
                 24f + elapsed * 18f,
             )
             engine.requestFrame()
         }
     }
 
-    FilamentStepView(modifier = modifier) {
-        FilamentView(
-            modifier = Modifier.fillMaxSize(),
-            camera = SingleMarbleCamera,
-            lights = MarbleAliveLights,
-            backgroundColor = MarbleUiBackgroundFilament,
-            clipShape = FilamentClipShape.Circle,
-            onEngineReady = { engine ->
-                val loaded = engine.loadMaterial(material)
-                loaded.parameters.values.forEach {
-                    engine.setMaterialParameter(loaded.instanceHandle, it)
-                }
-                engineReady = engine
-                renderableHandle = engine.createSphereRenderable(
-                    materialInstanceHandle = loaded.instanceHandle,
-                    radius = 1.1f,
-                )
-            },
-        )
-    }
+    SampleScreenLayout(
+        title = "5. Lights",
+        modifier = modifier,
+        view = {
+            FilamentView(
+                modifier = Modifier.fillMaxSize(),
+                camera = SingleMarbleCamera,
+                lights = MarbleAliveLights,
+                backgroundColor = MarbleUiBackgroundFilament,
+                onEngineReady = { engine ->
+                    val loaded = engine.loadMaterial(material)
+                    loaded.parameters.values.forEach { parameter ->
+                        engine.setMaterialParameter(loaded.instanceHandle, parameter)
+                    }
+                    engineReady = engine
+                    renderableHandle = engine.createSphereRenderable(
+                        materialInstanceHandle = loaded.instanceHandle,
+                        radius = 1.1f,
+                    )
+                },
+            )
+        },
+        controls = {
+            EnvironmentSelectionField(filamentEngine = engineReady)
+        },
+    )
 }
