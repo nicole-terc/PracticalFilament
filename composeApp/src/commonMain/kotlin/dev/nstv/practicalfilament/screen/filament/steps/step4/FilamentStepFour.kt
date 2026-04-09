@@ -16,28 +16,35 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import dev.nstv.practicalfilament.components.ParameterInputField
 import dev.nstv.practicalfilament.components.materials.AllMaterialsList
-import dev.nstv.practicalfilament.components.materials.MaterialOverridesList
-import dev.nstv.practicalfilament.components.materials.texturedSampleMaterial
+import dev.nstv.practicalfilament.components.utils.OrbitQuaternion
+import dev.nstv.practicalfilament.components.utils.orbitCameraConfig
+import dev.nstv.practicalfilament.components.utils.orbitCameraControls
+import dev.nstv.practicalfilament.components.utils.orbitDistance
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
 import dev.nstv.practicalfilament.filament.material.LoadedMaterial
-import dev.nstv.practicalfilament.filament.material.Material
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.generateTexturePixels
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackgroundFilament
+import dev.nstv.practicalfilament.screen.marbles.components.MeshSelectionField
 import dev.nstv.practicalfilament.screen.marbles.components.SingleMarbleCamera
+import dev.nstv.practicalfilament.screen.marbles.components.SphereMesh
 import dev.nstv.practicalfilament.screen.marbles.components.SphereStepLights
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
-import kotlin.collections.plus
+import practicalfilament.composeapp.generated.resources.Res
 
 private val FilamentStepMaterials = AllMaterialsList
+private const val FilamentStepFourMinCameraDistance = 2.2f
+private const val FilamentStepFourMaxCameraDistance = 8f
 
 @Composable
 internal fun FilamentStepFour(
@@ -45,7 +52,11 @@ internal fun FilamentStepFour(
 ) {
     var showLight by remember { mutableStateOf(true) }
     var filamentEngine by remember { mutableStateOf<FilamentEngine?>(null) }
+    var selectedMesh by remember { mutableStateOf(SphereMesh) }
     var selectedMaterialIndex by remember { mutableIntStateOf(0) }
+    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
+    var orientation by remember { mutableStateOf(OrbitQuaternion.Identity) }
+    var cameraDistance by remember { mutableStateOf(SingleMarbleCamera.orbitDistance()) }
     var renderableHandle by remember { mutableIntStateOf(0) }
     var loadedMaterial by remember { mutableStateOf<LoadedMaterial?>(null) }
     var materialParameterDefinitions by remember {
@@ -53,26 +64,54 @@ internal fun FilamentStepFour(
     }
     var materialParameters by remember { mutableStateOf<Map<String, MaterialParameter>>(emptyMap()) }
     var textureHandles by remember { mutableStateOf<Map<BuiltInTexture, Int>>(emptyMap()) }
+    var notice by remember { mutableStateOf<String?>(null) }
 
-    fun loadSelectedMaterial(engine: FilamentEngine, material: Material) {
+    fun refreshScene(engine: FilamentEngine) {
         if (renderableHandle != 0) {
             engine.removeRenderable(renderableHandle)
             renderableHandle = 0
         }
 
+        val material = FilamentStepMaterials[selectedMaterialIndex]
         val loaded = engine.loadMaterial(material)
         loadedMaterial = loaded
         textureHandles = emptyMap()
         materialParameterDefinitions = loaded.definitions
         materialParameters = loaded.parameters
+        notice = when {
+            loaded.instanceHandle <= 0 -> "The material could not be loaded."
+            else -> null
+        }
         renderableHandle = if (loaded.instanceHandle > 0) {
-            engine.createSphereRenderable(
+            loaded.parameters.values
+                .filter { parameter -> parameter.value !is BuiltInTexture }
+                .forEach { parameter ->
+                    engine.setMaterialParameter(loaded.instanceHandle, parameter)
+                }
+            engine.loadMesh(
+                path = Res.getUri(selectedMesh.path),
                 materialInstanceHandle = loaded.instanceHandle,
-                radius = 1.1f,
+                scale = selectedMesh.scale,
             )
         } else {
             0
         }
+        if (loaded.instanceHandle > 0 && renderableHandle <= 0) {
+            notice = "The ${selectedMesh.name} mesh could not be loaded."
+        }
+        engine.requestFrame()
+    }
+
+    LaunchedEffect(filamentEngine, orientation, cameraDistance) {
+        val engine = filamentEngine ?: return@LaunchedEffect
+        engine.updateCamera(
+            orbitCameraConfig(
+                baseCamera = SingleMarbleCamera,
+                orientation = orientation,
+                distance = cameraDistance,
+            )
+        )
+        engine.requestFrame()
     }
 
     LaunchedEffect(filamentEngine, showLight) {
@@ -87,11 +126,11 @@ internal fun FilamentStepFour(
     LaunchedEffect(filamentEngine, loadedMaterial, materialParameters) {
         val engine = filamentEngine ?: return@LaunchedEffect
         loadedMaterial?.let {
-            if (!it.isTexturedMaterial) {
-                var updatedTextureHandles = textureHandles
-                materialParameters.values.forEach { parameter ->
-                    when (val value = parameter.value) {
-                        is BuiltInTexture -> {
+            var updatedTextureHandles = textureHandles
+            materialParameters.values.forEach { parameter ->
+                when (val value = parameter.value) {
+                    is BuiltInTexture -> {
+                        if (!it.isTexturedMaterial) {
                             val textureHandle = updatedTextureHandles[value] ?: engine.createTexture(
                                 width = 256,
                                 height = 256,
@@ -105,13 +144,13 @@ internal fun FilamentStepFour(
                                 textureHandle,
                             )
                         }
-
-                        else -> engine.setMaterialParameter(it.instanceHandle, parameter)
                     }
+
+                    else -> engine.setMaterialParameter(it.instanceHandle, parameter)
                 }
-                if (updatedTextureHandles != textureHandles) {
-                    textureHandles = updatedTextureHandles
-                }
+            }
+            if (updatedTextureHandles != textureHandles) {
+                textureHandles = updatedTextureHandles
             }
             engine.requestFrame()
         }
@@ -120,18 +159,42 @@ internal fun FilamentStepFour(
     SampleScreenLayout(
         title = "4. Material",
         modifier = modifier,
+        showControlsTitle = false,
         view = {
             FilamentView(
-                modifier = Modifier.fillMaxSize(),
-                camera = SingleMarbleCamera,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onSizeChanged { viewportSize = it }
+                    .orbitCameraControls(
+                        viewportSize = viewportSize,
+                        orientation = orientation,
+                        onOrientationChange = { orientation = it },
+                        distance = cameraDistance,
+                        onDistanceChange = { cameraDistance = it },
+                        minDistance = FilamentStepFourMinCameraDistance,
+                        maxDistance = FilamentStepFourMaxCameraDistance,
+                        enabled = renderableHandle > 0,
+                    ),
+                camera = orbitCameraConfig(
+                    baseCamera = SingleMarbleCamera,
+                    orientation = orientation,
+                    distance = cameraDistance,
+                ),
                 backgroundColor = MarbleUiBackgroundFilament,
                 onEngineReady = { engine ->
                     filamentEngine = engine
-                    loadSelectedMaterial(engine, FilamentStepMaterials[selectedMaterialIndex])
+                    refreshScene(engine)
                 },
             )
         },
         controls = {
+            notice?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = Grid.One),
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = showLight, onCheckedChange = { showLight = it })
                 Text(
@@ -140,6 +203,13 @@ internal fun FilamentStepFour(
                     modifier = Modifier.padding(end = Grid.One),
                 )
             }
+            MeshSelectionField(
+                selectedMesh = selectedMesh,
+                onMeshSelectionChanged = { mesh ->
+                    selectedMesh = mesh
+                    filamentEngine?.let(::refreshScene)
+                },
+            )
             EnvironmentSelectionField(filamentEngine = filamentEngine)
             DropDownWithArrows(
                 modifier = Modifier
@@ -150,9 +220,7 @@ internal fun FilamentStepFour(
                 label = "Material",
                 onSelectionChanged = { index ->
                     selectedMaterialIndex = index
-                    filamentEngine?.let { engine ->
-                        loadSelectedMaterial(engine, FilamentStepMaterials[index])
-                    }
+                    filamentEngine?.let(::refreshScene)
                 },
             )
             if (materialParameterDefinitions.isEmpty()) {

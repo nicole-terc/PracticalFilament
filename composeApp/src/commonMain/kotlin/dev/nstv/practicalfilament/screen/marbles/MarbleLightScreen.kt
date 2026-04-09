@@ -242,7 +242,7 @@ fun MarbleLightScreen(
             )
 
             MeshSelectionField(
-                selectedMeshIndex = MeshList.indexOf(selectedMesh),
+                selectedMesh = selectedMesh,
                 onMeshSelectionChanged = {
                     selectedMesh = it
                     refreshScene()

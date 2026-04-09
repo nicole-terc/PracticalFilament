@@ -15,6 +15,7 @@ internal fun FilamentStepTwo(
     SampleScreenLayout(
         title = "2. FilamentView",
         modifier = modifier,
+        showControlsTitle = false,
         view = {
             FilamentView(
                 modifier = Modifier.fillMaxSize(),

@@ -27,6 +27,7 @@ internal fun FilamentStepOne(
     SampleScreenLayout(
         title = "1. Engine",
         modifier = modifier,
+        showControlsTitle = false,
         view = {
             Box(modifier = Modifier.fillMaxSize()) {
                 FilamentView(

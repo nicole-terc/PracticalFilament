@@ -44,7 +44,6 @@ import dev.nstv.practicalfilament.filament.material.Material
 import practicalfilament.composeapp.generated.resources.Res
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.screen.marbles.components.MeshSelectionField
-import dev.nstv.practicalfilament.screen.marbles.components.MeshList
 import dev.nstv.practicalfilament.screen.marbles.components.MonkeyMesh
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
@@ -260,7 +259,7 @@ fun MarbleFilameshScreen(
         controls = {
             notice?.let { SampleNotice(it) }
             MeshSelectionField(
-                selectedMeshIndex = MeshList.indexOf(selectedMesh),
+                selectedMesh = selectedMesh,
                 onMeshSelectionChanged = {
                     selectedMesh = it
                     refreshScene()
