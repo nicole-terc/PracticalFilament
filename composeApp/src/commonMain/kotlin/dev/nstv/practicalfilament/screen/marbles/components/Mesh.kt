@@ -35,10 +35,22 @@ val StreetRatMesh = Mesh(
     scale = 50f,
 )
 
+val pirateMesh = Mesh(
+    name = "Pirate",
+    path = "files/models/pirate.filamesh",
+)
+
+val prismMesh = Mesh(
+    name = "Prism",
+    path = "files/models/prism.filamesh",
+)
+
 val MeshList = listOf(
     SphereMesh,
     MonkeyMesh,
     StreetRatMesh,
+    pirateMesh,
+    prismMesh,
 )
 
 
