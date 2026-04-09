@@ -72,7 +72,6 @@ fun LitCubeScreen(
                         castShadows = true,
                     ),
                 ),
-                backgroundColor = FilamentColor(0.04f, 0.05f, 0.07f, 1f),
                 onEngineReady = { readyEngine ->
                     val loaded = readyEngine.loadMaterial(morphingMaterial())
                     loaded.parameters.values.forEach {

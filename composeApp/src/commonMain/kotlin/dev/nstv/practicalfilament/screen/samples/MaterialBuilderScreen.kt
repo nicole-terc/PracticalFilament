@@ -130,7 +130,6 @@ fun MaterialBuilderScreen(
                             direction = Float3(0.5f, -1f, -0.7f),
                         ),
                     ),
-                    backgroundColor = FilamentColor(0.05f, 0.05f, 0.06f, 1f),
                     onEngineReady = { readyEngine ->
                         engine = readyEngine
                         compileVersion += 1

@@ -73,7 +73,6 @@ fun IBLScreen(
                     fovDegrees = 28.0,
                 ),
                 lights = IblLights,
-                backgroundColor = FilamentColor(0.02f, 0.03f, 0.05f, 1f),
                 onEngineReady = { readyEngine ->
                     val loaded = readyEngine.loadMaterial(redballMaterial())
                     loaded.parameters.values.forEach {

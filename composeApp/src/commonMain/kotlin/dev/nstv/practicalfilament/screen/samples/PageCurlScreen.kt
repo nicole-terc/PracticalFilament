@@ -101,7 +101,6 @@ fun PageCurlScreen(
                         direction = Float3(0f, -0.54f, -0.89f),
                     ),
                 ),
-                backgroundColor = FilamentColor(0.42f, 0.55f, 0.74f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
                     readyEngine.setCameraExposure(1f, 1f, 1f)

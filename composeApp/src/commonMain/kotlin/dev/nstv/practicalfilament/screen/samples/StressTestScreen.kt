@@ -152,7 +152,6 @@ fun StressTestScreen(
                             direction = Float3(-0.8f, -1f, -0.4f),
                         ),
                     ),
-                    backgroundColor = FilamentColor(0.02f, 0.02f, 0.03f, 1f),
                     onEngineReady = { readyEngine ->
                         engine = readyEngine
                     },

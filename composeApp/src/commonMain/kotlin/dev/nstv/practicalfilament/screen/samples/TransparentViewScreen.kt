@@ -80,7 +80,6 @@ fun TransparentViewScreen(
                         far = 10.0,
                     ),
                     lights = emptyList(),
-                    backgroundColor = FilamentColor(0f, 0f, 0f, 0f),
                     isOpaque = false,
                     onEngineReady = { readyEngine ->
                         engine = readyEngine

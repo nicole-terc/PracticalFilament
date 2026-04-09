@@ -211,7 +211,6 @@ fun MarbleLightScreen(
                     distance = cameraDistance,
                 ),
                 lights = emptyList(),
-                backgroundColor = FilamentColor(0.05f, 0.05f, 0.08f, 1f),
                 onEngineReady = { engine ->
                     filamentEngine = engine
                     refreshScene()

@@ -350,7 +350,6 @@ fun SheepScreen(
                     distance = cameraDistance,
                 ),
                 lights = SheepBaseLights,
-                backgroundColor = FilamentColor(0f, 0f, 0f, 1f),
                 onEngineReady = { engine ->
                     val fluffMaterial = engine.loadMaterial(sheepFluffMaterial())
                     val indirectLightHandle =

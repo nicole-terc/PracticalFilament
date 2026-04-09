@@ -33,7 +33,6 @@ import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.generateTexturePixels
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
-import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackgroundFilament
 import dev.nstv.practicalfilament.screen.marbles.components.MeshSelectionField
 import dev.nstv.practicalfilament.screen.marbles.components.SingleMarbleCamera
 import dev.nstv.practicalfilament.screen.marbles.components.SphereMesh
@@ -192,7 +191,6 @@ internal fun FilamentStepFour(
                     orientation = orientation,
                     distance = cameraDistance,
                 ),
-                backgroundColor = MarbleUiBackgroundFilament,
                 onEngineReady = { engine ->
                     filamentEngine = engine
                     refreshScene(engine)

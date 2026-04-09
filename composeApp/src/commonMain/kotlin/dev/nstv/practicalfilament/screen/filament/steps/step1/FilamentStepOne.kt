@@ -13,7 +13,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.filament.FilamentView
-import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackgroundFilament
 import dev.nstv.practicalfilament.screen.marbles.components.SingleMarbleCamera
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.SampleScreenLayout
@@ -34,7 +33,6 @@ internal fun FilamentStepOne(
                     modifier = Modifier.fillMaxSize(),
                     camera = SingleMarbleCamera,
                     lights = emptyList(),
-                    backgroundColor = MarbleUiBackgroundFilament,
                     onEngineReady = { engineReady = true },
                 )
                 Text(

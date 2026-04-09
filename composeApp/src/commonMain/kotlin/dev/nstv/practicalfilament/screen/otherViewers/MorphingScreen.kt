@@ -141,7 +141,6 @@ fun MorphingScreen(
                     },
                 camera = morphingCameraForOrientation(orientation),
                 lights = MorphingBaseLights,
-                backgroundColor = FilamentColor(0.6f, 0.6f, 0.6f, 1f),
                 onEngineReady = { engine ->
                     val loaded = engine.loadMaterial(morphingMaterial())
                     val indirectLightHandle =

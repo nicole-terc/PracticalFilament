@@ -2,6 +2,7 @@ package dev.nstv.practicalfilament.screen.marbles.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.filament.FilamentEngine
+import dev.nstv.practicalfilament.filament.toFilamentColor
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 import practicalfilament.composeapp.generated.resources.Res
@@ -86,26 +88,27 @@ private fun ObserveBackgroundIndex(
     selectedBackgroundIndex: Int,
     updateNotice: (String?) -> Unit,
 ) {
+    val materialBackground = MaterialTheme.colorScheme.background.toFilamentColor()
     var environmentHandles by remember { mutableStateOf<Map<String, LoadedEnvironment>>(emptyMap()) }
     var colorSkyboxHandle by remember { mutableIntStateOf(0) }
     var activeIndirectLightHandle by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(filamentEngine, selectedBackgroundIndex) {
+    LaunchedEffect(filamentEngine, selectedBackgroundIndex, materialBackground) {
         val engine = filamentEngine ?: return@LaunchedEffect
 
         var currentColorSkyboxHandle = colorSkyboxHandle
         if (currentColorSkyboxHandle == 0) {
             currentColorSkyboxHandle = engine.createColorSkybox()
-            if (currentColorSkyboxHandle > 0) {
-                engine.setSkyboxColor(
-                    currentColorSkyboxHandle,
-                    r = 0.16f,
-                    g = 0.18f,
-                    b = 0.27f,
-                    a = 1f,
-                )
-                colorSkyboxHandle = currentColorSkyboxHandle
-            }
+            colorSkyboxHandle = currentColorSkyboxHandle
+        }
+        if (currentColorSkyboxHandle > 0) {
+            engine.setSkyboxColor(
+                currentColorSkyboxHandle,
+                r = materialBackground.r,
+                g = materialBackground.g,
+                b = materialBackground.b,
+                a = materialBackground.a,
+            )
         }
 
         val background = MarbleTextureBackgrounds[selectedBackgroundIndex]

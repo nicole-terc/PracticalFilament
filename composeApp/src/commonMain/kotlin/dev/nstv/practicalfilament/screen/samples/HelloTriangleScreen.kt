@@ -73,7 +73,6 @@ fun HelloTriangleScreen(
                         intensity = 10_000f
                     )
                 ),
-                backgroundColor = FilamentColor(0.01f, 0.02f, 0.03f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
                     if (!readyEngine.supportsMaterialBuilder) {

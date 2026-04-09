@@ -152,7 +152,6 @@ fun LiveWallpaperScreen(
                 modifier = Modifier.fillMaxSize(),
                 camera = CameraConfig(),
                 lights = LiveWallpaperLights,
-                backgroundColor = FilamentColor(0f, 0f, 0f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
                     readyEngine.setCameraExposure(16f, 1f / 125f, 100f)
