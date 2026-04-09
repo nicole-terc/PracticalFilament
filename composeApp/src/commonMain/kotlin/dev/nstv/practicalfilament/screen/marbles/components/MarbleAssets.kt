@@ -177,7 +177,3 @@ internal val NeutralSphereMaterial = SimpleMaterial(
 )
 
 internal const val CeramicPresetIndex = 4
-
-internal fun Color.toFilamentColor(): FilamentColor {
-    return FilamentColor(r = red, g = green, b = blue, a = alpha)
-}

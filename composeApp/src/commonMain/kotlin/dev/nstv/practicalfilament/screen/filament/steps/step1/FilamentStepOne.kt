@@ -40,7 +40,7 @@ internal fun FilamentStepOne(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
+                        .align(Alignment.Center)
                         .padding(bottom = Grid.One),
                 )
             }

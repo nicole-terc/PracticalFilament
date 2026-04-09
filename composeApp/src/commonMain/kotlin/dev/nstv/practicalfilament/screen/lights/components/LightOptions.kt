@@ -22,6 +22,30 @@ internal data class LightOption(
     val lights: List<LightConfig>,
 )
 
+private val topLeftKeyLight = LightConfig(
+    type = LightType.POINT,
+    color = FilamentColor(1f, 0.97f, 0.92f),
+    intensity = 2_600_000f,
+    position = Float3(-2.1f, 2.4f, 3.4f),
+    falloffRadius = 14f,
+)
+
+private val bottomRightFillLight = LightConfig(
+    type = LightType.POINT,
+    color = FilamentColor(0.72f, 0.82f, 1f),
+    intensity = 1_600_000f,
+    position = Float3(2.3f, -1.8f, 3f),
+    falloffRadius = 14f,
+)
+
+private val backRimLight = LightConfig(
+    type = LightType.POINT,
+    color = FilamentColor(1f, 0.9f, 0.82f),
+    intensity = 1_100_000f,
+    position = Float3(0f, 1.8f, -3.8f),
+    falloffRadius = 14f,
+)
+
 internal val LightPresets = listOf(
     LightOption(label = "None", lights = emptyList()),
     LightOption(
@@ -46,6 +70,25 @@ internal val LightPresets = listOf(
                 direction = Float3(0f, -1f, 0f),
                 castShadows = true,
             ),
+        ),
+    ),
+    LightOption(
+        label = "One Light",
+        lights = listOf(topLeftKeyLight),
+    ),
+    LightOption(
+        label = "Two Lights",
+        lights = listOf(
+            topLeftKeyLight,
+            bottomRightFillLight,
+        ),
+    ),
+    LightOption(
+        label = "Three Lights",
+        lights = listOf(
+            topLeftKeyLight,
+            bottomRightFillLight,
+            backRimLight,
         ),
     ),
     LightOption(

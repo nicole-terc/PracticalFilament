@@ -4,10 +4,12 @@ import dev.nstv.practicalfilament.components.materials.textured.blueTileMaterial
 import dev.nstv.practicalfilament.components.materials.textured.brownMudLeavesMaterial
 import dev.nstv.practicalfilament.components.materials.textured.fabricPatternMaterial
 import dev.nstv.practicalfilament.components.materials.textured.interiorTilesMaterial
+import dev.nstv.practicalfilament.components.materials.textured.metalGrateMaterial
 import dev.nstv.practicalfilament.components.materials.textured.monkeyMaterial
 import dev.nstv.practicalfilament.components.materials.textured.mossMaterial
 import dev.nstv.practicalfilament.components.materials.textured.ratMaterial
 import dev.nstv.practicalfilament.components.materials.textured.riverPebblesMaterial
+import dev.nstv.practicalfilament.components.materials.textured.rustyMetalMaterial
 import dev.nstv.practicalfilament.components.materials.textured.stripedCottonMaterial
 import dev.nstv.practicalfilament.components.materials.textured.woodTableMaterial
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleCeramicMaterial
@@ -45,6 +47,8 @@ val TextureMaterials = listOf(
     riverPebblesMaterial(),
     interiorTilesMaterial(),
     fabricPatternMaterial(),
+    rustyMetalMaterial(),
+    metalGrateMaterial(),
 )
 
 val MaterialFilesList = MaterialOverridesList
