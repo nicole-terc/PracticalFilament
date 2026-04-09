@@ -87,7 +87,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by rememberSaveable { mutableStateOf(Screen.MARBLE_FILAMESH) }
+        var selectedScreen by rememberSaveable { mutableStateOf(Screen.SHEEP) }
 
         Column(
             modifier = Modifier
