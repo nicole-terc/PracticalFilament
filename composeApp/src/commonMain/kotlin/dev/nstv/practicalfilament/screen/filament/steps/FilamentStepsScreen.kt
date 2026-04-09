@@ -16,7 +16,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.screen.HideOptions
+import dev.nstv.practicalfilament.screen.HideSubDropDowns
 import dev.nstv.practicalfilament.screen.filament.steps.step1.FilamentStepOne
+import dev.nstv.practicalfilament.screen.filament.steps.step1.FilamentStepZero
 import dev.nstv.practicalfilament.screen.filament.steps.step2.FilamentStepTwo
 import dev.nstv.practicalfilament.screen.filament.steps.step3.FilamentStepThree
 import dev.nstv.practicalfilament.screen.filament.steps.step4.FilamentStepFour
@@ -25,6 +27,7 @@ import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.DropDownWithArrows
 
 private enum class DemoStep(val label: String) {
+    ZERO("0.Canvas"),
     ONE("1. Engine"),
     TWO("2. FilamentView"),
     THREE("3. Geometry"),
@@ -36,12 +39,12 @@ private enum class DemoStep(val label: String) {
 fun FilamentStepsScreen(
     modifier: Modifier = Modifier,
 ) {
-    var selectedStep by rememberSaveable { mutableStateOf(DemoStep.ONE) }
+    var selectedStep by rememberSaveable { mutableStateOf(DemoStep.ZERO) }
 
     Column(
         modifier = modifier.fillMaxSize(),
     ) {
-        if (!HideOptions) {
+        if (!HideOptions && !HideSubDropDowns) {
             DropDownWithArrows(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -61,6 +64,7 @@ fun FilamentStepsScreen(
         ) {
             key(selectedStep) {
                 when (selectedStep) {
+                    DemoStep.ZERO -> FilamentStepZero()
                     DemoStep.ONE -> FilamentStepOne()
                     DemoStep.TWO -> FilamentStepTwo()
                     DemoStep.THREE -> FilamentStepThree()

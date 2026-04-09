@@ -78,6 +78,7 @@ private enum class Screen {
 const val UseSlidesBackground = false
 const val HideOptions = false
 const val HideTopDropDown = false
+const val HideSubDropDowns = false
 const val SheepIt = false
 
 @Composable
