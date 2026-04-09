@@ -22,6 +22,7 @@ import dev.nstv.practicalfilament.screen.marbles.MarbleFilameshScreen
 import dev.nstv.practicalfilament.screen.marbles.MarbleLightScreen
 import dev.nstv.practicalfilament.screen.marbles.MarbleScreen
 import dev.nstv.practicalfilament.screen.marbles.comparison.GraphicsEffectsComparisonScreen
+import dev.nstv.practicalfilament.screen.filament.steps.FilamentStepsScreen
 import dev.nstv.practicalfilament.screen.marbles.steps.MarbleStepsScreen
 import dev.nstv.practicalfilament.screen.otherViewers.GltfViewerScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MaterialViewerScreen
@@ -52,6 +53,7 @@ private enum class Screen {
     MARBLE_FILAMESH,
     MARBLE_LIGHT,
     MARBLE_STEPS,
+    FILAMENT_STEPS,
     MARBLE_COMPARISON,
     WATER,
     REDBALL,
@@ -109,6 +111,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.MATERIAL_VIEWER -> MaterialViewerScreen()
                     Screen.MARBLE_VIEWER -> MarbleScreen()
                     Screen.MARBLE_STEPS -> MarbleStepsScreen()
+                    Screen.FILAMENT_STEPS -> FilamentStepsScreen()
                     Screen.MARBLE_FILAMESH -> MarbleFilameshScreen()
                     Screen.MARBLE_LIGHT -> MarbleLightScreen()
                     Screen.MARBLE_COMPARISON -> GraphicsEffectsComparisonScreen()
