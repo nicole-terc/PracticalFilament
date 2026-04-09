@@ -1,5 +1,6 @@
 package dev.nstv.practicalfilament.filament
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -15,7 +16,7 @@ expect fun FilamentView(
     modifier: Modifier = Modifier,
     camera: CameraConfig = CameraConfig(),
     lights: List<LightConfig> = listOf(LightConfig(type = LightType.DIRECTIONAL)),
-    backgroundColor: FilamentColor = FilamentColor(0f, 0f, 0f, 1f),
+    backgroundColor: FilamentColor = MaterialTheme.colorScheme.background.toFilamentColor(),
     clipShape: FilamentClipShape? = null,
     isOpaque: Boolean = true,
     hostViewMode: FilamentHostViewMode = FilamentHostViewMode.Auto,

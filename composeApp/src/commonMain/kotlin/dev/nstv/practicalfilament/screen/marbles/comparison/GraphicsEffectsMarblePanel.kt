@@ -39,7 +39,6 @@ import dev.nstv.practicalfilament.screen.marbles.components.ComparisonMarbleCame
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleAliveLights
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiAccent
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackground
-import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackgroundFilament
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiMuted
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiText
 import dev.nstv.practicalfilament.theme.Grid
@@ -95,7 +94,6 @@ internal fun FilamentComparisonPanel(
                 modifier = Modifier.fillMaxSize(),
                 camera = ComparisonMarbleCamera,
                 lights = MarbleAliveLights,
-                backgroundColor = MarbleUiBackgroundFilament,
                 clipShape = FilamentClipShape.Circle,
                 hostViewMode = hostViewMode,
                 onEngineReady = { engineReady = it },

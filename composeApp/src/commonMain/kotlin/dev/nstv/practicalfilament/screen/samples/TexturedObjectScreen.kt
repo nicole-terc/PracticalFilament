@@ -62,7 +62,6 @@ fun TexturedObjectScreen(
                         direction = Float3(0.3f, -1f, -0.4f),
                     ),
                 ),
-                backgroundColor = FilamentColor(0.06f, 0.05f, 0.04f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
                     val materialHandle =

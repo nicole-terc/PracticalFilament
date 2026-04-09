@@ -93,7 +93,6 @@ fun MultiViewScreen(
                         direction = Float3(0.4f, -1f, -0.6f),
                     ),
                 ),
-                backgroundColor = FilamentColor(0.03f, 0.03f, 0.03f, 1f),
                 onEngineReady = { readyEngine ->
                     val loaded = readyEngine.loadMaterial(morphingMaterial())
                     loaded.parameters.values.forEach {

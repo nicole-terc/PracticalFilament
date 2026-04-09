@@ -143,7 +143,6 @@ fun GltfViewerScreen(
                         direction = Float3(0.4f, -1f, -0.6f),
                     ),
                 ),
-                backgroundColor = FilamentColor(0.03f, 0.03f, 0.05f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
                     readyEngine.updateCamera(gltfCameraForOrientation(orientation, cameraDistance))

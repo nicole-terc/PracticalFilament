@@ -425,7 +425,6 @@ fun SkyScreen(
                     far = 5000.0,
                 ),
                 lights = emptyList(),
-                backgroundColor = FilamentColor(0f, 0f, 0f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
                     notice = null

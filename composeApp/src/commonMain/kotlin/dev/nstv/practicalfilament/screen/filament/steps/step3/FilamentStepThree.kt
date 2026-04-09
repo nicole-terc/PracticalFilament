@@ -23,7 +23,6 @@ import dev.nstv.practicalfilament.components.utils.orbitCameraControls
 import dev.nstv.practicalfilament.components.utils.orbitDistance
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
-import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackgroundFilament
 import dev.nstv.practicalfilament.screen.marbles.components.MeshSelectionField
 import dev.nstv.practicalfilament.screen.marbles.components.NeutralSphereMaterial
 import dev.nstv.practicalfilament.screen.marbles.components.SingleMarbleCamera
@@ -110,7 +109,6 @@ internal fun FilamentStepThree(
                     orientation = orientation,
                     distance = cameraDistance,
                 ),
-                backgroundColor = MarbleUiBackgroundFilament,
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
                     refreshScene(readyEngine)

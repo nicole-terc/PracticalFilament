@@ -331,7 +331,6 @@ fun ParticleWordScreen(
                     orthoZoom = ParticleOrthoZoom.toDouble(),
                 ),
                 lights = emptyList(),
-                backgroundColor = FilamentColor(0.02f, 0.05f, 0.08f, 1f),
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
                 },

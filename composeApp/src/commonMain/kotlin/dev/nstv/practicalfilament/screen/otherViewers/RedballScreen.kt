@@ -180,7 +180,6 @@ fun RedballScreen(
                     },
                 camera = redballCameraForOrientation(orientation),
                 lights = RedballBaseLights,
-                backgroundColor = FilamentColor(0f, 0f, 0f, 1f),
                 onEngineReady = { engine ->
                     val loaded = engine.loadMaterial(redballMaterial())
                     val indirectLightHandle =

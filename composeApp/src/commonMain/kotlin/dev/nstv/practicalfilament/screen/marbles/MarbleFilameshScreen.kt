@@ -208,7 +208,6 @@ fun MarbleFilameshScreen(
                         direction = Float3(0.72f, -0.18f, -0.66f),
                     ),
                 ),
-                backgroundColor = FilamentColor(0.16f, 0.18f, 0.27f, 1f),
                 onEngineReady = { engine ->
                     filamentEngine = engine
                     val material = MarbleTextureMaterials[selectedMaterialIndex]

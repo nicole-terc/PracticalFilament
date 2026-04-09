@@ -1,5 +1,7 @@
 package dev.nstv.practicalfilament.filament
 
+import androidx.compose.ui.graphics.Color
+
 data class Float3(val x: Float, val y: Float, val z: Float)
 
 data class Float4(val x: Float, val y: Float, val z: Float, val w: Float)
@@ -94,4 +96,11 @@ data class ViewportConfig(
     val y: Int,
     val width: Int,
     val height: Int,
+)
+
+fun Color.toFilamentColor(): FilamentColor = FilamentColor(
+    r = red,
+    g = green,
+    b = blue,
+    a = alpha,
 )
