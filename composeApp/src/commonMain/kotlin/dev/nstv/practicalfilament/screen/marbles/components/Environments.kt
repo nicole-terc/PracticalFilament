@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import dev.nstv.practicalfilament.filament.DefaultSkyboxColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.toFilamentColor
 import dev.nstv.practicalfilament.theme.Grid
@@ -88,27 +89,26 @@ private fun ObserveBackgroundIndex(
     selectedBackgroundIndex: Int,
     updateNotice: (String?) -> Unit,
 ) {
-    val materialBackground = MaterialTheme.colorScheme.background.toFilamentColor()
     var environmentHandles by remember { mutableStateOf<Map<String, LoadedEnvironment>>(emptyMap()) }
     var colorSkyboxHandle by remember { mutableIntStateOf(0) }
     var activeIndirectLightHandle by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(filamentEngine, selectedBackgroundIndex, materialBackground) {
+    LaunchedEffect(filamentEngine, selectedBackgroundIndex) {
         val engine = filamentEngine ?: return@LaunchedEffect
 
         var currentColorSkyboxHandle = colorSkyboxHandle
         if (currentColorSkyboxHandle == 0) {
             currentColorSkyboxHandle = engine.createColorSkybox()
-            colorSkyboxHandle = currentColorSkyboxHandle
-        }
-        if (currentColorSkyboxHandle > 0) {
-            engine.setSkyboxColor(
-                currentColorSkyboxHandle,
-                r = materialBackground.r,
-                g = materialBackground.g,
-                b = materialBackground.b,
-                a = materialBackground.a,
-            )
+            if (currentColorSkyboxHandle > 0) {
+                engine.setSkyboxColor(
+                    currentColorSkyboxHandle,
+                    r = DefaultSkyboxColor.r,
+                    g = DefaultSkyboxColor.g,
+                    b = DefaultSkyboxColor.b,
+                    a = DefaultSkyboxColor.a,
+                )
+                colorSkyboxHandle = currentColorSkyboxHandle
+            }
         }
 
         val background = MarbleTextureBackgrounds[selectedBackgroundIndex]

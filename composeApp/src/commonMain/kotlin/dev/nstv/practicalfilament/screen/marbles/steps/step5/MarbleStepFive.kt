@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CustomRenderableConfig
+import dev.nstv.practicalfilament.filament.DefaultSkyboxColor
 import dev.nstv.practicalfilament.filament.FilamentClipShape
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentHostViewMode
@@ -58,7 +59,6 @@ import dev.nstv.practicalfilament.screen.marbles.components.MarbleAliveLights
 import dev.nstv.practicalfilament.screen.marbles.components.MarblePresets
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiAccent
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackground
-import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackgroundFilament
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiMuted
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiText
 import dev.nstv.practicalfilament.screen.marbles.components.PickerMarbleCamera
@@ -261,7 +261,7 @@ private fun ButtonMaterialBackground(
             modifier = Modifier.fillMaxSize(),
             camera = ButtonSurfaceCamera,
             lights = ButtonSurfaceLights,
-            backgroundColor = MarbleUiBackgroundFilament,
+            backgroundColor = DefaultSkyboxColor,
             clipShape = ButtonClipShape,
             hostViewMode = FilamentHostViewMode.Texture,
             onEngineReady = { engine ->

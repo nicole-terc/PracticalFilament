@@ -10,12 +10,12 @@ import androidx.compose.runtime.setValue
 import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.filament.CameraConfig
+import dev.nstv.practicalfilament.filament.DefaultSkyboxColor
 import dev.nstv.practicalfilament.filament.FilamentClipShape
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.material.Material
-import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackgroundFilament
 
 @Composable
 internal fun SphereMaterialView(
@@ -55,7 +55,7 @@ internal fun SphereMaterialView(
         modifier = modifier,
         camera = camera,
         lights = lights,
-        backgroundColor = MarbleUiBackgroundFilament,
+        backgroundColor = DefaultSkyboxColor,
         clipShape = FilamentClipShape.Circle,
         onEngineReady = { engine ->
             val loaded = engine.loadMaterial(material)
