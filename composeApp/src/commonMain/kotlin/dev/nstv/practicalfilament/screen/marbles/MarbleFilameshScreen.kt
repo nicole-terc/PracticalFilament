@@ -40,6 +40,7 @@ import dev.nstv.practicalfilament.filament.Float3
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
+import dev.nstv.practicalfilament.filament.material.LoadedTextureParameterValue
 import dev.nstv.practicalfilament.filament.material.Material
 import practicalfilament.composeapp.generated.resources.Res
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
@@ -130,7 +131,10 @@ fun MarbleFilameshScreen(
             return
         }
         loaded.parameters.values
-            .filter { parameter -> parameter.value !is BuiltInTexture }
+            .filter {
+                it.value !is BuiltInTexture &&
+                    it.value !is LoadedTextureParameterValue
+            }
             .forEach { parameter ->
                 engine.setMaterialParameter(loaded.instanceHandle, parameter)
             }
@@ -217,7 +221,10 @@ fun MarbleFilameshScreen(
                     }
                     if (loaded.instanceHandle > 0) {
                         loaded.parameters.values
-                            .filter { parameter -> parameter.value !is BuiltInTexture }
+                            .filter {
+                                it.value !is BuiltInTexture &&
+                                    it.value !is LoadedTextureParameterValue
+                            }
                             .forEach { parameter ->
                                 engine.setMaterialParameter(loaded.instanceHandle, parameter)
                             }

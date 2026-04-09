@@ -25,6 +25,7 @@ import dev.nstv.practicalfilament.filament.UInt2
 import dev.nstv.practicalfilament.filament.UInt3
 import dev.nstv.practicalfilament.filament.UInt4
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
+import dev.nstv.practicalfilament.filament.material.LoadedTextureParameterValue
 import dev.nstv.practicalfilament.filament.material.MaterialParameterType
 import dev.nstv.practicalfilament.filament.material.identityMat3
 import dev.nstv.practicalfilament.filament.material.identityMat4
@@ -360,13 +361,27 @@ fun ParameterInputField(
         is MaterialParameterType.SamplerCubemap -> {
             if (overrideSamplers) {
                 val textures = BuiltInTexture.entries
-                val current = value as? BuiltInTexture ?: BuiltInTexture.NONE
+                val currentLoadedTexture = value as? LoadedTextureParameterValue
+                val currentBuiltInTexture = value as? BuiltInTexture ?: BuiltInTexture.NONE
+                val options = buildList {
+                    currentLoadedTexture?.let { add(it.displayName) }
+                    addAll(textures.map(BuiltInTexture::displayName))
+                }
+                val builtInOffset = if (currentLoadedTexture != null) 1 else 0
                 DropDownWithArrows(
-                    options = textures.map(BuiltInTexture::displayName),
+                    options = options,
                     onSelectionChanged = { index ->
-                        onValueChange(textures[index])
+                        if (currentLoadedTexture != null && index == 0) {
+                            onValueChange(currentLoadedTexture)
+                        } else {
+                            onValueChange(textures[index - builtInOffset])
+                        }
                     },
-                    selectedIndex = textures.indexOf(current).coerceAtLeast(0),
+                    selectedIndex = if (currentLoadedTexture != null) {
+                        0
+                    } else {
+                        textures.indexOf(currentBuiltInTexture).coerceAtLeast(0)
+                    },
                     label = name,
                     loopSelection = false,
                     modifier = Modifier
@@ -374,12 +389,17 @@ fun ParameterInputField(
                         .padding(vertical = 4.dp),
                 )
             } else {
+                val displayValue = when (value) {
+                    is BuiltInTexture -> value.displayName
+                    is LoadedTextureParameterValue -> value.displayName
+                    else -> value.toString()
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(name)
-                    Text("$value")
+                    Text(displayValue)
                 }
 
             }

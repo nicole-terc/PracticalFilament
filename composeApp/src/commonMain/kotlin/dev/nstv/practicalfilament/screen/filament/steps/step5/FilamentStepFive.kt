@@ -25,6 +25,7 @@ import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.material.BuiltInTexture
 import dev.nstv.practicalfilament.filament.material.LoadedMaterial
+import dev.nstv.practicalfilament.filament.material.LoadedTextureParameterValue
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.generateTexturePixels
@@ -81,7 +82,10 @@ internal fun FilamentStepFive(
         }
         renderableHandle = if (loaded.instanceHandle > 0) {
             loaded.parameters.values
-                .filter { parameter -> parameter.value !is BuiltInTexture }
+                .filter {
+                    it.value !is BuiltInTexture &&
+                        it.value !is LoadedTextureParameterValue
+                }
                 .forEach { parameter ->
                     engine.setMaterialParameter(loaded.instanceHandle, parameter)
                 }
@@ -134,6 +138,14 @@ internal fun FilamentStepFive(
                                 textureHandle,
                             )
                         }
+                    }
+
+                    is LoadedTextureParameterValue -> {
+                        engine.setTextureParameter(
+                            it.instanceHandle,
+                            parameter.name,
+                            value.textureHandle,
+                        )
                     }
 
                     else -> engine.setMaterialParameter(it.instanceHandle, parameter)

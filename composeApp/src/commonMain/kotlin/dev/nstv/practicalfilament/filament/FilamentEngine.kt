@@ -3,6 +3,7 @@ package dev.nstv.practicalfilament.filament
 import dev.nstv.practicalfilament.filament.material.LoadedMaterial
 import dev.nstv.practicalfilament.filament.material.Material
 import dev.nstv.practicalfilament.filament.material.Material.TextureMaterial
+import dev.nstv.practicalfilament.filament.material.LoadedTextureParameterValue
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.material.buildMaterialParameters
@@ -56,8 +57,7 @@ interface FilamentEngine {
             )
         }
 
-        val parameters = buildMaterialParameters(definitions, material)
-        val textureHandles = if (material is TextureMaterial) {
+        val loadedTextureParameters = if (material is TextureMaterial) {
             buildMap {
                 material.textureBindings.forEach { binding ->
                     val textureHandle = loadTexture(
@@ -66,13 +66,25 @@ interface FilamentEngine {
                     )
                     if (textureHandle > 0) {
                         setTextureParameter(instanceHandle, binding.parameterName, textureHandle)
-                        put(binding.parameterName, textureHandle)
+                        put(
+                            binding.parameterName,
+                            LoadedTextureParameterValue(
+                                textureHandle = textureHandle,
+                                texturePath = binding.texturePath,
+                            )
+                        )
                     }
                 }
             }
         } else {
             emptyMap()
         }
+        val parameters = buildMaterialParameters(
+            definitions = definitions,
+            material = material,
+            loadedTextureParameters = loadedTextureParameters,
+        )
+        val textureHandles = loadedTextureParameters.mapValues { (_, value) -> value.textureHandle }
 
         return LoadedMaterial(
             instanceHandle = instanceHandle,
