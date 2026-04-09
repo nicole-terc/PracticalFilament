@@ -4,14 +4,21 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -25,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import dev.nstv.practicalfilament.filament.withFrameSeconds
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -33,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import dev.nstv.composablesheep.library.model.FluffStyle
 import dev.nstv.practicalfilament.components.ParameterInputField
@@ -459,6 +468,14 @@ fun SheepScreen(
 
             Text(
                 modifier = Modifier.padding(top = Grid.Two),
+                text = "Animations",
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            HorizontalDivider(Modifier.fillMaxWidth())
+
+
+            Text(
+                modifier = Modifier.padding(top = Grid.Two),
                 text = "Animation Speed",
             )
             Slider(
@@ -490,38 +507,42 @@ fun SheepScreen(
                 },
             )
 
-            Button(
-                modifier = Modifier.padding(top = Grid.Two),
-                onClick = {
-                    buildJob?.cancel()
-                    val goingDown = buildStep == SheepBuildStep.GLASSES
-                    buildJob = buildScope.launch {
-                        if (goingDown) {
-                            for (i in buildStep.ordinal - 1 downTo 0) {
-                                delay(SheepBuildAnimationDuration.toLong() + 100)
-                                val step = SheepBuildStep.fromIndex(i)
-                                buildStep = step
-                                buildSliderIndex = i
-                            }
-                        } else {
-                            for (i in buildStep.ordinal + 1..SheepBuildStep.GLASSES.ordinal) {
-                                delay(SheepBuildAnimationDuration.toLong() + 100)
-                                val step = SheepBuildStep.fromIndex(i)
-                                buildStep = step
-                                buildSliderIndex = i
-                            }
-                        }
-                        buildJob = null
-                    }
-                },
+            Row(
+                modifier = Modifier.height(intrinsicSize = IntrinsicSize.Max),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(if (buildStep == SheepBuildStep.GLASSES) "Deconstruct" else "Build")
+                Text(
+                    "Build Animation",
+                    modifier = Modifier.padding(end = Grid.One),
+                )
+                Button(
+                    onClick = {
+                        buildJob?.cancel()
+                        val goingDown = buildStep == SheepBuildStep.GLASSES
+                        buildJob = buildScope.launch {
+                            if (goingDown) {
+                                for (i in buildStep.ordinal - 1 downTo 0) {
+                                    delay(SheepBuildAnimationDuration.toLong() + 100)
+                                    val step = SheepBuildStep.fromIndex(i)
+                                    buildStep = step
+                                    buildSliderIndex = i
+                                }
+                            } else {
+                                for (i in buildStep.ordinal + 1..SheepBuildStep.GLASSES.ordinal) {
+                                    delay(SheepBuildAnimationDuration.toLong() + 100)
+                                    val step = SheepBuildStep.fromIndex(i)
+                                    buildStep = step
+                                    buildSliderIndex = i
+                                }
+                            }
+                            buildJob = null
+                        }
+                    },
+                ) {
+                    Text(if (buildStep == SheepBuildStep.GLASSES) "Deconstruct" else "Build")
+                }
             }
 
-            Text(
-                modifier = Modifier.padding(top = Grid.Two),
-                text = "Build Step",
-            )
             Slider(
                 value = buildSliderIndex.toFloat(),
                 valueRange = 0f..SheepBuildStep.GLASSES.ordinal.toFloat(),
