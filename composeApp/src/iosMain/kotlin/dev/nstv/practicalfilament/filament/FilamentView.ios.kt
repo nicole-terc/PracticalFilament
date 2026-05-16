@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.interop.UIKitView
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -110,6 +111,7 @@ actual fun FilamentView(
         factory = {
             val view = FilamentHostView()
             view.backgroundColor = UIColor.clearColor
+            view.layer.backgroundColor = UIColor.clearColor.CGColor
             view.userInteractionEnabled = false
             val metalLayer = CAMetalLayer()
             @Suppress("USELESS_CAST")
@@ -118,6 +120,7 @@ actual fun FilamentView(
             metalLayer.setFramebufferOnly(true)
             metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm
             metalLayer.contentsScale = UIScreen.mainScreen.scale
+            metalLayer.backgroundColor = UIColor.clearColor.CGColor
 
             view.layer.addSublayer(metalLayer)
             metalLayerRef[0] = metalLayer
@@ -138,6 +141,7 @@ actual fun FilamentView(
             engine.setClearColor(backgroundColor)
             syncSurface(view, metalLayer)
         },
+        background = ComposeColor.Transparent,
         interactive = false,
     )
 }

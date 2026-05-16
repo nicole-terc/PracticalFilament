@@ -1,5 +1,10 @@
 package dev.nstv.practicalfilament.screen.marbles.steps.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -7,17 +12,18 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.FilamentColor
-import dev.nstv.practicalfilament.filament.FilamentClipShape
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.withFrameSeconds
 import dev.nstv.practicalfilament.filament.material.Material
-
-private val TransparentFilamentBackground = FilamentColor(0f, 0f, 0f, 0f)
+import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackground
 
 @Composable
 internal fun SphereMaterialView(
@@ -32,6 +38,9 @@ internal fun SphereMaterialView(
 ) {
     var engineReady by remember { mutableStateOf<FilamentEngine?>(null) }
     var renderableHandle by remember { mutableIntStateOf(0) }
+    val useComposeClip = marbleSphereUseComposeClip()
+    val composeBackgroundColor = marbleSphereComposeBackgroundColor()
+    val visibleCircleFraction = marbleSphereVisibleCircleFraction()
 
     LaunchedEffect(engineReady, renderableHandle, initialRotationX, initialRotationY) {
         val engine = engineReady ?: return@LaunchedEffect
@@ -60,26 +69,47 @@ internal fun SphereMaterialView(
         }
     }
 
-    FilamentView(
-        modifier = modifier,
-        camera = camera,
-        lights = emptyList(),
-        backgroundColor = TransparentFilamentBackground,
-        clipShape = FilamentClipShape.Circle,
-        isOpaque = false,
-        onEngineReady = { engine ->
-            val loaded = engine.loadMaterial(material)
-            loaded.parameters.values.forEach {
-                engine.setMaterialParameter(
-                    loaded.instanceHandle,
-                    it
+    Box(
+        modifier = modifier
+            .then(if (useComposeClip) Modifier.clip(CircleShape) else Modifier)
+            .then(composeBackgroundColor?.let { Modifier.background(it) } ?: Modifier),
+    ) {
+        FilamentView(
+            modifier = Modifier.fillMaxSize(),
+            camera = camera,
+            lights = emptyList(),
+            backgroundColor = marbleSphereBackgroundColor(),
+            clipShape = marbleSphereNativeClipShape(),
+            isOpaque = marbleSphereIsOpaque(),
+            onEngineReady = { engine ->
+                val loaded = engine.loadMaterial(material)
+                loaded.parameters.values.forEach {
+                    engine.setMaterialParameter(
+                        loaded.instanceHandle,
+                        it
+                    )
+                }
+                engineReady = engine
+                renderableHandle = engine.createSphereRenderable(
+                    materialInstanceHandle = loaded.instanceHandle,
+                    radius = radius,
+                )
+            },
+        )
+        if (visibleCircleFraction < 0.999f) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen),
+            ) {
+                drawCircle(color = MarbleUiBackground, radius = size.minDimension * 0.5f, center = center)
+                drawCircle(
+                    color = androidx.compose.ui.graphics.Color.Transparent,
+                    radius = size.minDimension * 0.5f * visibleCircleFraction,
+                    center = center,
+                    blendMode = BlendMode.Clear,
                 )
             }
-            engineReady = engine
-            renderableHandle = engine.createSphereRenderable(
-                materialInstanceHandle = loaded.instanceHandle,
-                radius = radius,
-            )
-        },
-    )
+        }
+    }
 }
