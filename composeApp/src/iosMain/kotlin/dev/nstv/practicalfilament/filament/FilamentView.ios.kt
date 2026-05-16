@@ -8,6 +8,7 @@ import androidx.compose.ui.interop.UIKitView
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
+import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSizeMake
 import platform.Metal.MTLCreateSystemDefaultDevice
 import platform.Metal.MTLPixelFormatBGRA8Unorm
@@ -25,6 +26,27 @@ import platform.UIKit.UIView
  */
 object FilamentBridgeHolder {
     var bridge: FilamentBridgeProtocol? = null
+    var bridgeFactory: FilamentBridgeFactory? = null
+
+    fun obtainBridge(): FilamentBridgeProtocol {
+        return bridgeFactory?.createBridge()
+            ?: bridge
+            ?: error("FilamentBridgeHolder.bridgeFactory or bridge must be set from Swift before using FilamentView")
+    }
+}
+
+interface FilamentBridgeFactory {
+    fun createBridge(): FilamentBridgeProtocol
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private class FilamentHostView : UIView(frame = CGRectMake(0.0, 0.0, 0.0, 0.0)) {
+    var onLayoutSubviews: ((FilamentHostView) -> Unit)? = null
+
+    override fun layoutSubviews() {
+        super.layoutSubviews()
+        onLayoutSubviews?.invoke(this)
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -39,11 +61,8 @@ actual fun FilamentView(
     hostViewMode: FilamentHostViewMode,
     onEngineReady: (FilamentEngine) -> Unit,
 ) {
-    val bridge = FilamentBridgeHolder.bridge
-        ?: error("FilamentBridgeHolder.bridge must be set from Swift before using FilamentView")
-
     val density = LocalDensity.current
-    val engine = remember { IosFilamentEngine(bridge) }
+    val engine = remember { IosFilamentEngine(FilamentBridgeHolder.obtainBridge()) }
     val metalLayerRef = remember { arrayOfNulls<CAMetalLayer>(1) }
     val isAttachedRef = remember { booleanArrayOf(false) }
     val effectiveOpaque = isOpaque && backgroundColor.a >= 0.999f
@@ -54,7 +73,13 @@ actual fun FilamentView(
         view.setOpaque(effectiveOpaque)
         metalLayer.frame = view.bounds
         metalLayer.contentsScale = scale
-        applyClipShape(view, metalLayer, clipShape, density, scale)
+        applyClipShape(
+            view = view,
+            metalLayer = metalLayer,
+            clipShape = clipShape,
+            density = density,
+            screenScale = scale,
+        )
 
         view.bounds.useContents {
             val widthPx = (size.width * scale).toInt().coerceAtLeast(1)
@@ -83,8 +108,9 @@ actual fun FilamentView(
     UIKitView(
         modifier = modifier,
         factory = {
-            val view = UIView(frame = UIScreen.mainScreen.bounds)
+            val view = FilamentHostView()
             view.backgroundColor = UIColor.clearColor
+            view.userInteractionEnabled = false
             val metalLayer = CAMetalLayer()
             @Suppress("USELESS_CAST")
             metalLayer.device = MTLCreateSystemDefaultDevice() as objcnames.protocols.MTLDeviceProtocol?
@@ -95,18 +121,24 @@ actual fun FilamentView(
 
             view.layer.addSublayer(metalLayer)
             metalLayerRef[0] = metalLayer
+            view.onLayoutSubviews = onLayoutSubviews@{ hostView ->
+                val currentMetalLayer = metalLayerRef[0] ?: return@onLayoutSubviews
+                engine.setClearColor(backgroundColor)
+                syncSurface(hostView, currentMetalLayer)
+            }
             view
         },
         update = { view ->
             val metalLayer = metalLayerRef[0] ?: return@UIKitView
+            view.onLayoutSubviews = onLayoutSubviews@{ hostView ->
+                val currentMetalLayer = metalLayerRef[0] ?: return@onLayoutSubviews
+                engine.setClearColor(backgroundColor)
+                syncSurface(hostView, currentMetalLayer)
+            }
             engine.setClearColor(backgroundColor)
             syncSurface(view, metalLayer)
         },
-        onResize = { view, _ ->
-            val metalLayer = metalLayerRef[0] ?: return@UIKitView
-            engine.setClearColor(backgroundColor)
-            syncSurface(view, metalLayer)
-        },
+        interactive = false,
     )
 }
 

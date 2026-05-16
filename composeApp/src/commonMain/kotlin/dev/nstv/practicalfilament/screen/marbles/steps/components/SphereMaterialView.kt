@@ -7,15 +7,17 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import dev.nstv.practicalfilament.filament.withFrameSeconds
 import androidx.compose.ui.Modifier
 import dev.nstv.practicalfilament.filament.CameraConfig
-import dev.nstv.practicalfilament.filament.DefaultSkyboxColor
+import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentClipShape
 import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.FilamentView
 import dev.nstv.practicalfilament.filament.LightConfig
+import dev.nstv.practicalfilament.filament.withFrameSeconds
 import dev.nstv.practicalfilament.filament.material.Material
+
+private val TransparentFilamentBackground = FilamentColor(0f, 0f, 0f, 0f)
 
 @Composable
 internal fun SphereMaterialView(
@@ -38,6 +40,13 @@ internal fun SphereMaterialView(
         engine.requestFrame()
     }
 
+    LaunchedEffect(engineReady, lights) {
+        val engine = engineReady ?: return@LaunchedEffect
+        engine.clearLights()
+        lights.forEach(engine::addLight)
+        engine.requestFrame()
+    }
+
     LaunchedEffect(engineReady, renderableHandle, autoRotate, initialRotationX, initialRotationY) {
         val engine = engineReady ?: return@LaunchedEffect
         if (renderableHandle == 0 || !autoRotate) return@LaunchedEffect
@@ -54,9 +63,10 @@ internal fun SphereMaterialView(
     FilamentView(
         modifier = modifier,
         camera = camera,
-        lights = lights,
-        backgroundColor = DefaultSkyboxColor,
+        lights = emptyList(),
+        backgroundColor = TransparentFilamentBackground,
         clipShape = FilamentClipShape.Circle,
+        isOpaque = false,
         onEngineReady = { engine ->
             val loaded = engine.loadMaterial(material)
             loaded.parameters.values.forEach {

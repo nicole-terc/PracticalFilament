@@ -2,9 +2,16 @@ import UIKit
 import SwiftUI
 import ComposeApp
 
+final class FilamentBridgeFactoryAdapter: FilamentBridgeFactory {
+    func createBridge() -> any FilamentBridgeProtocol {
+        FilamentBridgeAdapter()
+    }
+}
+
 struct ComposeView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
-        FilamentBridgeHolder.shared.bridge = FilamentBridgeAdapter()
+        FilamentBridgeHolder.shared.bridgeFactory = FilamentBridgeFactoryAdapter()
+        FilamentBridgeHolder.shared.bridge = nil
         return MainViewControllerKt.MainViewController()
     }
 
@@ -17,6 +24,5 @@ struct ContentView: View {
             .ignoresSafeArea()
     }
 }
-
 
 

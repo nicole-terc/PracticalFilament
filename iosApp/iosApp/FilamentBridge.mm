@@ -335,6 +335,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _scene = _engine->createScene();
     _view = _engine->createView();
     _view->setScene(_scene);
+    _view->setBlendMode(isOpaque ? View::BlendMode::OPAQUE : View::BlendMode::TRANSLUCENT);
 
     _cameraEntity = EntityManager::get().create();
     _camera = _engine->createCamera(_cameraEntity);

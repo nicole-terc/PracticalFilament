@@ -220,6 +220,10 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
         bridge.setTextureParam(instanceHandle, name: name, textureHandle: textureHandle)
     }
 
+    func loadMeshFromPath(path: String, materialInstanceHandle: Int32, scale: Float) -> Int32 {
+        bridge.loadMesh(fromPath: path, materialInstanceHandle: materialInstanceHandle, scale: scale)
+    }
+
     func createPlaneWithMaterial(instanceHandle: Int32, width: Float, height: Float) -> Int32 {
         return bridge.createPlane(withMaterial: instanceHandle, width: width, height: height)
     }

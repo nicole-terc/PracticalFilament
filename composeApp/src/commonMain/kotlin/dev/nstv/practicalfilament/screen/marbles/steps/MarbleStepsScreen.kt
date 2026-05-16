@@ -28,6 +28,7 @@ import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiBackground
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiMuted
 import dev.nstv.practicalfilament.screen.marbles.components.MarbleUiText
 import dev.nstv.practicalfilament.screen.marbles.components.NeutralSphereMaterial
+import dev.nstv.practicalfilament.screen.marbles.components.SphereStepLights
 import dev.nstv.practicalfilament.screen.marbles.steps.components.SingleMarbleView
 import dev.nstv.practicalfilament.screen.marbles.steps.step1.MarbleStepOne
 import dev.nstv.practicalfilament.screen.marbles.steps.step5.MarbleStepFive
@@ -96,14 +97,14 @@ fun MarbleStepsScreen(
                 DemoStep.TWO -> key(selectedStep) {
                     SingleMarbleView(
                         material = NeutralSphereMaterial,
-                        // lights = SphereStepLights,
+                        lights = SphereStepLights,
                     )
                 }
 
                 DemoStep.THREE -> key(selectedStep) {
                     SingleMarbleView(
                         material = MarblePresets[CeramicPresetIndex],
-                        //  lights = SphereStepLights,
+                        lights = SphereStepLights,
                     )
                 }
 
