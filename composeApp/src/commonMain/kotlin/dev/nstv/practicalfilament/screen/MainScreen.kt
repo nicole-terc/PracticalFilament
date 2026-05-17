@@ -31,6 +31,7 @@ import dev.nstv.practicalfilament.screen.otherViewers.MaterialViewerScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MorphingScreen
 import dev.nstv.practicalfilament.screen.otherViewers.RedballScreen
 import dev.nstv.practicalfilament.screen.otherViewers.SheepScreen
+import dev.nstv.practicalfilament.screen.otherViewers.sheep2.SheepScreen2
 import dev.nstv.practicalfilament.screen.particles.ParticleWordScreen
 import dev.nstv.practicalfilament.screen.samples.HelloTriangleScreen
 import dev.nstv.practicalfilament.screen.samples.IBLScreen
@@ -60,6 +61,7 @@ private enum class Screen {
     WATER,
     REDBALL,
     SHEEP,
+    SHEEP_2,
     MORPHING,
     PARTICLE_WORD,
     SKY,
@@ -123,6 +125,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.MARBLE_COMPARISON -> GraphicsEffectsComparisonScreen()
                     Screen.REDBALL -> RedballScreen()
                     Screen.SHEEP -> SheepScreen()
+                    Screen.SHEEP_2 -> SheepScreen2()
                     Screen.MORPHING -> MorphingScreen()
                     Screen.PARTICLE_WORD -> ParticleWordScreen()
                     Screen.GLTF_VIEWER -> GltfViewerScreen()
