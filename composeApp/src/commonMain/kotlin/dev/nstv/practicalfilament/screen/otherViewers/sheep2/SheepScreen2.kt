@@ -101,6 +101,22 @@ fun SheepScreen2(
     var followThroughAmount by remember { mutableFloatStateOf(0.7f) }
     var noiseSeed by remember { mutableIntStateOf(7) }
 
+    fun applyCameraState(
+        newOrientation: OrbitQuaternion = orientation,
+        newDistance: Float = cameraDistance,
+    ) {
+        orientation = newOrientation
+        cameraDistance = newDistance
+        engine?.updateCamera(
+            orbitCameraConfig(
+                baseCamera = Sheep2BaseCamera,
+                orientation = newOrientation,
+                distance = newDistance,
+            ),
+        )
+        engine?.requestFrame()
+    }
+
     SideEffect {
         val currentEngine = engine ?: return@SideEffect
         if (fluffMaterialInstanceHandle == 0) return@SideEffect
@@ -119,6 +135,7 @@ fun SheepScreen2(
                 distance = cameraDistance,
             ),
         )
+        currentEngine.requestFrame()
     }
 
     LaunchedEffect(
@@ -180,9 +197,9 @@ fun SheepScreen2(
                     .orbitCameraControls(
                         viewportSize = viewportSize,
                         orientation = orientation,
-                        onOrientationChange = { orientation = it },
+                        onOrientationChange = { applyCameraState(newOrientation = it) },
                         distance = cameraDistance,
-                        onDistanceChange = { cameraDistance = it },
+                        onDistanceChange = { applyCameraState(newDistance = it) },
                         minDistance = Sheep2MinCameraDistance,
                         maxDistance = Sheep2MaxCameraDistance,
                         enabled = rigPieces.isNotEmpty(),
