@@ -98,6 +98,7 @@ fun SheepScreen2(
     var noiseFrequency by remember { mutableFloatStateOf(1f) }
     var driftAmount by remember { mutableFloatStateOf(0.58f) }
     var followThroughAmount by remember { mutableFloatStateOf(0.7f) }
+    var headAndLegMotionEnabled by remember { mutableStateOf(true) }
     var noiseSeed by remember { mutableIntStateOf(7) }
 
     SideEffect {
@@ -121,39 +122,30 @@ fun SheepScreen2(
         currentEngine.requestFrame()
     }
 
-    LaunchedEffect(
-        engine,
-        rigPieces,
-        animationEnabled,
-        masterSpeed,
-        pulseAmount,
-        noiseAmount,
-        noiseFrequency,
-        driftAmount,
-        followThroughAmount,
-        noiseSeed,
-    ) {
+    LaunchedEffect(engine, rigPieces) {
         val currentEngine = engine ?: return@LaunchedEffect
         if (rigPieces.isEmpty()) return@LaunchedEffect
 
-        val controls = Sheep2AnimationControls(
-            animationEnabled = animationEnabled,
-            pulseAmount = pulseAmount,
-            noiseAmount = noiseAmount,
-            noiseFrequency = noiseFrequency,
-            driftAmount = driftAmount,
-            followThroughAmount = followThroughAmount,
-            noiseSeed = noiseSeed,
-        )
-        if (!animationEnabled) {
-            rigPieces.forEach { piece ->
-                currentEngine.setRenderableTransform(piece.handle, piece.baseTransform)
-            }
-            currentEngine.requestFrame()
-            return@LaunchedEffect
-        }
-
         withFrameSeconds { elapsedSeconds, _ ->
+            // Read all animation params fresh every frame so slider changes take effect immediately
+            // without restarting the loop (which would reset elapsedSeconds).
+            if (!animationEnabled) {
+                rigPieces.forEach { piece ->
+                    currentEngine.setRenderableTransform(piece.handle, piece.baseTransform)
+                }
+                currentEngine.requestFrame()
+                return@withFrameSeconds
+            }
+            val controls = Sheep2AnimationControls(
+                animationEnabled = true,
+                pulseAmount = pulseAmount,
+                noiseAmount = noiseAmount,
+                noiseFrequency = noiseFrequency,
+                driftAmount = driftAmount,
+                followThroughAmount = followThroughAmount,
+                headAndLegMotionEnabled = headAndLegMotionEnabled,
+                noiseSeed = noiseSeed,
+            )
             val timeSeconds = elapsedSeconds * masterSpeed
             rigPieces.forEach { piece ->
                 currentEngine.setRenderableTransform(
@@ -276,6 +268,11 @@ fun SheepScreen2(
                 label = "Animation",
                 checked = animationEnabled,
                 onCheckedChange = { animationEnabled = it },
+            )
+            ToggleRow(
+                label = "Head / Legs Motion",
+                checked = headAndLegMotionEnabled,
+                onCheckedChange = { headAndLegMotionEnabled = it },
             )
             SliderField(
                 label = "Master Speed",

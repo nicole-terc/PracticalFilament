@@ -14,6 +14,7 @@ internal data class Sheep2AnimationControls(
     val noiseFrequency: Float = 1f,
     val driftAmount: Float = 0.55f,
     val followThroughAmount: Float = 0.65f,
+    val headAndLegMotionEnabled: Boolean = true,
     val noiseSeed: Int = 1,
 )
 
@@ -34,29 +35,45 @@ internal fun buildSheep2PieceTransform(
         return multiplyMatrix4(rootTransform, piece.baseTransform)
     }
 
-    // Face pieces (head, eyes, pupils, glasses) share the head center as their motion anchor
-    // so they always move as one rigid group.
-    val motionAnchor = piece.groupAnchor ?: piece.anchor
-    val laggedTime = max(0f, timeSeconds - sheep2LagSeconds(piece, controls))
+    val motionAnchor = piece.motionAnchor
+    val secondaryMotionEnabled = piece.motionGroup == SheepMotionGroup.INDIVIDUAL ||
+        controls.headAndLegMotionEnabled
+    val laggedTime = if (secondaryMotionEnabled) {
+        max(0f, timeSeconds - sheep2LagSeconds(piece, controls))
+    } else {
+        timeSeconds
+    }
     val pulseEnvelope = sheep2PulseEnvelope(laggedTime)
     val signedPulse = ((pulseEnvelope - 0.5f) * 2f).coerceIn(-1f, 1f)
     val radialDirection = motionAnchor.normalized(Float3(0f, 1f, 0f))
-    val radialPulse = signedPulse * controls.pulseAmount * piece.radialWeight
-    val noise = sheep2NoiseVector(
-        anchor = motionAnchor,
-        timeSeconds = laggedTime,
-        seed = controls.noiseSeed,
-        frequency = controls.noiseFrequency,
-    )
-    val noiseScalar = sheep2NoiseScalar(
-        anchor = motionAnchor,
-        timeSeconds = laggedTime,
-        seed = controls.noiseSeed,
-        frequency = controls.noiseFrequency,
-    )
+    val radialPulse = if (secondaryMotionEnabled) {
+        signedPulse * controls.pulseAmount * piece.radialWeight
+    } else {
+        0f
+    }
+    val noise = if (secondaryMotionEnabled) {
+        sheep2NoiseVector(
+            anchor = motionAnchor,
+            timeSeconds = laggedTime,
+            seed = controls.noiseSeed,
+            frequency = controls.noiseFrequency,
+        )
+    } else {
+        Float3(0f, 0f, 0f)
+    }
+    val noiseScalar = if (secondaryMotionEnabled) {
+        sheep2NoiseScalar(
+            anchor = motionAnchor,
+            timeSeconds = laggedTime,
+            seed = controls.noiseSeed,
+            frequency = controls.noiseFrequency,
+        )
+    } else {
+        0f
+    }
     val roleOffset = roleWorldOffset(piece, radialDirection, radialPulse, noise, controls.noiseAmount)
 
-    if (piece.groupAnchor != null) {
+    if (piece.motionGroup == SheepMotionGroup.FACE) {
         // Face group: translate only, no scale or per-piece rotation.
         return multiplyMatrix4(
             rootTransform,
@@ -175,7 +192,7 @@ private fun roleWorldOffset(
     }
     val pulseOffset = when {
         // Face group: single shared formula derived from the head anchor.
-        piece.groupAnchor != null -> Float3(
+        piece.motionGroup == SheepMotionGroup.FACE -> Float3(
             x = radialDirection.x * radialPulse * 0.03f,
             y = radialPulse * 0.05f,
             z = radialDirection.z * radialPulse * 0.02f,

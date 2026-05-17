@@ -101,7 +101,12 @@ class SheepAnimationTest {
     @Test
     fun `follow through motion stays within a sane distance`() {
         val transform = buildSheep2PieceTransform(
-            piece = samplePiece.copy(role = SheepPieceRole.GLASSES, lagWeight = 1f),
+            piece = samplePiece.copy(
+                role = SheepPieceRole.GLASSES,
+                motionGroup = SheepMotionGroup.FACE,
+                motionAnchor = Float3(-1.1f, 0.15f, 0.16f),
+                lagWeight = 1f,
+            ),
             timeSeconds = 2.1f,
             controls = Sheep2AnimationControls(
                 animationEnabled = true,

@@ -41,16 +41,22 @@ internal enum class SheepPieceRole {
     GLASSES,
 }
 
+internal enum class SheepMotionGroup {
+    INDIVIDUAL,
+    FACE,
+    LEG,
+}
+
 internal data class SheepRigPiece(
     val handle: Int,
     val role: SheepPieceRole,
     val baseTransform: FloatArray,
     val anchor: Float3,
+    val motionGroup: SheepMotionGroup = SheepMotionGroup.INDIVIDUAL,
+    val motionAnchor: Float3 = anchor,
     val phaseOffset: Float,
     val radialWeight: Float,
     val lagWeight: Float,
-    // Non-null for face pieces: all share the head center so they move as one rigid group.
-    val groupAnchor: Float3? = null,
 )
 
 private data class FluffChunk(
@@ -98,6 +104,7 @@ internal fun buildSheepRigPieces(
         role = SheepPieceRole.FLUFF_CORE,
         baseTransform = identityMatrix4(),
         anchor = Float3(0f, 0f, 0f),
+        motionAnchor = Float3(0f, 0f, 0f),
         phaseOffset = 0f,
         radialWeight = 0.18f,
         lagWeight = 0.1f,
@@ -113,6 +120,7 @@ internal fun buildSheepRigPieces(
             role = SheepPieceRole.FLUFF_SHELL,
             baseTransform = translationMatrix(chunk.center.x, chunk.center.y, chunk.center.z),
             anchor = chunk.center,
+            motionAnchor = chunk.center,
             phaseOffset = ringPhase(chunk.center, index),
             radialWeight = (0.45f + chunk.center.length() * 0.55f).coerceAtMost(1f),
             lagWeight = 0.22f + normalizedAbs(chunk.center.y, Sheep2FluffRadius) * 0.18f,
@@ -136,10 +144,11 @@ internal fun buildSheepRigPieces(
         role = SheepPieceRole.HEAD,
         baseTransform = headBaseTransform,
         anchor = headLayout.center,
+        motionGroup = SheepMotionGroup.FACE,
+        motionAnchor = headLayout.center,
         phaseOffset = 0.85f,
         radialWeight = 0.36f,
         lagWeight = 0.52f,
-        groupAnchor = headLayout.center,
     )
 
     listOf(
@@ -165,10 +174,11 @@ internal fun buildSheepRigPieces(
             role = role,
             baseTransform = baseTransform,
             anchor = center,
+            motionGroup = SheepMotionGroup.FACE,
+            motionAnchor = headLayout.center,
             phaseOffset = 0.85f,
             radialWeight = 0.36f,
             lagWeight = 0.52f,
-            groupAnchor = headLayout.center,
         )
     }
 
@@ -206,6 +216,8 @@ internal fun buildSheepRigPieces(
             role = SheepPieceRole.LEG,
             baseTransform = translationMatrix(legAttachment.x, legAttachment.y, legAttachment.z),
             anchor = legAttachment,
+            motionGroup = SheepMotionGroup.LEG,
+            motionAnchor = legAttachment,
             phaseOffset = 2f + index * 0.31f,
             radialWeight = 0.28f,
             lagWeight = 0.92f,
@@ -244,10 +256,11 @@ internal fun buildSheepRigPieces(
                 ),
             ),
             anchor = glassCenter,
+            motionGroup = SheepMotionGroup.FACE,
+            motionAnchor = headLayout.center,
             phaseOffset = 0.85f,
             radialWeight = 0.36f,
             lagWeight = 0.52f,
-            groupAnchor = headLayout.center,
         )
     }
 
@@ -285,10 +298,11 @@ internal fun buildSheepRigPieces(
             rotationXMatrix(90f),
         ),
         anchor = bridgeMidpoint,
+        motionGroup = SheepMotionGroup.FACE,
+        motionAnchor = headLayout.center,
         phaseOffset = 0.85f,
         radialWeight = 0.36f,
         lagWeight = 0.52f,
-        groupAnchor = headLayout.center,
     )
 
     return pieces
