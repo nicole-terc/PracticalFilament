@@ -34,24 +34,39 @@ internal fun buildSheep2PieceTransform(
         return multiplyMatrix4(rootTransform, piece.baseTransform)
     }
 
+    // Face pieces (head, eyes, pupils, glasses) share the head center as their motion anchor
+    // so they always move as one rigid group.
+    val motionAnchor = piece.groupAnchor ?: piece.anchor
     val laggedTime = max(0f, timeSeconds - sheep2LagSeconds(piece, controls))
     val pulseEnvelope = sheep2PulseEnvelope(laggedTime)
     val signedPulse = ((pulseEnvelope - 0.5f) * 2f).coerceIn(-1f, 1f)
-    val radialDirection = piece.anchor.normalized(Float3(0f, 1f, 0f))
+    val radialDirection = motionAnchor.normalized(Float3(0f, 1f, 0f))
     val radialPulse = signedPulse * controls.pulseAmount * piece.radialWeight
     val noise = sheep2NoiseVector(
-        anchor = piece.anchor,
+        anchor = motionAnchor,
         timeSeconds = laggedTime,
         seed = controls.noiseSeed,
         frequency = controls.noiseFrequency,
     )
     val noiseScalar = sheep2NoiseScalar(
-        anchor = piece.anchor,
+        anchor = motionAnchor,
         timeSeconds = laggedTime,
         seed = controls.noiseSeed,
         frequency = controls.noiseFrequency,
     )
     val roleOffset = roleWorldOffset(piece, radialDirection, radialPulse, noise, controls.noiseAmount)
+
+    if (piece.groupAnchor != null) {
+        // Face group: translate only, no scale or per-piece rotation.
+        return multiplyMatrix4(
+            rootTransform,
+            multiplyMatrix4(
+                translationMatrix(roleOffset.x, roleOffset.y, roleOffset.z),
+                piece.baseTransform,
+            ),
+        )
+    }
+
     val localMotion = roleLocalMotion(piece, signedPulse, noise, noiseScalar, controls)
     return multiplyMatrix4(
         rootTransform,
@@ -154,24 +169,21 @@ private fun roleWorldOffset(
     val noiseScale = noiseAmount * when (piece.role) {
         SheepPieceRole.FLUFF_CORE -> 0.035f
         SheepPieceRole.FLUFF_SHELL -> 0.09f
-        SheepPieceRole.HEAD -> 0.05f
-        SheepPieceRole.EYE -> 0.022f
-        SheepPieceRole.PUPIL -> 0.018f
+        // All face pieces use the same scale so they translate identically.
+        SheepPieceRole.HEAD, SheepPieceRole.EYE, SheepPieceRole.PUPIL, SheepPieceRole.GLASSES -> 0.05f
         SheepPieceRole.LEG -> 0.055f
-        SheepPieceRole.GLASSES -> 0.03f
     }
-    val pulseOffset = when (piece.role) {
-        SheepPieceRole.FLUFF_CORE -> Float3(0f, radialPulse * 0.04f, 0f)
-        SheepPieceRole.FLUFF_SHELL -> radialDirection * (radialPulse * 0.18f)
-        SheepPieceRole.HEAD -> Float3(
+    val pulseOffset = when {
+        // Face group: single shared formula derived from the head anchor.
+        piece.groupAnchor != null -> Float3(
             x = radialDirection.x * radialPulse * 0.03f,
             y = radialPulse * 0.05f,
             z = radialDirection.z * radialPulse * 0.02f,
         )
-        SheepPieceRole.EYE -> Float3(0f, radialPulse * 0.01f, 0f)
-        SheepPieceRole.PUPIL -> Float3(noise.x * 0.004f, noise.y * 0.004f, 0f)
-        SheepPieceRole.LEG -> Float3(0f, -abs(radialPulse) * 0.07f, 0f)
-        SheepPieceRole.GLASSES -> Float3(0f, radialPulse * 0.015f, 0f)
+        piece.role == SheepPieceRole.FLUFF_CORE -> Float3(0f, radialPulse * 0.04f, 0f)
+        piece.role == SheepPieceRole.FLUFF_SHELL -> radialDirection * (radialPulse * 0.18f)
+        piece.role == SheepPieceRole.LEG -> Float3(0f, -abs(radialPulse) * 0.07f, 0f)
+        else -> Float3(0f, 0f, 0f)
     }
     val noiseOffset = Float3(
         x = noise.x * noiseScale,
@@ -216,35 +228,9 @@ private fun roleLocalMotion(
             ),
         )
 
-        SheepPieceRole.HEAD -> multiplyMatrix4(
-            rotationZMatrix(signedPulse * pulse * 5f + noise.z * noiseAmount * 3f),
-            multiplyMatrix4(
-                rotationXMatrix(signedPulse * pulse * -4.5f),
-                scaleMatrix(
-                    x = 1f + pulse * signedPulse * 0.03f,
-                    y = 1f - pulse * signedPulse * 0.06f,
-                    z = 1f + pulse * signedPulse * 0.02f,
-                ),
-            ),
-        )
-
-        SheepPieceRole.EYE -> multiplyMatrix4(
-            rotationZMatrix(noise.z * noiseAmount * 3f),
-            scaleMatrix(
-                x = 1f,
-                y = 1f - pulse * max(0f, signedPulse) * 0.12f,
-                z = 1f,
-            ),
-        )
-
-        SheepPieceRole.PUPIL -> multiplyMatrix4(
-            translationMatrix(noise.x * noiseAmount * 0.01f, noise.y * noiseAmount * 0.012f, 0f),
-            scaleMatrix(
-                x = 1f + noiseScalar * noiseAmount * 0.02f,
-                y = 1f - pulse * max(0f, signedPulse) * 0.08f,
-                z = 1f,
-            ),
-        )
+        // Face pieces are handled as a rigid group in buildSheep2PieceTransform and never reach here.
+        SheepPieceRole.HEAD, SheepPieceRole.EYE, SheepPieceRole.PUPIL, SheepPieceRole.GLASSES ->
+            identityMatrix4()
 
         SheepPieceRole.LEG -> multiplyMatrix4(
             rotationXMatrix(signedPulse * pulse * -10f + noise.z * noiseAmount * 4f),
@@ -253,11 +239,6 @@ private fun roleLocalMotion(
                 y = 1f + max(0f, signedPulse) * pulse * 0.12f,
                 z = 1f,
             ),
-        )
-
-        SheepPieceRole.GLASSES -> multiplyMatrix4(
-            rotationZMatrix(signedPulse * pulse * 4f + noise.z * noiseAmount * 2f),
-            rotationXMatrix(noise.y * noiseAmount * 2f),
         )
     }
 }

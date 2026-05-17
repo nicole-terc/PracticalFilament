@@ -49,6 +49,8 @@ internal data class SheepRigPiece(
     val phaseOffset: Float,
     val radialWeight: Float,
     val lagWeight: Float,
+    // Non-null for face pieces: all share the head center so they move as one rigid group.
+    val groupAnchor: Float3? = null,
 )
 
 private data class FluffChunk(
@@ -137,6 +139,7 @@ internal fun buildSheepRigPieces(
         phaseOffset = 0.85f,
         radialWeight = 0.36f,
         lagWeight = 0.52f,
+        groupAnchor = headLayout.center,
     )
 
     listOf(
@@ -144,7 +147,7 @@ internal fun buildSheepRigPieces(
         Triple(SheepPieceRole.EYE, headLayout.rightEyeCenter, headLayout.eyeRadius),
         Triple(SheepPieceRole.PUPIL, headLayout.leftPupilCenter, headLayout.eyeRadius * 0.6f),
         Triple(SheepPieceRole.PUPIL, headLayout.rightPupilCenter, headLayout.eyeRadius * 0.6f),
-    ).forEachIndexed { index, (role, center, radius) ->
+    ).forEach { (role, center, radius) ->
         val handle = engine.createSphereRenderable(
             materialInstanceHandle = if (role == SheepPieceRole.EYE) eyeInstanceHandle else pupilInstanceHandle,
             radius = radius,
@@ -162,9 +165,10 @@ internal fun buildSheepRigPieces(
             role = role,
             baseTransform = baseTransform,
             anchor = center,
-            phaseOffset = 1.2f + index * 0.35f,
-            radialWeight = 0.16f,
-            lagWeight = if (role == SheepPieceRole.PUPIL) 0.84f else 0.68f,
+            phaseOffset = 0.85f,
+            radialWeight = 0.36f,
+            lagWeight = 0.52f,
+            groupAnchor = headLayout.center,
         )
     }
 
@@ -216,7 +220,7 @@ internal fun buildSheepRigPieces(
         center = Float3(0f, -headLayout.glassRadius * 0.5f, 0f),
         halfExtent = Float3(headLayout.glassRadius, headLayout.glassRadius * 0.5f, 0.03f),
     )
-    listOf(headLayout.leftGlassCenter, headLayout.rightGlassCenter).forEachIndexed { index, glassCenter ->
+    listOf(headLayout.leftGlassCenter, headLayout.rightGlassCenter).forEach { glassCenter ->
         val handle = engine.createCustomRenderableWithGeneratedTangents(
             CustomRenderableConfig(
                 vertexData = glassesVertexData,
@@ -240,9 +244,10 @@ internal fun buildSheepRigPieces(
                 ),
             ),
             anchor = glassCenter,
-            phaseOffset = 2.8f + index * 0.2f,
-            radialWeight = 0.12f,
-            lagWeight = 0.95f,
+            phaseOffset = 0.85f,
+            radialWeight = 0.36f,
+            lagWeight = 0.52f,
+            groupAnchor = headLayout.center,
         )
     }
 
@@ -280,9 +285,10 @@ internal fun buildSheepRigPieces(
             rotationXMatrix(90f),
         ),
         anchor = bridgeMidpoint,
-        phaseOffset = 3.1f,
-        radialWeight = 0.08f,
-        lagWeight = 1f,
+        phaseOffset = 0.85f,
+        radialWeight = 0.36f,
+        lagWeight = 0.52f,
+        groupAnchor = headLayout.center,
     )
 
     return pieces

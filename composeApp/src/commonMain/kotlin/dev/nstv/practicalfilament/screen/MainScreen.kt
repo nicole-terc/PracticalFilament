@@ -91,7 +91,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by rememberSaveable { mutableStateOf(Screen.FILAMENT_UI_CARD) }
+        var selectedScreen by rememberSaveable { mutableStateOf(Screen.SHEEP_2) }
 
         Column(
             modifier = Modifier
