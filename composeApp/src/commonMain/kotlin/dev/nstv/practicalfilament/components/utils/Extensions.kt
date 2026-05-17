@@ -1,14 +1,20 @@
 package dev.nstv.practicalfilament.components.utils
 
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntSize
 import dev.nstv.practicalfilament.filament.CameraConfig
+import dev.nstv.practicalfilament.filament.FilamentEngine
 import dev.nstv.practicalfilament.filament.Float3
 import kotlin.math.abs
 import kotlin.math.sqrt
@@ -51,6 +57,25 @@ data class OrbitQuaternion(
     }
 }
 
+class OrbitCameraState(
+    initialOrientation: OrbitQuaternion = OrbitQuaternion.Identity,
+    initialDistance: Float,
+) {
+    var orientation by mutableStateOf(initialOrientation)
+    var distance by mutableFloatStateOf(initialDistance)
+}
+
+@Composable
+fun rememberOrbitCameraState(
+    initialOrientation: OrbitQuaternion = OrbitQuaternion.Identity,
+    initialDistance: Float,
+): OrbitCameraState = remember {
+    OrbitCameraState(
+        initialOrientation = initialOrientation,
+        initialDistance = initialDistance,
+    )
+}
+
 fun Modifier.orbitCameraControls(
     viewportSize: IntSize,
     orientation: OrbitQuaternion,
@@ -85,6 +110,45 @@ fun Modifier.orbitCameraControls(
         }
     }
 }
+
+fun Modifier.orbitCameraControls(
+    viewportSize: IntSize,
+    cameraState: OrbitCameraState,
+    baseCamera: CameraConfig,
+    engine: FilamentEngine?,
+    minDistance: Float = 2f,
+    maxDistance: Float = 8f,
+    enabled: Boolean = true,
+): Modifier = orbitCameraControls(
+    viewportSize = viewportSize,
+    orientation = cameraState.orientation,
+    onOrientationChange = { newOrientation ->
+        cameraState.orientation = newOrientation
+        engine?.updateCamera(
+            orbitCameraConfig(
+                baseCamera = baseCamera,
+                orientation = newOrientation,
+                distance = cameraState.distance,
+            ),
+        )
+        engine?.requestFrame()
+    },
+    distance = cameraState.distance,
+    onDistanceChange = { newDistance ->
+        cameraState.distance = newDistance
+        engine?.updateCamera(
+            orbitCameraConfig(
+                baseCamera = baseCamera,
+                orientation = cameraState.orientation,
+                distance = newDistance,
+            ),
+        )
+        engine?.requestFrame()
+    },
+    minDistance = minDistance,
+    maxDistance = maxDistance,
+    enabled = enabled,
+)
 
 fun CameraConfig.orbitDistance(): Float = (position - lookAt).length()
 

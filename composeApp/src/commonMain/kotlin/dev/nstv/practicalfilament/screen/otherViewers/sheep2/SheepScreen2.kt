@@ -28,9 +28,9 @@ import androidx.compose.ui.unit.IntSize
 import dev.nstv.practicalfilament.components.ParameterInputField
 import dev.nstv.practicalfilament.components.materials.sheepBodyMaterial
 import dev.nstv.practicalfilament.components.materials.sheepFluffMaterial
-import dev.nstv.practicalfilament.components.utils.OrbitQuaternion
 import dev.nstv.practicalfilament.components.utils.orbitCameraConfig
 import dev.nstv.practicalfilament.components.utils.orbitCameraControls
+import dev.nstv.practicalfilament.components.utils.rememberOrbitCameraState
 import dev.nstv.practicalfilament.filament.CameraConfig
 import dev.nstv.practicalfilament.filament.FilamentColor
 import dev.nstv.practicalfilament.filament.FilamentEngine
@@ -82,8 +82,7 @@ fun SheepScreen2(
 ) {
     var engine by remember { mutableStateOf<FilamentEngine?>(null) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
-    var orientation by remember { mutableStateOf(OrbitQuaternion.Identity) }
-    var cameraDistance by remember { mutableFloatStateOf(Sheep2DefaultCameraDistance) }
+    val cameraState = rememberOrbitCameraState(initialDistance = Sheep2DefaultCameraDistance)
     var rigPieces by remember { mutableStateOf<List<SheepRigPiece>>(emptyList()) }
     var supportNotice by remember { mutableStateOf<String?>(null) }
     var fluffMaterialInstanceHandle by remember { mutableIntStateOf(0) }
@@ -101,22 +100,6 @@ fun SheepScreen2(
     var followThroughAmount by remember { mutableFloatStateOf(0.7f) }
     var noiseSeed by remember { mutableIntStateOf(7) }
 
-    fun applyCameraState(
-        newOrientation: OrbitQuaternion = orientation,
-        newDistance: Float = cameraDistance,
-    ) {
-        orientation = newOrientation
-        cameraDistance = newDistance
-        engine?.updateCamera(
-            orbitCameraConfig(
-                baseCamera = Sheep2BaseCamera,
-                orientation = newOrientation,
-                distance = newDistance,
-            ),
-        )
-        engine?.requestFrame()
-    }
-
     SideEffect {
         val currentEngine = engine ?: return@SideEffect
         if (fluffMaterialInstanceHandle == 0) return@SideEffect
@@ -131,8 +114,8 @@ fun SheepScreen2(
         currentEngine.updateCamera(
             orbitCameraConfig(
                 baseCamera = Sheep2BaseCamera,
-                orientation = orientation,
-                distance = cameraDistance,
+                orientation = cameraState.orientation,
+                distance = cameraState.distance,
             ),
         )
         currentEngine.requestFrame()
@@ -196,24 +179,23 @@ fun SheepScreen2(
                     .onSizeChanged { viewportSize = it }
                     .orbitCameraControls(
                         viewportSize = viewportSize,
-                        orientation = orientation,
-                        onOrientationChange = { applyCameraState(newOrientation = it) },
-                        distance = cameraDistance,
-                        onDistanceChange = { applyCameraState(newDistance = it) },
+                        cameraState = cameraState,
+                        baseCamera = Sheep2BaseCamera,
+                        engine = engine,
                         minDistance = Sheep2MinCameraDistance,
                         maxDistance = Sheep2MaxCameraDistance,
                         enabled = rigPieces.isNotEmpty(),
                     ),
                 camera = orbitCameraConfig(
                     baseCamera = Sheep2BaseCamera,
-                    orientation = orientation,
-                    distance = cameraDistance,
+                    orientation = cameraState.orientation,
+                    distance = cameraState.distance,
                 ),
                 lights = Sheep2BaseLights,
                 onEngineReady = { readyEngine ->
                     engine = readyEngine
-                    orientation = OrbitQuaternion.Identity
-                    cameraDistance = Sheep2DefaultCameraDistance
+                    cameraState.orientation = dev.nstv.practicalfilament.components.utils.OrbitQuaternion.Identity
+                    cameraState.distance = Sheep2DefaultCameraDistance
                     supportNotice = null
 
                     val fluffMaterial = readyEngine.loadMaterial(sheepFluffMaterial())

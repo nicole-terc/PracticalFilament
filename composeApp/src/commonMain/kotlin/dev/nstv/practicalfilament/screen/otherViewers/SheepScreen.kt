@@ -50,6 +50,7 @@ import dev.nstv.practicalfilament.components.materials.sheepFluffMaterial
 import dev.nstv.practicalfilament.components.utils.OrbitQuaternion
 import dev.nstv.practicalfilament.components.utils.orbitCameraConfig
 import dev.nstv.practicalfilament.components.utils.orbitCameraControls
+import dev.nstv.practicalfilament.components.utils.rememberOrbitCameraState
 import dev.nstv.practicalfilament.filament.AttributeDataType
 import dev.nstv.practicalfilament.filament.BoundingBox
 import dev.nstv.practicalfilament.filament.CameraConfig
@@ -202,8 +203,7 @@ fun SheepScreen(
 ) {
     var filamentEngine by remember { mutableStateOf<FilamentEngine?>(null) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
-    var orientation by remember { mutableStateOf(OrbitQuaternion.Identity) }
-    var cameraDistance by remember { mutableFloatStateOf(SheepDefaultCameraDistance) }
+    val cameraState = rememberOrbitCameraState(initialDistance = SheepDefaultCameraDistance)
     var animationSpeed by remember { mutableFloatStateOf(0.5f) }
     var explosionDistanceScale by remember { mutableFloatStateOf(1f) }
     var explosionProgressControl by remember { mutableFloatStateOf(0f) }
@@ -256,8 +256,8 @@ fun SheepScreen(
         currentEngine.updateCamera(
             orbitCameraConfig(
                 baseCamera = SheepBaseCamera,
-                orientation = orientation,
-                distance = cameraDistance,
+                orientation = cameraState.orientation,
+                distance = cameraState.distance,
             )
         )
         currentEngine.requestFrame()
@@ -336,18 +336,17 @@ fun SheepScreen(
                     }
                     .orbitCameraControls(
                         viewportSize = viewportSize,
-                        orientation = orientation,
-                        onOrientationChange = { orientation = it },
-                        distance = cameraDistance,
-                        onDistanceChange = { cameraDistance = it },
+                        cameraState = cameraState,
+                        baseCamera = SheepBaseCamera,
+                        engine = filamentEngine,
                         minDistance = SheepMinCameraDistance,
                         maxDistance = SheepMaxCameraDistance,
                         enabled = renderables.isNotEmpty(),
                     ),
                 camera = orbitCameraConfig(
                     baseCamera = SheepBaseCamera,
-                    orientation = orientation,
-                    distance = cameraDistance,
+                    orientation = cameraState.orientation,
+                    distance = cameraState.distance,
                 ),
                 lights = SheepBaseLights,
                 onEngineReady = { engine ->
@@ -366,8 +365,8 @@ fun SheepScreen(
                     }
 
                     filamentEngine = engine
-                    orientation = OrbitQuaternion.Identity
-                    cameraDistance = SheepDefaultCameraDistance
+                    cameraState.orientation = OrbitQuaternion.Identity
+                    cameraState.distance = SheepDefaultCameraDistance
                     explosionState.reset()
                     explosionProgressControl = 0f
                     supportNotice = null
