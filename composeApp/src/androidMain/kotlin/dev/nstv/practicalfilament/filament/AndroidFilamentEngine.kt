@@ -2,6 +2,8 @@ package dev.nstv.practicalfilament.filament
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.os.Handler
+import android.os.Looper
 import android.opengl.Matrix
 import android.util.Log
 import android.view.Choreographer
@@ -68,6 +70,7 @@ class AndroidFilamentEngine(
 
     private val lights = mutableMapOf<Int, Int>()
     private val renderables = mutableMapOf<Int, Int>()
+    private val renderableHandlesByEntity = mutableMapOf<Int, Int>()
     private val materials = mutableMapOf<Int, Material>()
     private val materialInstances = mutableMapOf<Int, MaterialInstance>()
     private val materialInstanceMaterials = mutableMapOf<Int, Int>()
@@ -133,6 +136,7 @@ class AndroidFilamentEngine(
             scene = eng.createScene()
             filamentView = eng.createView().apply {
                 this.scene = this@AndroidFilamentEngine.scene
+                setTransparentPickingEnabled(true)
             }
             cameraEntity = EntityManager.get().create()
             camera = eng.createCamera(cameraEntity).also {
@@ -164,6 +168,7 @@ class AndroidFilamentEngine(
             EntityManager.get().destroy(entity)
         }
         renderables.clear()
+        renderableHandlesByEntity.clear()
         renderableBuffers.clear()
         morphTargetBuffers.values.forEach { eng.destroyMorphTargetBuffer(it) }
         morphTargetBuffers.clear()
@@ -1208,6 +1213,32 @@ class AndroidFilamentEngine(
         destroyRenderableEntity(handle)
     }
 
+    override fun pickRenderable(xPx: Int, yPx: Int, onResult: (FilamentPickResult?) -> Unit) {
+        val view = filamentView ?: run {
+            onResult(null)
+            return
+        }
+        val viewport = view.viewport
+        val safeX = xPx.coerceIn(0, (viewport.width - 1).coerceAtLeast(0))
+        val safeY = (viewport.height - 1 - yPx).coerceIn(0, (viewport.height - 1).coerceAtLeast(0))
+        view.pick(safeX, safeY, Handler(Looper.getMainLooper())) { result ->
+            val handle = renderableHandlesByEntity[result.renderable]
+            onResult(
+                handle?.let {
+                    FilamentPickResult(
+                        renderableHandle = it,
+                        depth = result.depth,
+                        fragCoords = Float3(
+                            x = result.fragCoords[0],
+                            y = result.fragCoords[1],
+                            z = result.fragCoords[2],
+                        ),
+                    )
+                }
+            )
+        }
+    }
+
     override fun createView(viewport: ViewportConfig): Int {
         val eng = engine ?: return -1
         val scene = scene ?: return -1
@@ -1656,6 +1687,7 @@ class AndroidFilamentEngine(
         scene?.addEntity(entity)
         val handle = nextHandle++
         renderables[handle] = entity
+        renderableHandlesByEntity[entity] = handle
         renderableBuffers[handle] = RenderableBuffers(vertexBuffer)
         return handle
     }
@@ -1698,6 +1730,7 @@ class AndroidFilamentEngine(
     private fun destroyRenderableEntity(handle: Int) {
         val eng = engine ?: return
         val entity = renderables.remove(handle) ?: return
+        renderableHandlesByEntity.remove(entity)
         scene?.removeEntity(entity)
         renderableBuffers.remove(handle)
         morphTargetBuffers.remove(handle)?.let(eng::destroyMorphTargetBuffer)

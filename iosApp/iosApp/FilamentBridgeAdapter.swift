@@ -329,6 +329,19 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
     }
 
     func removeRenderable(handle: Int32) { bridge.removeRenderable(handle) }
+
+    func pickRenderableAt(x: Int32, y: Int32, callback: any FilamentBridgePickCallback) {
+        bridge.pickRenderableAt(x: x, y: y) { handle, depth, fragX, fragY, fragZ in
+            callback.onPickResult(
+                renderableHandle: handle,
+                depth: depth,
+                fragX: fragX,
+                fragY: fragY,
+                fragZ: fragZ
+            )
+        }
+    }
+
     func render() { bridge.render() }
 
     func updateViewportWidth(width: Int32, height: Int32) {

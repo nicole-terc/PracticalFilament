@@ -343,6 +343,34 @@ class IosFilamentEngine(
         bridge.removeRenderable(handle)
     }
 
+    override fun pickRenderable(xPx: Int, yPx: Int, onResult: (FilamentPickResult?) -> Unit) {
+        bridge.pickRenderableAt(
+            x = xPx,
+            y = yPx,
+            callback = object : FilamentBridgePickCallback {
+                override fun onPickResult(
+                    renderableHandle: Int,
+                    depth: Float,
+                    fragX: Float,
+                    fragY: Float,
+                    fragZ: Float,
+                ) {
+                    onResult(
+                        if (renderableHandle > 0) {
+                            FilamentPickResult(
+                                renderableHandle = renderableHandle,
+                                depth = depth,
+                                fragCoords = Float3(fragX, fragY, fragZ),
+                            )
+                        } else {
+                            null
+                        }
+                    )
+                }
+            },
+        )
+    }
+
     override fun createView(viewport: ViewportConfig): Int = -1
 
     override fun removeView(handle: Int) {
@@ -522,6 +550,17 @@ interface FilamentBridgeProtocol {
     )
     fun setMorphWeights(handle: Int, weights: FloatArray)
     fun removeRenderable(handle: Int)
+    fun pickRenderableAt(x: Int, y: Int, callback: FilamentBridgePickCallback)
     fun render()
     fun updateViewportWidth(width: Int, height: Int)
+}
+
+interface FilamentBridgePickCallback {
+    fun onPickResult(
+        renderableHandle: Int,
+        depth: Float,
+        fragX: Float,
+        fragY: Float,
+        fragZ: Float,
+    )
 }

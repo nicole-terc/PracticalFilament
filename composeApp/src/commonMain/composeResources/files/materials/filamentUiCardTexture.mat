@@ -1,0 +1,22 @@
+material {
+    name : filamentUiCardTexture,
+    shadingModel : lit,
+    blending : masked,
+    maskThreshold : 0.35,
+    culling : none,
+    parameters : [
+        { type : sampler2d, name : albedo },
+        { type : float4, name : tint }
+    ],
+    requires : [ uv0 ],
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        vec4 texel = texture(materialParams_albedo, getUV0());
+        material.baseColor = texel * materialParams.tint;
+        material.roughness = 0.76;
+        material.metallic = 0.0;
+    }
+}

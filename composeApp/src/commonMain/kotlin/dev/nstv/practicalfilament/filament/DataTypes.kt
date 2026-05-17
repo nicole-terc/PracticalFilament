@@ -80,6 +80,12 @@ data class BoundingBox(
     val halfExtent: Float3,
 )
 
+data class FilamentPickResult(
+    val renderableHandle: Int,
+    val depth: Float,
+    val fragCoords: Float3,
+)
+
 data class CustomRenderableConfig(
     val vertexData: ByteArray,
     val vertexCount: Int,

@@ -26,6 +26,7 @@ import dev.nstv.practicalfilament.screen.marbles.comparison.GraphicsEffectsCompa
 import dev.nstv.practicalfilament.screen.filament.steps.FilamentStepsScreen
 import dev.nstv.practicalfilament.screen.marbles.steps.MarbleStepsScreen
 import dev.nstv.practicalfilament.screen.otherViewers.GltfViewerScreen
+import dev.nstv.practicalfilament.screen.otherViewers.FilamentUiCardScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MaterialViewerScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MorphingScreen
 import dev.nstv.practicalfilament.screen.otherViewers.RedballScreen
@@ -63,6 +64,7 @@ private enum class Screen {
     PARTICLE_WORD,
     SKY,
     GLTF_VIEWER,
+    FILAMENT_UI_CARD,
     SAMPLE_LIVE_WALLPAPER,
     SAMPLE_PAGE_CURL,
     SAMPLE_STRESS_TEST,
@@ -87,7 +89,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         containerColor = if (UseSlidesBackground) slidesBackground else MaterialTheme.colorScheme.background,
     ) {
-        var selectedScreen by rememberSaveable { mutableStateOf(Screen.SHEEP) }
+        var selectedScreen by rememberSaveable { mutableStateOf(Screen.FILAMENT_UI_CARD) }
 
         Column(
             modifier = Modifier
@@ -124,6 +126,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.MORPHING -> MorphingScreen()
                     Screen.PARTICLE_WORD -> ParticleWordScreen()
                     Screen.GLTF_VIEWER -> GltfViewerScreen()
+                    Screen.FILAMENT_UI_CARD -> FilamentUiCardScreen()
                     Screen.SKY -> SkyScreen()
                     Screen.SAMPLE_IBL -> IBLScreen()
                     Screen.SAMPLE_LIT_CUBE -> LitCubeScreen()

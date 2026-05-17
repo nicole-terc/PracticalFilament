@@ -302,6 +302,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
 
     std::map<int, Entity> _lights;
     std::map<int, Entity> _renderables;
+    std::map<Entity, int> _renderableHandlesByEntity;
     std::map<int, IndirectLight *> _indirectLights;
     std::map<int, Skybox *> _skyboxes;
     std::map<int, Material *> _materials;
@@ -336,6 +337,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _view = _engine->createView();
     _view->setScene(_scene);
     _view->setBlendMode(isOpaque ? View::BlendMode::OPAQUE : View::BlendMode::TRANSLUCENT);
+    _view->setTransparentPickingEnabled(true);
 
     _cameraEntity = EntityManager::get().create();
     _camera = _engine->createCamera(_cameraEntity);
@@ -370,6 +372,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
         EntityManager::get().destroy(pair.second);
     }
     _renderables.clear();
+    _renderableHandlesByEntity.clear();
     for (auto &pair : _morphTargetBuffers) {
         _engine->destroy(pair.second);
     }
@@ -430,6 +433,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
         EntityManager::get().destroy(pair.second);
     }
     _renderables.clear();
+    _renderableHandlesByEntity.clear();
     for (auto &pair : _morphTargetBuffers) {
         _engine->destroy(pair.second);
     }
@@ -982,6 +986,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
 
     int handle = _nextHandle++;
     _renderables[handle] = mesh.renderable;
+    _renderableHandlesByEntity[mesh.renderable] = handle;
     return handle;
 }
 
@@ -1045,6 +1050,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _scene->addEntity(entity);
     int handle = _nextHandle++;
     _renderables[handle] = entity;
+    _renderableHandlesByEntity[entity] = handle;
     return handle;
 }
 
@@ -1172,6 +1178,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _scene->addEntity(entity);
     int handle = _nextHandle++;
     _renderables[handle] = entity;
+    _renderableHandlesByEntity[entity] = handle;
     return handle;
 }
 
@@ -1333,6 +1340,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _scene->addEntity(entity);
     int handle = _nextHandle++;
     _renderables[handle] = entity;
+    _renderableHandlesByEntity[entity] = handle;
     return handle;
 }
 
@@ -1410,6 +1418,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _scene->addEntity(entity);
     int handle = _nextHandle++;
     _renderables[handle] = entity;
+    _renderableHandlesByEntity[entity] = handle;
     return handle;
 }
 
@@ -1545,6 +1554,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _scene->addEntity(entity);
     int handle = _nextHandle++;
     _renderables[handle] = entity;
+    _renderableHandlesByEntity[entity] = handle;
     _morphTargetBuffers[handle] = morphTargetBuffer;
     return handle;
 }
@@ -1605,6 +1615,7 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     if (it == _renderables.end() || !_engine) return;
     auto morphIt = _morphTargetBuffers.find(handle);
     _scene->remove(it->second);
+    _renderableHandlesByEntity.erase(it->second);
     if (morphIt != _morphTargetBuffers.end()) {
         _engine->destroy(morphIt->second);
         _morphTargetBuffers.erase(morphIt);
@@ -1612,6 +1623,36 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _engine->destroy(it->second);
     EntityManager::get().destroy(it->second);
     _renderables.erase(it);
+}
+
+- (void)pickRenderableAtX:(int)x y:(int)y completion:(FilamentPickCompletion)completion {
+    if (!_view || !completion) {
+        completion(0, 0.0f, 0.0f, 0.0f, 0.0f);
+        return;
+    }
+
+    const int width = std::max(_viewWidth, 1);
+    const int height = std::max(_viewHeight, 1);
+    const uint32_t safeX = (uint32_t)std::clamp(x, 0, width - 1);
+    const uint32_t safeY = (uint32_t)std::clamp(height - 1 - y, 0, height - 1);
+    FilamentPickCompletion completionCopy = [completion copy];
+
+    _view->pick(safeX, safeY, [self, completionCopy](View::PickingQueryResult const& result) {
+        int handle = 0;
+        auto mapped = self->_renderableHandlesByEntity.find(result.renderable);
+        if (mapped != self->_renderableHandlesByEntity.end()) {
+            handle = mapped->second;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionCopy(
+                handle,
+                result.depth,
+                result.fragCoords.x,
+                result.fragCoords.y,
+                result.fragCoords.z
+            );
+        });
+    });
 }
 
 - (void)render {

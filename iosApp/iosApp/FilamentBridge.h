@@ -1,6 +1,8 @@
 #import <Foundation/Foundation.h>
 #import <QuartzCore/QuartzCore.h>
 
+typedef void (^FilamentPickCompletion)(int renderableHandle, float depth, float fragX, float fragY, float fragZ);
+
 @interface FilamentBridge : NSObject
 
 - (void)initializeWithMetalLayer:(CAMetalLayer * _Nonnull)layer
@@ -121,6 +123,7 @@
                            m30:(float)m30 m31:(float)m31 m32:(float)m32 m33:(float)m33;
 - (void)setMorphWeights:(int)handle weights:(NSArray<NSNumber *> * _Nonnull)weights;
 - (void)removeRenderable:(int)handle;
+- (void)pickRenderableAtX:(int)x y:(int)y completion:(FilamentPickCompletion _Nonnull)completion;
 
 - (void)render;
 - (void)updateViewportWidth:(int)width height:(int)height;

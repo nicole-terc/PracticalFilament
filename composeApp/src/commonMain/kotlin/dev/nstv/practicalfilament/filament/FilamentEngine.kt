@@ -131,6 +131,7 @@ interface FilamentEngine {
     fun updateVertexData(renderableHandle: Int, vertexData: ByteArray)
     fun setMorphWeights(handle: Int, weights: FloatArray)
     fun removeRenderable(handle: Int)
+    fun pickRenderable(xPx: Int, yPx: Int, onResult: (FilamentPickResult?) -> Unit)
 
     // Multi-view
     fun createView(viewport: ViewportConfig): Int

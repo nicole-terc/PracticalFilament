@@ -27,7 +27,7 @@ val MaterialOverridesList = listOf(
     MarbleCeramicMaterial,
     MarbleVelvetMaterial,
     redballMaterial(),
-    aiDefaultMatMaterial(),
+//    aiDefaultMatMaterial(),
     texturedSampleMaterial(),
     sandboxLitFadeMaterial(),
     sandboxClothMaterial(),
