@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -420,13 +421,16 @@ private fun randomFloatingSheepSpawn(random: Random): FloatingSheepSpawnConfig {
             .coerceIn(0f, 1f)
     val speedMin = lerp(FloatingSheepSlowBandMin, FloatingSheepFastBandMin, sizeFactor)
     val speedMax = lerp(FloatingSheepSlowBandMax, FloatingSheepFastBandMax, sizeFactor)
+    val noiseSeed = random.nextInt(1, Int.MAX_VALUE)
+    val noiseAnchor = Float3(noiseSeed * 0.1f, noiseSeed * 0.37f, noiseSeed * 0.71f)
+    val noisePos = sheep2NoiseVector(anchor = noiseAnchor, timeSeconds = 0f, seed = noiseSeed, frequency = 1f)
     val xMin = FloatingSheepMinX + sizeScale
     val xMax = FloatingSheepMaxX - sizeScale
     return FloatingSheepSpawnConfig(
         rootPosition = Float3(
-            x = random.nextFloat(xMin, xMax),
+            x = lerp(xMin, xMax, (noisePos.x + 1f) * 0.5f),
             y = random.nextFloat(FloatingSheepSpawnMinY, FloatingSheepSpawnMaxY),
-            z = random.nextFloat(FloatingSheepMinZ, FloatingSheepMaxZ),
+            z = lerp(FloatingSheepMinZ, FloatingSheepMaxZ, (noisePos.z + 1f) * 0.5f),
         ),
         sizeScale = sizeScale,
         upwardSpeed = random.nextFloat(speedMin, speedMax),
@@ -434,7 +438,7 @@ private fun randomFloatingSheepSpawn(random: Random): FloatingSheepSpawnConfig {
         driftPhase = random.nextFloat(0f, kotlin.math.PI.toFloat() * 2f),
         bobPhase = random.nextFloat(0f, kotlin.math.PI.toFloat() * 2f),
         yRotationDegrees = random.nextFloat(0f, 360f),
-        noiseSeed = random.nextInt(1, Int.MAX_VALUE),
+        noiseSeed = noiseSeed,
     )
 }
 
@@ -511,48 +515,48 @@ private fun FloatingSheepSettingsPanel(
     onMaxSheepChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .widthIn(max = 280.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.Black.copy(alpha = 0.65f))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+    Surface(
+        modifier = modifier.widthIn(max = 280.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+        tonalElevation = 4.dp,
     ) {
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
-        )
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Settings",
+                style = MaterialTheme.typography.titleMedium,
+            )
 
-        EnvironmentSelectionField(filamentEngine = engine)
+            EnvironmentSelectionField(filamentEngine = engine)
 
-        val speedDisplay = ((speedScale * 10f).toInt() / 10f).let { rounded ->
-            val integer = rounded.toInt()
-            val decimal = ((rounded - integer) * 10).toInt()
-            "$integer.${kotlin.math.abs(decimal)}"
+            val speedDisplay = ((speedScale * 10f).toInt() / 10f).let { rounded ->
+                val integer = rounded.toInt()
+                val decimal = ((rounded - integer) * 10).toInt()
+                "$integer.${kotlin.math.abs(decimal)}"
+            }
+            Text(
+                text = "Speed: ${speedDisplay}x",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Slider(
+                value = speedScale,
+                onValueChange = onSpeedScaleChange,
+                valueRange = 0.2f..3f,
+            )
+
+            Text(
+                text = "Max Sheep: $maxSheep",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Slider(
+                value = maxSheep.toFloat(),
+                onValueChange = { onMaxSheepChange(it.toInt()) },
+                valueRange = 1f..FloatingSheepMaxCount.toFloat(),
+                steps = FloatingSheepMaxCount - 2,
+            )
         }
-        Text(
-            text = "Speed: ${speedDisplay}x",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White,
-        )
-        Slider(
-            value = speedScale,
-            onValueChange = onSpeedScaleChange,
-            valueRange = 0.2f..3f,
-        )
-
-        Text(
-            text = "Max Sheep: $maxSheep",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White,
-        )
-        Slider(
-            value = maxSheep.toFloat(),
-            onValueChange = { onMaxSheepChange(it.toInt()) },
-            valueRange = 1f..FloatingSheepMaxCount.toFloat(),
-            steps = FloatingSheepMaxCount - 2,
-        )
     }
 }
