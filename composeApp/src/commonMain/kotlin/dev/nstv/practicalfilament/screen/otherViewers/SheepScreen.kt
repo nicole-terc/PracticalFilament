@@ -68,6 +68,8 @@ import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.material.MaterialParameterDefinition
 import dev.nstv.practicalfilament.filament.toByteArray
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
+import dev.nstv.practicalfilament.screen.otherViewers.sheep2.buildScatterAndShrinkTransform
+import dev.nstv.practicalfilament.screen.otherViewers.sheep2.sheepScatterOffset
 import dev.nstv.practicalfilament.theme.Grid
 import dev.nstv.practicalfilament.theme.components.SampleNotice
 import practicalfilament.composeapp.generated.resources.Res
@@ -288,7 +290,7 @@ fun SheepScreen(
                 translationMatrix(0f, bobOffset, 0f),
                 rotationZMatrix(swayDegrees),
             )
-            val explosionProgress = smoothStep(explosionState.progress)
+            val explosionProgress = explosionState.progress
             renderables.forEach { renderable ->
                 val groupProgress = when (renderable.buildGroup) {
                     SheepBuildGroup.FLUFF_CORE -> fluffCoreProgress
@@ -1351,51 +1353,26 @@ private fun sheepTransformForProgress(
         }
     }
 
-    val explosionTransform = if (explosionProgress <= 1e-4f) {
-        identityMatrix4()
-    } else {
-        val scaledProgress = explosionProgress * explosionDistanceScale
-        translationMatrix(
-            x = renderable.explosionOffset.x * scaledProgress,
-            y = renderable.explosionOffset.y * scaledProgress,
-            z = renderable.explosionOffset.z * scaledProgress,
-        )
-    }
-
     return multiplyMatrix4(
         rootTransform,
         multiplyMatrix4(
-            explosionTransform,
+            buildScatterAndShrinkTransform(
+                explosionOffset = renderable.explosionOffset,
+                progress = explosionProgress,
+                distanceScale = explosionDistanceScale,
+            ),
             multiplyMatrix4(renderable.baseTransform, buildTransform),
         ),
     )
 }
 
 private fun sheepExplosionOffset(baseTransform: FloatArray, index: Int): Float3 {
-    val center = extractTranslation(baseTransform)
-    val angle = index * 2.3999631f
-    val fallbackDirection = Float3(
-        x = cos(angle),
-        y = 0.4f + 0.2f * sin(angle * 1.7f),
-        z = sin(angle),
+    return sheepScatterOffset(
+        anchor = extractTranslation(baseTransform),
+        index = index,
+        distance = SheepExplosionDistance,
+        upwardBias = SheepExplosionUpBias,
     )
-    val direction = Float3(
-        x = center.x * 1.15f + fallbackDirection.x * 0.34f,
-        y = center.y + SheepExplosionUpBias + fallbackDirection.y * 0.2f,
-        z = center.z * 1.15f + fallbackDirection.z * 0.34f,
-    ).normalizedSheep()
-    val distanceScale = 1.05f + 0.5f * (0.5f + 0.5f * sin(index * 1.37f))
-    return Float3(
-        x = direction.x * SheepExplosionDistance * distanceScale,
-        y = direction.y * SheepExplosionDistance * distanceScale,
-        z = direction.z * SheepExplosionDistance * distanceScale,
-    )
-}
-
-private fun Float3.normalizedSheep(): Float3 {
-    val length = sqrt(x * x + y * y + z * z)
-    if (length <= 1e-6f) return Float3(0f, 0f, 1f)
-    return Float3(x / length, y / length, z / length)
 }
 
 private fun extractTranslation(matrix: FloatArray): Float3 = Float3(
