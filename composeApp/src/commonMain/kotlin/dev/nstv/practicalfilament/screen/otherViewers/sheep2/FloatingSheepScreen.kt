@@ -544,7 +544,7 @@ private fun FloatingSheepSettingsPanel(
             Slider(
                 value = speedScale,
                 onValueChange = onSpeedScaleChange,
-                valueRange = 0.2f..3f,
+                valueRange = 0f..3f,
             )
 
             Text(
