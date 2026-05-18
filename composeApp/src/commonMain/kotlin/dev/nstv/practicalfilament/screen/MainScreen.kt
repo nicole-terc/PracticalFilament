@@ -31,6 +31,7 @@ import dev.nstv.practicalfilament.screen.otherViewers.MaterialViewerScreen
 import dev.nstv.practicalfilament.screen.otherViewers.MorphingScreen
 import dev.nstv.practicalfilament.screen.otherViewers.RedballScreen
 import dev.nstv.practicalfilament.screen.otherViewers.SheepScreen
+import dev.nstv.practicalfilament.screen.otherViewers.sheep2.SheepHerdRunScreen
 import dev.nstv.practicalfilament.screen.otherViewers.sheep2.FloatingSheepScreen
 import dev.nstv.practicalfilament.screen.otherViewers.sheep2.SheepScreen2
 import dev.nstv.practicalfilament.screen.particles.ParticleWordScreen
@@ -64,6 +65,7 @@ private enum class Screen {
     SHEEP,
     SHEEP_2,
     FLOATING_SHEEP,
+    SHEEP_HERD_RUN,
     MORPHING,
     PARTICLE_WORD,
     SKY,
@@ -128,6 +130,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Screen.REDBALL -> RedballScreen()
                     Screen.SHEEP -> SheepScreen()
                     Screen.SHEEP_2 -> SheepScreen2()
+                    Screen.SHEEP_HERD_RUN -> SheepHerdRunScreen()
                     Screen.FLOATING_SHEEP -> FloatingSheepScreen()
                     Screen.MORPHING -> MorphingScreen()
                     Screen.PARTICLE_WORD -> ParticleWordScreen()

@@ -22,12 +22,16 @@ internal fun buildSheep2PieceTransform(
     piece: SheepRigPiece,
     timeSeconds: Float,
     controls: Sheep2AnimationControls,
+    worldTransform: FloatArray = identityMatrix4(),
 ): FloatArray {
     if (!controls.animationEnabled) {
-        return piece.baseTransform.copyOf()
+        return multiplyMatrix4(worldTransform, piece.baseTransform)
     }
 
-    val rootTransform = buildSheep2RootTransform(timeSeconds, controls)
+    val rootTransform = multiplyMatrix4(
+        worldTransform,
+        buildSheep2RootTransform(timeSeconds, controls),
+    )
     if (controls.driftAmount <= 1e-6f &&
         controls.pulseAmount <= 1e-6f &&
         controls.noiseAmount <= 1e-6f
