@@ -1,0 +1,16 @@
+material {
+    name : sheep_dust,
+    requires : [
+        color
+    ],
+    shadingModel : unlit,
+    blending : transparent,
+    doubleSided : true,
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor = getColor();
+    }
+}
