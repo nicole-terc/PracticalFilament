@@ -46,16 +46,21 @@ import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.withFrameSeconds
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
+import dev.nstv.practicalfilament.theme.TileColor
 import dev.nstv.practicalfilament.theme.components.CheckBoxLabel
 
 import practicalfilament.composeapp.generated.resources.Res
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 private const val FloatingSheepDefaultCount = 14
 private const val FloatingSheepMaxCount = 30
 private const val FloatingSheepExplosionDurationSeconds = 0.45f
+private const val FloatingSheepDefaultTapRespawnDelaySeconds = 2f
+private const val FloatingSheepMaxTapRespawnDelaySeconds = 10f
 private const val FloatingSheepMinSize = 0.65f
 private const val FloatingSheepMaxSize = 1.45f
 private const val FloatingSheepMinX = -4.5f
@@ -73,6 +78,9 @@ private const val FloatingSheepHiddenY = -1_000f
 private const val FloatingSheepDriftAmplitude = 0.22f
 private const val FloatingSheepBobAmplitude = 0.12f
 private const val FloatingSheepDepthAmplitude = 0.08f
+private const val FloatingSheepSpawnAttempts = 24
+private const val FloatingSheepSpacingRadiusFactor = 0.45f
+private const val FloatingSheepSpacingPadding = 0.14f
 private val FloatingSheepCamera = CameraConfig(
     position = Float3(0f, 0.15f, 18f),
     lookAt = Float3(0f, 0.15f, 0f),
@@ -102,6 +110,12 @@ private data class FloatingSheepRenderable(
     val explosionOffset: Float3,
 )
 
+private data class FloatingSheepColorway(
+    val baseColor: Float3,
+    val sheenColor: Float3,
+    val subsurfaceColor: Float3,
+)
+
 private data class FloatingSheepSharedMaterials(
     val fluffMaterialHandle: Int,
     val bodyInstanceHandle: Int,
@@ -124,18 +138,31 @@ private class FloatingSheepState(
     var active: Boolean,
     var exploding: Boolean,
     var explosionElapsedSeconds: Float,
+    var respawnCooldownRemainingSeconds: Float,
 )
 
 private data class FloatingSheepSpawnConfig(
     val rootPosition: Float3,
     val sizeScale: Float,
     val upwardSpeed: Float,
-    val fluffColor: Float3,
+    val fluffColorway: FloatingSheepColorway,
     val driftPhase: Float,
     val bobPhase: Float,
     val yRotationDegrees: Float,
     val noiseSeed: Int,
 )
+
+private val FloatingSheepColorPalette = listOf(
+    TileColor.Blue,
+    TileColor.Pink,
+    TileColor.Purple,
+    TileColor.Green,
+    TileColor.Magenta,
+    TileColor.Yellow,
+    TileColor.Orange,
+    TileColor.Red,
+    TileColor.DarkGreen,
+).map(::tileColorToFloatingSheepColorway)
 
 @Composable
 fun FloatingSheepScreen(
@@ -144,6 +171,9 @@ fun FloatingSheepScreen(
     var engine by remember { mutableStateOf<FilamentEngine?>(null) }
     var sharedMaterials by remember { mutableStateOf<FloatingSheepSharedMaterials?>(null) }
     var speedScale by rememberSaveable { mutableFloatStateOf(1f) }
+    var tapRespawnDelaySeconds by rememberSaveable {
+        mutableFloatStateOf(FloatingSheepDefaultTapRespawnDelaySeconds)
+    }
     var maxSheep by rememberSaveable { mutableIntStateOf(FloatingSheepDefaultCount) }
     var selectedBackgroundIndex by rememberSaveable { mutableIntStateOf(0) }
     var wobbleEnabled by rememberSaveable { mutableStateOf(true) }
@@ -172,9 +202,20 @@ fun FloatingSheepScreen(
                 if (sheep.exploding) {
                     sheep.explosionElapsedSeconds += deltaSeconds
                     if (sheep.explosionElapsedSeconds >= FloatingSheepExplosionDurationSeconds) {
+                        hideFloatingSheepForRespawn(
+                            engine = currentEngine,
+                            sheep = sheep,
+                            respawnDelaySeconds = tapRespawnDelaySeconds,
+                        )
+                    }
+                } else if (sheep.respawnCooldownRemainingSeconds > 0f) {
+                    sheep.respawnCooldownRemainingSeconds =
+                        (sheep.respawnCooldownRemainingSeconds - deltaSeconds).coerceAtLeast(0f)
+                    if (sheep.respawnCooldownRemainingSeconds <= 0f) {
                         recycleFloatingSheep(
                             engine = currentEngine,
                             sheep = sheep,
+                            sheepStates = sheepStates,
                             random = random,
                         )
                     }
@@ -186,22 +227,29 @@ fun FloatingSheepScreen(
                         recycleFloatingSheep(
                             engine = currentEngine,
                             sheep = sheep,
+                            sheepStates = sheepStates,
                             random = random,
                         )
                     }
                 }
+            }
 
-                val driftX = if (wobbleEnabled) {
+            resolveFloatingSheepSpacing(sheepStates)
+
+            sheepStates.forEach { sheep ->
+                if (!sheep.active || sheep.renderables.isEmpty()) return@forEach
+
+                val driftX = if (wobbleEnabled && sheep.respawnCooldownRemainingSeconds <= 0f) {
                     sin(elapsedSeconds * 0.58f + sheep.driftPhase) * FloatingSheepDriftAmplitude
                 } else {
                     0f
                 }
-                val bobY = if (wobbleEnabled) {
+                val bobY = if (wobbleEnabled && sheep.respawnCooldownRemainingSeconds <= 0f) {
                     sin(elapsedSeconds * 1.08f + sheep.bobPhase) * FloatingSheepBobAmplitude
                 } else {
                     0f
                 }
-                val swayZ = if (wobbleEnabled) {
+                val swayZ = if (wobbleEnabled && sheep.respawnCooldownRemainingSeconds <= 0f) {
                     cos(elapsedSeconds * 0.41f + sheep.driftPhase * 0.7f) * FloatingSheepDepthAmplitude
                 } else {
                     0f
@@ -341,6 +389,8 @@ fun FloatingSheepScreen(
                 onSelectedBackgroundIndexChange = { selectedBackgroundIndex = it },
                 speedScale = speedScale,
                 onSpeedScaleChange = { speedScale = it },
+                tapRespawnDelaySeconds = tapRespawnDelaySeconds,
+                onTapRespawnDelaySecondsChange = { tapRespawnDelaySeconds = it },
                 maxSheep = maxSheep,
                 onMaxSheepChange = { maxSheep = it },
                 wobbleEnabled = wobbleEnabled,
@@ -371,6 +421,7 @@ private fun synchronizeFloatingSheepPopulation(
             recycleFloatingSheep(
                 engine = engine,
                 sheep = inactiveSheep,
+                sheepStates = sheepStates,
                 random = random,
             )
             inactiveSheep.active = true
@@ -382,6 +433,7 @@ private fun synchronizeFloatingSheepPopulation(
             sheepId = sheepStates.size,
             materials = materials,
             handleToSheepId = handleToSheepId,
+            sheepStates = sheepStates,
             random = random,
         ) ?: break
         sheepStates += sheep
@@ -393,6 +445,7 @@ private fun createFloatingSheepState(
     sheepId: Int,
     materials: FloatingSheepSharedMaterials,
     handleToSheepId: MutableMap<Int, Int>,
+    sheepStates: List<FloatingSheepState>,
     random: Random,
 ): FloatingSheepState? {
     val fluffInstanceHandle = engine.createMaterialInstance(materials.fluffMaterialHandle)
@@ -414,12 +467,14 @@ private fun createFloatingSheepState(
         active = true,
         exploding = false,
         explosionElapsedSeconds = 0f,
+        respawnCooldownRemainingSeconds = 0f,
     ).also { sheep ->
         buildFloatingSheep(
             engine = engine,
             sheep = sheep,
             materials = materials,
             handleToSheepId = handleToSheepId,
+            sheepStates = sheepStates,
             random = random,
         )
     }
@@ -430,13 +485,18 @@ private fun buildFloatingSheep(
     sheep: FloatingSheepState,
     materials: FloatingSheepSharedMaterials,
     handleToSheepId: MutableMap<Int, Int>,
+    sheepStates: List<FloatingSheepState>,
     random: Random,
 ) {
-    val spawn = randomFloatingSheepSpawn(random)
+    val spawn = randomFloatingSheepSpawn(
+        random = random,
+        sheepStates = sheepStates,
+        sheepIdToIgnore = sheep.sheepId,
+    )
     applySheepFluffColor(
         engine = engine,
         instanceHandle = sheep.fluffMaterialInstanceHandle,
-        color = spawn.fluffColor,
+        colorway = spawn.fluffColorway,
     )
 
     val createdPieces = buildSheepRigPieces(
@@ -467,18 +527,24 @@ private fun buildFloatingSheep(
     sheep.active = true
     sheep.exploding = false
     sheep.explosionElapsedSeconds = 0f
+    sheep.respawnCooldownRemainingSeconds = 0f
 }
 
 private fun recycleFloatingSheep(
     engine: FilamentEngine,
     sheep: FloatingSheepState,
+    sheepStates: List<FloatingSheepState>,
     random: Random,
 ) {
-    val spawn = randomFloatingSheepSpawn(random)
+    val spawn = randomFloatingSheepSpawn(
+        random = random,
+        sheepStates = sheepStates,
+        sheepIdToIgnore = sheep.sheepId,
+    )
     applySheepFluffColor(
         engine = engine,
         instanceHandle = sheep.fluffMaterialInstanceHandle,
-        color = spawn.fluffColor,
+        colorway = spawn.fluffColorway,
     )
 
     sheep.rootPosition = spawn.rootPosition
@@ -491,15 +557,17 @@ private fun recycleFloatingSheep(
     sheep.active = true
     sheep.exploding = false
     sheep.explosionElapsedSeconds = 0f
+    sheep.respawnCooldownRemainingSeconds = 0f
 }
 
-private fun deactivateFloatingSheep(
+private fun hideFloatingSheepForRespawn(
     engine: FilamentEngine,
     sheep: FloatingSheepState,
+    respawnDelaySeconds: Float,
 ) {
-    sheep.active = false
     sheep.exploding = false
     sheep.explosionElapsedSeconds = 0f
+    sheep.respawnCooldownRemainingSeconds = respawnDelaySeconds.coerceAtLeast(0f)
     sheep.rootPosition = Float3(0f, FloatingSheepHiddenY, 0f)
     sheep.renderables.forEach { renderable ->
         engine.setRenderableTransform(
@@ -512,7 +580,52 @@ private fun deactivateFloatingSheep(
     }
 }
 
-private fun randomFloatingSheepSpawn(random: Random): FloatingSheepSpawnConfig {
+private fun deactivateFloatingSheep(
+    engine: FilamentEngine,
+    sheep: FloatingSheepState,
+) {
+    sheep.active = false
+    sheep.exploding = false
+    sheep.explosionElapsedSeconds = 0f
+    sheep.respawnCooldownRemainingSeconds = 0f
+    sheep.rootPosition = Float3(0f, FloatingSheepHiddenY, 0f)
+    sheep.renderables.forEach { renderable ->
+        engine.setRenderableTransform(
+            renderable.piece.handle,
+            multiplyMatrix4(
+                translationMatrix(0f, FloatingSheepHiddenY, 0f),
+                renderable.piece.baseTransform,
+            ),
+        )
+    }
+}
+
+private fun randomFloatingSheepSpawn(
+    random: Random,
+    sheepStates: List<FloatingSheepState>,
+    sheepIdToIgnore: Int,
+): FloatingSheepSpawnConfig {
+    var bestSpawn: FloatingSheepSpawnConfig? = null
+    var bestClearance = Float.NEGATIVE_INFINITY
+    repeat(FloatingSheepSpawnAttempts) {
+        val candidate = randomFloatingSheepSpawnCandidate(random)
+        val clearance = floatingSheepSpawnClearance(
+            candidate = candidate,
+            sheepStates = sheepStates,
+            sheepIdToIgnore = sheepIdToIgnore,
+        )
+        if (clearance > bestClearance) {
+            bestClearance = clearance
+            bestSpawn = candidate
+        }
+        if (clearance >= 0f) {
+            return candidate
+        }
+    }
+    return bestSpawn ?: randomFloatingSheepSpawnCandidate(random)
+}
+
+private fun randomFloatingSheepSpawnCandidate(random: Random): FloatingSheepSpawnConfig {
     val sizeScale = random.nextFloat(FloatingSheepMinSize, FloatingSheepMaxSize)
     val sizeFactor =
         ((sizeScale - FloatingSheepMinSize) / (FloatingSheepMaxSize - FloatingSheepMinSize))
@@ -532,7 +645,7 @@ private fun randomFloatingSheepSpawn(random: Random): FloatingSheepSpawnConfig {
         ),
         sizeScale = sizeScale,
         upwardSpeed = random.nextFloat(speedMin, speedMax),
-        fluffColor = randomFluffColor(random),
+        fluffColorway = FloatingSheepColorPalette.random(random),
         driftPhase = random.nextFloat(0f, kotlin.math.PI.toFloat() * 2f),
         bobPhase = random.nextFloat(0f, kotlin.math.PI.toFloat() * 2f),
         yRotationDegrees = random.nextFloat(0f, 360f),
@@ -557,44 +670,88 @@ private fun createSheepBodyMaterialInstance(
 private fun applySheepFluffColor(
     engine: FilamentEngine,
     instanceHandle: Int,
-    color: Float3,
+    colorway: FloatingSheepColorway,
 ) {
-    engine.setMaterialParameter(instanceHandle, MaterialParameter("baseColor", color))
+    engine.setMaterialParameter(instanceHandle, MaterialParameter("baseColor", colorway.baseColor))
     engine.setMaterialParameter(instanceHandle, MaterialParameter("roughness", 0.27f))
     engine.setMaterialParameter(
         instanceHandle,
-        MaterialParameter("sheenColor", Float3(0.29f, 0.72f, 0.37f)),
+        MaterialParameter("sheenColor", colorway.sheenColor),
     )
     engine.setMaterialParameter(
         instanceHandle,
-        MaterialParameter("subsurfaceColor", Float3(0.41f, 0.42f, 0.23f)),
+        MaterialParameter("subsurfaceColor", colorway.subsurfaceColor),
     )
 }
 
-private fun randomFluffColor(random: Random): Float3 {
-    val hue = random.nextFloat(0f, 1f)
-    val saturation = random.nextFloat(0.35f, 0.8f)
-    val value = random.nextFloat(0.72f, 1f)
-    return hsvToRgb(hue, saturation, value)
+private fun floatingSheepSpawnClearance(
+    candidate: FloatingSheepSpawnConfig,
+    sheepStates: List<FloatingSheepState>,
+    sheepIdToIgnore: Int,
+): Float {
+    val candidateRadius = floatingSheepSpacingRadius(candidate.sizeScale)
+    return sheepStates
+        .asSequence()
+        .filter { sheep ->
+            sheep.active &&
+                !sheep.exploding &&
+                sheep.respawnCooldownRemainingSeconds <= 0f &&
+                sheep.sheepId != sheepIdToIgnore
+        }
+        .map { sheep ->
+            distanceXZ(candidate.rootPosition, sheep.rootPosition) -
+                (candidateRadius + floatingSheepSpacingRadius(sheep.sizeScale) + FloatingSheepSpacingPadding)
+        }
+        .minOrNull()
+        ?: Float.POSITIVE_INFINITY
 }
 
-private fun hsvToRgb(hue: Float, saturation: Float, value: Float): Float3 {
-    if (saturation <= 1e-6f) {
-        return Float3(value, value, value)
+private fun resolveFloatingSheepSpacing(
+    sheepStates: List<FloatingSheepState>,
+) {
+    val visibleSheep = sheepStates.filter { sheep ->
+        sheep.active &&
+            !sheep.exploding &&
+            sheep.respawnCooldownRemainingSeconds <= 0f &&
+            sheep.renderables.isNotEmpty()
     }
-    val scaledHue = ((hue % 1f) + 1f) % 1f * 6f
-    val sector = scaledHue.toInt()
-    val fraction = scaledHue - sector
-    val p = value * (1f - saturation)
-    val q = value * (1f - saturation * fraction)
-    val t = value * (1f - saturation * (1f - fraction))
-    return when (sector % 6) {
-        0 -> Float3(value, t, p)
-        1 -> Float3(q, value, p)
-        2 -> Float3(p, value, t)
-        3 -> Float3(p, q, value)
-        4 -> Float3(t, p, value)
-        else -> Float3(value, p, q)
+
+    for (i in 0 until visibleSheep.lastIndex) {
+        val sheepA = visibleSheep[i]
+        for (j in i + 1 until visibleSheep.size) {
+            val sheepB = visibleSheep[j]
+            val minDistance = floatingSheepSpacingRadius(sheepA.sizeScale) +
+                floatingSheepSpacingRadius(sheepB.sizeScale) +
+                FloatingSheepSpacingPadding
+            val dx = sheepB.rootPosition.x - sheepA.rootPosition.x
+            val dz = sheepB.rootPosition.z - sheepA.rootPosition.z
+            val distanceSquared = dx * dx + dz * dz
+            if (distanceSquared >= minDistance * minDistance) {
+                continue
+            }
+
+            val distance = sqrt(distanceSquared)
+            val direction = if (distance > 1e-4f) {
+                Float3(dx / distance, 0f, dz / distance)
+            } else {
+                separationFallbackDirection(sheepA.sheepId, sheepB.sheepId)
+            }
+            val pushDistance = (minDistance - distance).coerceAtLeast(0f) * 0.5f
+            sheepA.rootPosition = clampFloatingSheepPosition(
+                sheepA.rootPosition.copy(
+                    x = sheepA.rootPosition.x - direction.x * pushDistance,
+                    z = sheepA.rootPosition.z - direction.z * pushDistance,
+                ),
+                sheepA.sizeScale,
+            )
+            sheepB.rootPosition = clampFloatingSheepPosition(
+                sheepB.rootPosition.copy(
+                    x = sheepB.rootPosition.x + direction.x * pushDistance,
+                    z = sheepB.rootPosition.z + direction.z * pushDistance,
+                ),
+                sheepB.sizeScale,
+            )
+        }
     }
 }
 
@@ -604,6 +761,75 @@ private fun Random.nextFloat(min: Float, max: Float): Float =
 private fun lerp(start: Float, end: Float, fraction: Float): Float =
     start + (end - start) * fraction
 
+private fun floatingSheepSpacingRadius(sizeScale: Float): Float =
+    sizeScale * FloatingSheepSpacingRadiusFactor
+
+private fun distanceXZ(first: Float3, second: Float3): Float {
+    val dx = first.x - second.x
+    val dz = first.z - second.z
+    return sqrt(dx * dx + dz * dz)
+}
+
+private fun clampFloatingSheepPosition(position: Float3, sizeScale: Float): Float3 {
+    val xMin = FloatingSheepMinX + sizeScale
+    val xMax = FloatingSheepMaxX - sizeScale
+    return position.copy(
+        x = position.x.coerceIn(xMin, xMax),
+        z = position.z.coerceIn(FloatingSheepMinZ, FloatingSheepMaxZ),
+    )
+}
+
+private fun separationFallbackDirection(firstSheepId: Int, secondSheepId: Int): Float3 {
+    val angle = ((firstSheepId * 97 + secondSheepId * 57) % 360).toFloat()
+    val radians = angle / 180f * kotlin.math.PI.toFloat()
+    return Float3(cos(radians), 0f, sin(radians))
+}
+
+private fun tileColorToFloatingSheepColorway(color: Color): FloatingSheepColorway {
+    val normalizedBase = normalizePeak(color.toFloat3(), minPeak = 0.42f, maxPeak = 0.82f)
+    return FloatingSheepColorway(
+        baseColor = normalizedBase,
+        sheenColor = blendFloat3(normalizedBase, Float3(0.95f, 0.95f, 0.95f), 0.18f),
+        subsurfaceColor = blendFloat3(normalizedBase, Float3(0.14f, 0.11f, 0.08f), 0.58f),
+    )
+}
+
+private fun Color.toFloat3(): Float3 = Float3(red, green, blue)
+
+private fun normalizePeak(color: Float3, minPeak: Float, maxPeak: Float): Float3 {
+    val peak = maxOf(color.x, color.y, color.z)
+    if (peak <= 1e-6f) return color
+    val targetPeak = when {
+        peak < minPeak -> minPeak
+        peak > maxPeak -> maxPeak
+        else -> peak
+    }
+    val scale = targetPeak / peak
+    return scaleFloat3(color, scale)
+}
+
+private fun scaleFloat3(color: Float3, scale: Float): Float3 = Float3(
+    x = (color.x * scale).coerceIn(0f, 1f),
+    y = (color.y * scale).coerceIn(0f, 1f),
+    z = (color.z * scale).coerceIn(0f, 1f),
+)
+
+private fun blendFloat3(start: Float3, end: Float3, amount: Float): Float3 {
+    val fraction = amount.coerceIn(0f, 1f)
+    return Float3(
+        x = lerp(start.x, end.x, fraction),
+        y = lerp(start.y, end.y, fraction),
+        z = lerp(start.z, end.z, fraction),
+    )
+}
+
+private fun formatSingleDecimal(value: Float): String {
+    val rounded = ((value * 10f).toInt() / 10f)
+    val integer = rounded.toInt()
+    val decimal = ((rounded - integer) * 10).toInt()
+    return "$integer.${abs(decimal)}"
+}
+
 @Composable
 private fun FloatingSheepSettingsPanel(
     engine: FilamentEngine?,
@@ -611,6 +837,8 @@ private fun FloatingSheepSettingsPanel(
     onSelectedBackgroundIndexChange: (Int) -> Unit,
     speedScale: Float,
     onSpeedScaleChange: (Float) -> Unit,
+    tapRespawnDelaySeconds: Float,
+    onTapRespawnDelaySecondsChange: (Float) -> Unit,
     maxSheep: Int,
     onMaxSheepChange: (Int) -> Unit,
     wobbleEnabled: Boolean,
@@ -645,19 +873,25 @@ private fun FloatingSheepSettingsPanel(
                 textStyle = MaterialTheme.typography.bodyMedium,
             )
 
-            val speedDisplay = ((speedScale * 10f).toInt() / 10f).let { rounded ->
-                val integer = rounded.toInt()
-                val decimal = ((rounded - integer) * 10).toInt()
-                "$integer.${kotlin.math.abs(decimal)}"
-            }
             Text(
-                text = "Speed: ${speedDisplay}x",
+                text = "Speed: ${formatSingleDecimal(speedScale)}x",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Slider(
                 value = speedScale,
                 onValueChange = onSpeedScaleChange,
                 valueRange = 0f..3f,
+            )
+
+            Text(
+                text = "Tap Respawn Delay: ${formatSingleDecimal(tapRespawnDelaySeconds)}s",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Slider(
+                value = tapRespawnDelaySeconds,
+                onValueChange = onTapRespawnDelaySecondsChange,
+                valueRange = 0f..FloatingSheepMaxTapRespawnDelaySeconds,
+                steps = 19,
             )
 
             Text(
