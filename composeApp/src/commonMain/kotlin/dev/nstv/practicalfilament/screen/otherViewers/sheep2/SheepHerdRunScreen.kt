@@ -105,6 +105,10 @@ private data class StageRunPath(
 private data class SheepActor(
     val pieces: List<SheepRigPiece>,
     val index: Int,
+    val fluffInstanceHandle: Int,
+)
+
+private data class SheepRunParams(
     val scale: Float,
     val laneOffset: Float,
     val depthOffset: Float,
@@ -128,9 +132,11 @@ fun SheepHerdRunScreen(
     var runInProgress by remember { mutableStateOf(false) }
     var activeRunPath by remember { mutableStateOf<StageRunPath?>(null) }
     var activeSelector by remember { mutableStateOf<SelectorHandle?>(null) }
+    var runParams by remember { mutableStateOf<List<SheepRunParams>>(emptyList()) }
     val latestRunToken by rememberUpdatedState(runToken)
     val latestRunInProgress by rememberUpdatedState(runInProgress)
     val latestRunPath by rememberUpdatedState(activeRunPath)
+    val latestRunParams by rememberUpdatedState(runParams)
 
     BoxWithConstraints(
         modifier = modifier.fillMaxSize(),
@@ -155,19 +161,6 @@ fun SheepHerdRunScreen(
             val actors = herdActors
             if (actors.isEmpty()) return@LaunchedEffect
 
-            val animationControls = List(actors.size) { i ->
-                val actor = actors[i]
-                Sheep2AnimationControls(
-                    animationEnabled = true,
-                    pulseAmount = 0.66f,
-                    noiseAmount = 0.26f,
-                    noiseFrequency = 0.9f + actor.index * 0.04f,
-                    driftAmount = 0.16f,
-                    followThroughAmount = 0.78f,
-                    headAndLegMotionEnabled = true,
-                    noiseSeed = actor.noiseSeed,
-                )
-            }
             var localRunToken = runToken
             var runElapsed = 0f
             var hiddenTransformsApplied = false
@@ -180,7 +173,8 @@ fun SheepHerdRunScreen(
                 }
 
                 val currentRunPath = latestRunPath
-                if (!latestRunInProgress || currentRunPath == null) {
+                val params = latestRunParams
+                if (!latestRunInProgress || currentRunPath == null || params.size != actors.size) {
                     if (!hiddenTransformsApplied) {
                         actors.forEachIndexed { index, actor ->
                             val hiddenTransform = hiddenActorTransform(index)
@@ -203,9 +197,10 @@ fun SheepHerdRunScreen(
                 var allSheepFinished = true
 
                 actors.forEachIndexed { actorIndex, actor ->
-                    val actorTime = max(0f, runElapsed - actor.startDelay)
-                    val speed = (2.45f + actor.speedMultiplier * 0.55f).coerceAtLeast(1.7f)
-                    val totalDistance = runPath.pathLength + SheepOffstageMargin * 2f + actor.scale * 0.8f
+                    val p = params[actorIndex]
+                    val actorTime = max(0f, runElapsed - p.startDelay)
+                    val speed = (2.45f + p.speedMultiplier * 0.55f).coerceAtLeast(1.7f)
+                    val totalDistance = runPath.pathLength + SheepOffstageMargin * 2f + p.scale * 0.8f
                     val distanceAlongPath = (actorTime * speed).coerceIn(0f, totalDistance)
                     if (distanceAlongPath < totalDistance) {
                         allSheepFinished = false
@@ -232,20 +227,29 @@ fun SheepHerdRunScreen(
                             else -> basePoint
                         }
                     }
-                    val arc = sin(progressOnLine * PI.toFloat()) * actor.arcHeight
-                    val bob = sin(actorTime * 8.2f + actor.bobPhase) * actor.bobAmplitude
+                    val arc = sin(progressOnLine * PI.toFloat()) * p.arcHeight
+                    val bob = sin(actorTime * 8.2f + p.bobPhase) * p.bobAmplitude
                     val worldCenter = Float3(
-                        x = linePoint.x + lateral.x * actor.laneOffset,
-                        y = linePoint.y + lateral.y * actor.laneOffset + arc + bob,
-                        z = actor.depthOffset,
+                        x = linePoint.x + lateral.x * p.laneOffset,
+                        y = linePoint.y + lateral.y * p.laneOffset + arc + bob,
+                        z = p.depthOffset,
                     )
                     val worldTransform = actorWorldTransform(
                         center = worldCenter,
                         direction = runPath.direction,
-                        scale = actor.scale,
+                        scale = p.scale,
                     )
-                    val localTime = actorTime * (0.92f + actor.speedMultiplier * 0.14f) + actor.bobPhase
-                    val controls = animationControls[actorIndex]
+                    val localTime = actorTime * (0.92f + p.speedMultiplier * 0.14f) + p.bobPhase
+                    val controls = Sheep2AnimationControls(
+                        animationEnabled = true,
+                        pulseAmount = 0.66f,
+                        noiseAmount = 0.26f,
+                        noiseFrequency = 0.9f + actorIndex * 0.04f,
+                        driftAmount = 0.16f,
+                        followThroughAmount = 0.78f,
+                        headAndLegMotionEnabled = true,
+                        noiseSeed = p.noiseSeed,
+                    )
                     actor.pieces.forEach { piece ->
                         currentEngine.setRenderableTransform(
                             piece.handle,
@@ -320,15 +324,8 @@ fun SheepHerdRunScreen(
                         roughness = 0.3f,
                     )
 
-                    val hueOffset = Random.nextFloat()
                     herdActors = List(SheepHerdCount) { index ->
-                        val hue = (index.toFloat() / SheepHerdCount + hueOffset) % 1f
                         val fluffInstance = readyEngine.createMaterialInstance(fluffMaterialHandle)
-                        readyEngine.setMaterialParameter(fluffInstance, MaterialParameter("baseColor", hsvToFloat3(hue, 0.75f, 0.55f)))
-                        readyEngine.setMaterialParameter(fluffInstance, MaterialParameter("roughness", 0.27f))
-                        readyEngine.setMaterialParameter(fluffInstance, MaterialParameter("sheenColor", hsvToFloat3((hue + 0.33f) % 1f, 0.6f, 0.65f)))
-                        readyEngine.setMaterialParameter(fluffInstance, MaterialParameter("subsurfaceColor", hsvToFloat3((hue + 0.17f) % 1f, 0.5f, 0.4f)))
-
                         val createdPieces = buildSheepRigPieces(
                             engine = readyEngine,
                             fluffInstanceHandle = fluffInstance,
@@ -340,15 +337,7 @@ fun SheepHerdRunScreen(
                         SheepActor(
                             pieces = createdPieces.filter { it.handle > 0 },
                             index = index,
-                            scale = 0.3f + (index % 3) * 0.045f,
-                            laneOffset = ((index % 4) - 1.5f) * 0.28f + if (index >= 4) 0.11f else -0.05f,
-                            depthOffset = ((index % 3) - 1f) * 0.22f,
-                            arcHeight = 0.04f + (index % 2) * 0.03f,
-                            bobAmplitude = 0.03f + (index % 3) * 0.012f,
-                            speedMultiplier = 0.85f + index * 0.06f,
-                            startDelay = index * 0.26f,
-                            bobPhase = index * 0.65f,
-                            noiseSeed = 17 + index * 9,
+                            fluffInstanceHandle = fluffInstance,
                         )
                     }
                 },
@@ -378,6 +367,28 @@ fun SheepHerdRunScreen(
             Button(
                 onClick = {
                     val runPath = candidateRunPath ?: return@Button
+                    val currentEngine = engine ?: return@Button
+                    val random = Random(Random.nextInt())
+                    val hueOffset = random.nextFloat()
+                    herdActors.forEachIndexed { i, actor ->
+                        val hue = (i.toFloat() / herdActors.size + hueOffset) % 1f
+                        currentEngine.setMaterialParameter(actor.fluffInstanceHandle, MaterialParameter("baseColor", hsvToFloat3(hue, 0.75f, 0.55f)))
+                        currentEngine.setMaterialParameter(actor.fluffInstanceHandle, MaterialParameter("sheenColor", hsvToFloat3((hue + 0.33f) % 1f, 0.6f, 0.65f)))
+                        currentEngine.setMaterialParameter(actor.fluffInstanceHandle, MaterialParameter("subsurfaceColor", hsvToFloat3((hue + 0.17f) % 1f, 0.5f, 0.4f)))
+                    }
+                    runParams = List(herdActors.size) {
+                        SheepRunParams(
+                            scale = 0.25f + random.nextFloat() * 0.18f,
+                            laneOffset = (random.nextFloat() - 0.5f) * 1.2f,
+                            depthOffset = (random.nextFloat() - 0.5f) * 0.5f,
+                            arcHeight = 0.02f + random.nextFloat() * 0.06f,
+                            bobAmplitude = 0.02f + random.nextFloat() * 0.04f,
+                            speedMultiplier = 0.7f + random.nextFloat() * 0.7f,
+                            startDelay = random.nextFloat() * 1.8f,
+                            bobPhase = random.nextFloat() * PI.toFloat() * 2f,
+                            noiseSeed = random.nextInt(100),
+                        )
+                    }
                     activeRunPath = runPath
                     runToken += 1
                     runInProgress = true
