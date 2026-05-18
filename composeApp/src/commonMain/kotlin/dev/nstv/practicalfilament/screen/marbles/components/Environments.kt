@@ -63,12 +63,16 @@ internal fun EnvironmentSelectionField(
     modifier: Modifier = Modifier,
     backgrounds: List<EnvironmentOption> = MarbleTextureBackgrounds,
     selectedBackground: Int = 0,
+    onSelectedBackgroundChange: ((Int) -> Unit)? = null,
     updateNotice: (String?) -> Unit = {},
 ){
-    var selectedBackgroundIndex by remember { mutableIntStateOf(selectedBackground) }
+    var localSelectedBackgroundIndex by remember { mutableIntStateOf(selectedBackground) }
+    val selectedBackgroundIndex = onSelectedBackgroundChange?.let { selectedBackground }
+        ?: localSelectedBackgroundIndex
 
     ObserveBackgroundIndex(
         filamentEngine = filamentEngine,
+        backgrounds = backgrounds,
         selectedBackgroundIndex = selectedBackgroundIndex,
         updateNotice = updateNotice,
     )
@@ -79,13 +83,20 @@ internal fun EnvironmentSelectionField(
         options = backgrounds.map { it.label },
         selectedIndex = selectedBackgroundIndex,
         label = "Background",
-        onSelectionChanged = { selectedBackgroundIndex = it },
+        onSelectionChanged = { index ->
+            if (onSelectedBackgroundChange != null) {
+                onSelectedBackgroundChange(index)
+            } else {
+                localSelectedBackgroundIndex = index
+            }
+        },
     )
 }
 
 @Composable
 private fun ObserveBackgroundIndex(
     filamentEngine: FilamentEngine?,
+    backgrounds: List<EnvironmentOption>,
     selectedBackgroundIndex: Int,
     updateNotice: (String?) -> Unit,
 ) {
@@ -111,7 +122,7 @@ private fun ObserveBackgroundIndex(
             }
         }
 
-        val background = MarbleTextureBackgrounds[selectedBackgroundIndex]
+        val background = backgrounds[selectedBackgroundIndex]
         if (background.iblPath == null || background.skyboxPath == null) {
             if (activeIndirectLightHandle > 0) {
                 engine.setIndirectLight(activeIndirectLightHandle, 0f)
