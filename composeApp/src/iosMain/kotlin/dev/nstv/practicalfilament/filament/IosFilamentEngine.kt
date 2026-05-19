@@ -412,6 +412,11 @@ class IosFilamentEngine(
         bridge.transformGltfToUnitCube(handle)
     }
 
+    override fun setGltfTransform(handle: Int, transform: FloatArray) {
+    }
+
+    override fun getGltfRenderableHandles(handle: Int): IntArray = intArrayOf()
+
     override fun addGltfToScene(handle: Int) {
         bridge.addGltfToScene(handle)
     }

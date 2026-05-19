@@ -149,6 +149,8 @@ interface FilamentEngine {
     fun applyGltfAnimation(handle: Int, animationIndex: Int, timeSeconds: Float)
     fun updateGltfBoneMatrices(handle: Int)
     fun transformGltfToUnitCube(handle: Int)
+    fun setGltfTransform(handle: Int, transform: FloatArray)
+    fun getGltfRenderableHandles(handle: Int): IntArray
     fun addGltfToScene(handle: Int)
     fun removeGltfFromScene(handle: Int)
 

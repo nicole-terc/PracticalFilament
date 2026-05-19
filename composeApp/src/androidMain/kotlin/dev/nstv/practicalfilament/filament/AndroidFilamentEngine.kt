@@ -1222,11 +1222,11 @@ class AndroidFilamentEngine(
         val safeX = xPx.coerceIn(0, (viewport.width - 1).coerceAtLeast(0))
         val safeY = (viewport.height - 1 - yPx).coerceIn(0, (viewport.height - 1).coerceAtLeast(0))
         view.pick(safeX, safeY, Handler(Looper.getMainLooper())) { result ->
-            val handle = renderableHandlesByEntity[result.renderable]
+            val handle = renderableHandlesByEntity[result.renderable] ?: result.renderable
             onResult(
-                handle?.let {
+                if (handle > 0) {
                     FilamentPickResult(
-                        renderableHandle = it,
+                        renderableHandle = handle,
                         depth = result.depth,
                         fragCoords = Float3(
                             x = result.fragCoords[0],
@@ -1234,6 +1234,8 @@ class AndroidFilamentEngine(
                             z = result.fragCoords[2],
                         ),
                     )
+                } else {
+                    null
                 }
             )
         }
@@ -1341,7 +1343,6 @@ class AndroidFilamentEngine(
     }
 
     override fun transformGltfToUnitCube(handle: Int) {
-        val eng = engine ?: return
         val managedAsset = gltfAssets[handle] ?: return
         val boundingBox = managedAsset.asset.boundingBox
         val center = boundingBox.center
@@ -1353,12 +1354,20 @@ class AndroidFilamentEngine(
         Matrix.setIdentityM(transform, 0)
         Matrix.scaleM(transform, 0, scale, scale, scale)
         Matrix.translateM(transform, 0, -center[0], -center[1], -center[2])
-        val root = managedAsset.asset.root
-        val transformManager = eng.transformManager
-        val instance = transformManager.getInstance(root)
-        if (instance != 0) {
-            transformManager.setTransform(instance, transform)
-        }
+        managedAsset.normalizationTransform = transform
+        applyGltfRootTransform(managedAsset)
+    }
+
+    override fun setGltfTransform(handle: Int, transform: FloatArray) {
+        require(transform.size == 16) { "glTF transform must have 16 values" }
+        val managedAsset = gltfAssets[handle] ?: return
+        managedAsset.worldTransform = transform.copyOf()
+        applyGltfRootTransform(managedAsset)
+    }
+
+    override fun getGltfRenderableHandles(handle: Int): IntArray {
+        val managedAsset = gltfAssets[handle] ?: return intArrayOf()
+        return managedAsset.asset.entities.copyOf()
     }
 
     override fun addGltfToScene(handle: Int) {
@@ -1378,6 +1387,20 @@ class AndroidFilamentEngine(
     override fun requestFrame() {
         // The choreographer-driven render loop handles continuous rendering.
         // This is a no-op since we render every frame.
+    }
+
+    private fun applyGltfRootTransform(managedAsset: ManagedGltfAsset) {
+        val eng = engine ?: return
+        val transformManager = eng.transformManager
+        val instance = transformManager.getInstance(managedAsset.asset.root)
+        if (instance == 0) return
+        transformManager.setTransform(
+            instance,
+            multiply4x4(
+                managedAsset.worldTransform,
+                managedAsset.normalizationTransform,
+            ),
+        )
     }
 
     private fun loadAssetBuffer(path: String): ByteBuffer? {
@@ -1770,9 +1793,20 @@ class AndroidFilamentEngine(
         val asset: FilamentAsset,
         val animator: Animator,
         var addedToScene: Boolean,
+        var normalizationTransform: FloatArray = identityMatrix4(),
+        var worldTransform: FloatArray = identityMatrix4(),
     )
 
 }
+
+private fun identityMatrix4(): FloatArray = FloatArray(16).also { matrix ->
+    Matrix.setIdentityM(matrix, 0)
+}
+
+private fun multiply4x4(left: FloatArray, right: FloatArray): FloatArray =
+    FloatArray(16).also { result ->
+        Matrix.multiplyMM(result, 0, left, 0, right, 0)
+    }
 
 private fun calculateInSampleSize(
     width: Int,
