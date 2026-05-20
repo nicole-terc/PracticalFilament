@@ -14,7 +14,7 @@ Sample code using Google's [Filament](https://github.com/google/filament) framew
 
 ## Asset generation
 
-Filament's macOS SDK is bundled in `tools/filament/1.70.1` so material and environment assets can be rebuilt locally without depending on a separate desktop install. If you're not on macOS, you can get the SDK from https://github.com/google/filament/releases/tag/v1.70.1
+Filament's macOS SDK is bundled in `tools/filament/1.71.4` so material and environment assets can be rebuilt locally without depending on a separate desktop install. If you're not on macOS, you can get the SDK from https://github.com/google/filament/releases/tag/v1.71.4
 
 - Put source materials in `filament-assets/materials/*.mat`
 - Put source HDR environments in `filament-assets/envs/*.hdr`

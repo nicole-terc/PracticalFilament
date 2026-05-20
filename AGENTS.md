@@ -13,7 +13,7 @@ Current repo snapshot:
 - Kotlin 2.3.20
 - Compose Multiplatform 1.10.3
 - Android Gradle Plugin 9.1.0
-- Filament 1.70.1
+- Filament 1.71.4
 - The current demo is a metadata-driven material viewer that introspects `.filamat` parameters at runtime and builds controls dynamically
 
 ## Repository Structure
@@ -21,7 +21,7 @@ Current repo snapshot:
 - `composeApp/` shared Kotlin Multiplatform module
 - `androidApp/` Android application host project
 - `iosApp/` native iOS host project and Xcode project
-- `tools/filament/1.70.1/ios/` vendored iOS Filament SDK headers and static libraries used by the Xcode project
+- `tools/filament/<version>/ios/` vendored iOS Filament SDK headers and static libraries used by the Xcode project (version from `gradle/libs.versions.toml`)
 - `gradle/libs.versions.toml` centralized dependency and plugin versions
 
 ## Architecture
@@ -78,7 +78,7 @@ Runtime material editing is metadata-driven:
 ./gradlew iosSimulatorArm64Test
 ```
 
-For iOS app development, open `iosApp/iosApp.xcodeproj` in Xcode. The current project is linked against the vendored Filament SDK in `tools/filament/1.70.1/ios`.
+For iOS app development, open `iosApp/iosApp.xcodeproj` in Xcode. The current project is linked against the vendored Filament SDK in `tools/filament/<version>/ios` (version defined in `Config.xcconfig` as `FILAMENT_VERSION`).
 
 ## Notable Implementation Areas
 
@@ -90,7 +90,7 @@ For iOS app development, open `iosApp/iosApp.xcodeproj` in Xcode. The current pr
 - `composeApp/src/iosMain/kotlin/dev/nstv/practicalfilament/filament/` Kotlin iOS engine hooks, Metal layer hosting, and the `FilamentBridgeProtocol`
 - `iosApp/iosApp/FilamentBridge.mm` and related bridge files for native iOS interop with Filament C++
 - `iosApp/iosApp/FilamentBridgeAdapter.swift` Swift adapter that conforms to the Kotlin-exported bridge protocol and delegates to the ObjC++ bridge
-- `tools/filament/1.70.1/ios/` local Filament iOS distribution consumed by the Xcode project
+- `tools/filament/<version>/ios/` local Filament iOS distribution consumed by the Xcode project
 
 ## Dependency Notes
 
@@ -104,11 +104,11 @@ Managed in `gradle/libs.versions.toml`:
 - Android target SDK 36
 - Android min SDK 25
 - JVM target 11
-- Filament 1.70.1
+- Filament — see `gradle/libs.versions.toml` (`filament` key) and `iosApp/Configuration/Config.xcconfig` (`FILAMENT_VERSION`)
 
 Filament dependency setup is platform-specific:
 - Android uses the Filament Android artifacts from Gradle
-- iOS currently uses the vendored SDK under `tools/filament/1.70.1/ios` with Xcode `HEADER_SEARCH_PATHS` / `LIBRARY_SEARCH_PATHS`
+- iOS currently uses the vendored SDK under `tools/filament/$(FILAMENT_VERSION)/ios` with Xcode `HEADER_SEARCH_PATHS` / `LIBRARY_SEARCH_PATHS`
 
 ## Known Tooling Note
 

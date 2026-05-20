@@ -3,7 +3,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-FILAMENT_DIR="${FILAMENT_DIR:-$ROOT_DIR/tools/filament/1.70.1}"
+_FILAMENT_VERSION="$(grep '^filament = ' "$ROOT_DIR/gradle/libs.versions.toml" | sed 's/filament = "\(.*\)"/\1/')"
+FILAMENT_DIR="${FILAMENT_DIR:-$ROOT_DIR/tools/filament/$_FILAMENT_VERSION}"
 MATERIALS_SOURCE_DIR="${MATERIALS_SOURCE_DIR:-$ROOT_DIR/filament-assets/materials}"
 ENVIRONMENTS_SOURCE_DIR="${ENVIRONMENTS_SOURCE_DIR:-$ROOT_DIR/filament-assets/envs}"
 MODELS_SOURCE_DIR="${MODELS_SOURCE_DIR:-$ROOT_DIR/filament-assets/models}"

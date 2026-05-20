@@ -1,0 +1,16 @@
+// Migrated from https://github.com/google/filament/tree/main/android/samples/sample-textured-object
+material {
+    name : texturedSample,
+    shadingModel : lit,
+    requires : [ uv0 ],
+    parameters : [
+        { type : sampler2d, name : albedo }
+    ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor = texture(materialParams_albedo, getUV0());
+    }
+}
