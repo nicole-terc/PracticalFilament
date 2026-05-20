@@ -52,6 +52,10 @@ import dev.nstv.practicalfilament.filament.LightConfig
 import dev.nstv.practicalfilament.filament.LightType
 import dev.nstv.practicalfilament.filament.material.MaterialParameter
 import dev.nstv.practicalfilament.filament.withFrameSeconds
+import dev.nstv.practicalfilament.screen.otherViewers.GltfTapVisibilityDurationSeconds
+import dev.nstv.practicalfilament.screen.otherViewers.GltfTapVisibilitySpinDegrees
+import dev.nstv.practicalfilament.screen.otherViewers.gltfTapHiddenTransform
+import dev.nstv.practicalfilament.screen.otherViewers.gltfTapLocalTransform
 import dev.nstv.practicalfilament.screen.marbles.components.EnvironmentSelectionField
 import dev.nstv.practicalfilament.theme.TileColor
 import dev.nstv.practicalfilament.theme.components.CheckBoxLabel
@@ -253,8 +257,8 @@ private val FloatingSheepGltfConfig = FloatingSheepVisualConfig(
         spawnMaxY = -6.2f,
         respawnTopY = 5.7f,
     ),
-    removalDurationSeconds = 0.32f,
-    removalSpinDegrees = 540f,
+    removalDurationSeconds = GltfTapVisibilityDurationSeconds,
+    removalSpinDegrees = GltfTapVisibilitySpinDegrees,
     rotationRangeDegrees = 0f..360f,
     avoidOverlap = false,
     spreadInitialPopulation = true,
@@ -515,9 +519,8 @@ fun FloatingSheepScreen(
                         0f
                     }
                     val visibleScale = (1f - shrinkProgress) * sheep.sizeScale * visualConfig.gltfScaleFactor
-                    val shrinkSpinDegrees = shrinkProgress * visualConfig.removalSpinDegrees
                     val rootTransform = if (sheep.respawnCooldownRemainingSeconds > 0f) {
-                        translationMatrix(0f, FloatingSheepHiddenY, 0f)
+                        gltfTapHiddenTransform()
                     } else {
                         multiplyMatrix4(
                             translationMatrix(
@@ -525,9 +528,10 @@ fun FloatingSheepScreen(
                                 y = sheep.rootPosition.y + bobY,
                                 z = sheep.rootPosition.z + swayZ,
                             ),
-                            multiplyMatrix4(
-                                rotationYMatrix(sheep.yRotationDegrees + shrinkSpinDegrees),
-                                scaleMatrix(visibleScale, visibleScale, visibleScale),
+                            gltfTapLocalTransform(
+                                progress = shrinkProgress,
+                                baseRotationDegrees = sheep.yRotationDegrees,
+                                baseScale = visibleScale,
                             ),
                         )
                     }
@@ -868,7 +872,7 @@ private fun preloadFloatingGltfSheepPool(
         }
         engine.setGltfTransform(
             assetHandle,
-            translationMatrix(0f, FloatingSheepHiddenY, 0f),
+            gltfTapHiddenTransform(),
         )
         engine.addGltfToScene(assetHandle)
         val renderableHandles = engine.getGltfRenderableHandles(assetHandle)
@@ -1046,7 +1050,7 @@ private fun hideFloatingGltfSheepForRespawn(
     sheep.rootPosition = Float3(0f, FloatingSheepHiddenY, 0f)
     engine.setGltfTransform(
         sheep.assetHandle,
-        translationMatrix(0f, FloatingSheepHiddenY, 0f),
+        gltfTapHiddenTransform(),
     )
 }
 
@@ -1081,7 +1085,7 @@ private fun deactivateFloatingGltfSheep(
     sheep.rootPosition = Float3(0f, FloatingSheepHiddenY, 0f)
     engine.setGltfTransform(
         sheep.assetHandle,
-        translationMatrix(0f, FloatingSheepHiddenY, 0f),
+        gltfTapHiddenTransform(),
     )
 }
 
