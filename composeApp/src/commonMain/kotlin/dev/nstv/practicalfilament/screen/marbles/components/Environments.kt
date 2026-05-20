@@ -98,7 +98,7 @@ private fun ObserveBackgroundIndex(
     filamentEngine: FilamentEngine?,
     backgrounds: List<EnvironmentOption>,
     selectedBackgroundIndex: Int,
-    updateNotice: (String?) -> Unit,
+    updateNotice: (String?) -> Unit = {},
 ) {
     var environmentHandles by remember { mutableStateOf<Map<String, LoadedEnvironment>>(emptyMap()) }
     var colorSkyboxHandle by remember { mutableIntStateOf(0) }

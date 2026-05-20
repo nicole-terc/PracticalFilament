@@ -390,6 +390,8 @@ class IosFilamentEngine(
 
     override fun loadGltfAsset(path: String): Int = bridge.loadGltfAsset(path)
 
+    override fun loadInstancedGltfAssets(path: String, instanceCount: Int): IntArray = intArrayOf()
+
     override fun destroyGltfAsset(handle: Int) {
         bridge.destroyGltfAsset(handle)
     }

@@ -143,6 +143,7 @@ interface FilamentEngine {
 
     // glTF
     fun loadGltfAsset(path: String): Int
+    fun loadInstancedGltfAssets(path: String, instanceCount: Int): IntArray
     fun destroyGltfAsset(handle: Int)
     fun getGltfAnimationCount(handle: Int): Int
     fun getGltfAnimationDuration(handle: Int, animationIndex: Int): Float

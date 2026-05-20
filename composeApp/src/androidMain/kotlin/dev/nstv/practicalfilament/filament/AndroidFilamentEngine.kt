@@ -33,6 +33,7 @@ import com.google.android.filament.filamat.MaterialBuilder
 import com.google.android.filament.gltfio.Animator
 import com.google.android.filament.gltfio.AssetLoader
 import com.google.android.filament.gltfio.FilamentAsset
+import com.google.android.filament.gltfio.FilamentInstance
 import com.google.android.filament.gltfio.ResourceLoader
 import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.utils.KTX1Loader
@@ -84,8 +85,10 @@ class AndroidFilamentEngine(
     private val additionalViews = mutableMapOf<Int, AuxiliaryView>()
     private val renderableBuffers = mutableMapOf<Int, RenderableBuffers>()
     private val gltfAssets = mutableMapOf<Int, ManagedGltfAsset>()
+    private val gltfBundles = mutableMapOf<Int, ManagedGltfBundle>()
 
     private var nextHandle = 1
+    private var nextGltfBundleHandle = 1
     private var _isInitialized = false
     private var rendering = false
     private var viewportWidth = 1
@@ -158,10 +161,13 @@ class AndroidFilamentEngine(
         scene?.setSkybox(null)
 
         gltfAssets.values.forEach { managedAsset ->
-            scene?.removeEntities(managedAsset.asset.entities)
-            assetLoader?.destroyAsset(managedAsset.asset)
+            scene?.removeEntities(managedAsset.entities)
+        }
+        gltfBundles.values.forEach { bundle ->
+            assetLoader?.destroyAsset(bundle.asset)
         }
         gltfAssets.clear()
+        gltfBundles.clear()
 
         renderables.values.forEach { entity ->
             eng.destroyEntity(entity)
@@ -1295,35 +1301,25 @@ class AndroidFilamentEngine(
     }
 
     override fun loadGltfAsset(path: String): Int {
-        val loader = assetLoader ?: return -1
-        val resourceLoader = resourceLoader ?: return -1
-        val buffer = loadAssetBuffer(path) ?: return -1
-        val asset = loader.createAsset(buffer) ?: return -1
-        if (path.endsWith(".gltf", ignoreCase = true)) {
-            val basePath = path.substringBeforeLast('/', "")
-            asset.resourceUris.forEach { resourceUri ->
-                val resourceBuffer = loadAssetBuffer(resolveRelativeAssetPath(basePath, resourceUri)) ?: return -1
-                resourceLoader.addResourceData(resourceUri, resourceBuffer)
-            }
-        }
-        resourceLoader.loadResources(asset)
-        asset.releaseSourceData()
-        val handle = nextHandle++
-        gltfAssets[handle] = ManagedGltfAsset(
-            asset = asset,
-            animator = asset.instance.animator,
-            addedToScene = false,
-        )
-        return handle
+        return loadManagedGltfAssets(path = path, instanceCount = 1).firstOrNull() ?: -1
+    }
+
+    override fun loadInstancedGltfAssets(path: String, instanceCount: Int): IntArray {
+        return loadManagedGltfAssets(path = path, instanceCount = instanceCount).toIntArray()
     }
 
     override fun destroyGltfAsset(handle: Int) {
         val loader = assetLoader ?: return
         val managedAsset = gltfAssets.remove(handle) ?: return
         if (managedAsset.addedToScene) {
-            scene?.removeEntities(managedAsset.asset.entities)
+            scene?.removeEntities(managedAsset.entities)
         }
-        loader.destroyAsset(managedAsset.asset)
+        val bundle = gltfBundles[managedAsset.bundleHandle] ?: return
+        bundle.instanceHandles.remove(handle)
+        if (bundle.instanceHandles.isEmpty()) {
+            gltfBundles.remove(managedAsset.bundleHandle)
+            loader.destroyAsset(bundle.asset)
+        }
     }
 
     override fun getGltfAnimationCount(handle: Int): Int {
@@ -1344,7 +1340,7 @@ class AndroidFilamentEngine(
 
     override fun transformGltfToUnitCube(handle: Int) {
         val managedAsset = gltfAssets[handle] ?: return
-        val boundingBox = managedAsset.asset.boundingBox
+        val boundingBox = managedAsset.bundle.asset.boundingBox
         val center = boundingBox.center
         val halfExtent = boundingBox.halfExtent
         val maxExtent = max(max(halfExtent[0], halfExtent[1]), halfExtent[2]) * 2f
@@ -1367,20 +1363,20 @@ class AndroidFilamentEngine(
 
     override fun getGltfRenderableHandles(handle: Int): IntArray {
         val managedAsset = gltfAssets[handle] ?: return intArrayOf()
-        return managedAsset.asset.entities.copyOf()
+        return managedAsset.renderableEntities.copyOf()
     }
 
     override fun addGltfToScene(handle: Int) {
         val managedAsset = gltfAssets[handle] ?: return
         if (managedAsset.addedToScene) return
-        scene?.addEntities(managedAsset.asset.entities)
+        scene?.addEntities(managedAsset.entities)
         managedAsset.addedToScene = true
     }
 
     override fun removeGltfFromScene(handle: Int) {
         val managedAsset = gltfAssets[handle] ?: return
         if (!managedAsset.addedToScene) return
-        scene?.removeEntities(managedAsset.asset.entities)
+        scene?.removeEntities(managedAsset.entities)
         managedAsset.addedToScene = false
     }
 
@@ -1392,7 +1388,7 @@ class AndroidFilamentEngine(
     private fun applyGltfRootTransform(managedAsset: ManagedGltfAsset) {
         val eng = engine ?: return
         val transformManager = eng.transformManager
-        val instance = transformManager.getInstance(managedAsset.asset.root)
+        val instance = transformManager.getInstance(managedAsset.instance.root)
         if (instance == 0) return
         transformManager.setTransform(
             instance,
@@ -1401,6 +1397,65 @@ class AndroidFilamentEngine(
                 managedAsset.normalizationTransform,
             ),
         )
+    }
+
+    private fun loadManagedGltfAssets(path: String, instanceCount: Int): List<Int> {
+        if (instanceCount <= 0) return emptyList()
+        val loader = assetLoader ?: return emptyList()
+        val resourceLoader = resourceLoader ?: return emptyList()
+        val eng = engine ?: return emptyList()
+        val buffer = loadAssetBuffer(path) ?: return emptyList()
+        val instances = mutableListOf<FilamentInstance>()
+
+        val asset = loader.createAsset(buffer) ?: return emptyList()
+        instances += asset.instance
+        repeat(instanceCount - 1) {
+            val instance = loader.createInstance(asset) ?: run {
+                loader.destroyAsset(asset)
+                return emptyList()
+            }
+            instances += instance
+        }
+
+        if (!loadGltfResources(asset = asset, path = path, resourceLoader = resourceLoader)) {
+            loader.destroyAsset(asset)
+            return emptyList()
+        }
+        resourceLoader.loadResources(asset)
+        asset.releaseSourceData()
+
+        val bundleHandle = nextGltfBundleHandle++
+        val bundle = ManagedGltfBundle(
+            asset = asset,
+            instanceHandles = mutableSetOf(),
+        )
+        gltfBundles[bundleHandle] = bundle
+
+        return instances.map { instance ->
+            val handle = nextHandle++
+            val entities = instance.entities
+            gltfAssets[handle] = ManagedGltfAsset(
+                bundleHandle = bundleHandle,
+                bundle = bundle,
+                instance = instance,
+                animator = instance.animator,
+                entities = entities,
+                renderableEntities = entities.filter(eng.renderableManager::hasComponent).toIntArray(),
+                addedToScene = false,
+            )
+            bundle.instanceHandles += handle
+            handle
+        }
+    }
+
+    private fun loadGltfResources(asset: FilamentAsset, path: String, resourceLoader: ResourceLoader): Boolean {
+        if (!path.endsWith(".gltf", ignoreCase = true)) return true
+        val basePath = path.substringBeforeLast('/', "")
+        asset.resourceUris.forEach { resourceUri ->
+            val resourceBuffer = loadAssetBuffer(resolveRelativeAssetPath(basePath, resourceUri)) ?: return false
+            resourceLoader.addResourceData(resourceUri, resourceBuffer)
+        }
+        return true
     }
 
     private fun loadAssetBuffer(path: String): ByteBuffer? {
@@ -1789,9 +1844,18 @@ class AndroidFilamentEngine(
         var cameraConfig: CameraConfig = CameraConfig(),
     )
 
-    private data class ManagedGltfAsset(
+    private data class ManagedGltfBundle(
         val asset: FilamentAsset,
+        val instanceHandles: MutableSet<Int>,
+    )
+
+    private data class ManagedGltfAsset(
+        val bundleHandle: Int,
+        val bundle: ManagedGltfBundle,
+        val instance: FilamentInstance,
         val animator: Animator,
+        val entities: IntArray,
+        val renderableEntities: IntArray,
         var addedToScene: Boolean,
         var normalizationTransform: FloatArray = identityMatrix4(),
         var worldTransform: FloatArray = identityMatrix4(),
