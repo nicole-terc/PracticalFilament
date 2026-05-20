@@ -22,6 +22,14 @@
 #import <filament/Skybox.h>
 #import <filament/Texture.h>
 #import <filament/TextureSampler.h>
+#import <gltfio/Animator.h>
+#import <gltfio/AssetLoader.h>
+#import <gltfio/FilamentAsset.h>
+#import <gltfio/FilamentInstance.h>
+#import <gltfio/MaterialProvider.h>
+#import <gltfio/ResourceLoader.h>
+#import <gltfio/TextureProvider.h>
+#import <gltfio/materials/uberarchive.h>
 #import <image/Ktx1Bundle.h>
 #import <ktxreader/Ktx1Reader.h>
 #import <utils/EntityManager.h>
@@ -44,6 +52,7 @@
 
 using namespace filament;
 using namespace filament::backend;
+using namespace filament::gltfio;
 using namespace utils;
 using namespace math;
 
@@ -67,6 +76,32 @@ static NSData *PFLoadDataFromPathOrUri(NSString *location) {
     }
 
     return nil;
+}
+
+static NSString *PFResolveRelativeResourceLocation(NSString *baseLocation, NSString *resourceUri) {
+    if (resourceUri.length == 0) return resourceUri;
+    if ([resourceUri hasPrefix:@"data:"]) return resourceUri;
+
+    NSURL *resourceURL = [NSURL URLWithString:resourceUri];
+    if (resourceURL.scheme.length > 0) {
+        return resourceUri;
+    }
+
+    NSURL *baseURL = [NSURL URLWithString:baseLocation];
+    if (baseURL.scheme.length > 0) {
+        NSURL *directoryURL = [baseURL URLByDeletingLastPathComponent];
+        NSURL *resolvedURL = [NSURL URLWithString:resourceUri relativeToURL:directoryURL];
+        if (resolvedURL) {
+            return resolvedURL.absoluteString;
+        }
+    }
+
+    NSString *basePath = baseLocation;
+    if ([basePath hasPrefix:@"file://"]) {
+        basePath = [basePath stringByRemovingPercentEncoding];
+        basePath = [basePath stringByReplacingOccurrencesOfString:@"file://" withString:@""];
+    }
+    return [[basePath stringByDeletingLastPathComponent] stringByAppendingPathComponent:resourceUri];
 }
 
 static void *PFMakeOwnedCopy(const void *source, size_t size) {
@@ -291,6 +326,12 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     }
 }
 
+struct PFManagedGltfAsset {
+    FilamentAsset *asset = nullptr;
+    Animator *animator = nullptr;
+    bool addedToScene = false;
+};
+
 @implementation FilamentBridge {
     Engine *_engine;
     Renderer *_renderer;
@@ -309,8 +350,12 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     std::map<int, MaterialInstance *> _materialInstances;
     std::map<int, Texture *> _textures;
     std::map<int, MorphTargetBuffer *> _morphTargetBuffers;
+    std::map<int, PFManagedGltfAsset> _gltfAssets;
     std::vector<VertexBuffer *> _vertexBuffers;
     std::vector<IndexBuffer *> _indexBuffers;
+    MaterialProvider *_gltfMaterialProvider;
+    TextureProvider *_gltfTextureProvider;
+    AssetLoader *_gltfAssetLoader;
 
     int _nextHandle;
     int _viewWidth;
@@ -348,6 +393,19 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
         (__bridge void *)layer,
         isOpaque ? 0 : SwapChain::CONFIG_TRANSPARENT
     );
+
+    _gltfMaterialProvider = createUbershaderProvider(
+        _engine,
+        UBERARCHIVE_DEFAULT_DATA,
+        UBERARCHIVE_DEFAULT_SIZE
+    );
+    _gltfTextureProvider = createStbProvider(_engine);
+    _gltfAssetLoader = AssetLoader::create({
+        .engine = _engine,
+        .materials = _gltfMaterialProvider,
+        .names = nullptr,
+        .entities = &EntityManager::get(),
+    });
 }
 
 - (void)setClearColorR:(float)r g:(float)g b:(float)b a:(float)a {
@@ -365,6 +423,19 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
 
     _scene->setIndirectLight(nullptr);
     _scene->setSkybox(nullptr);
+
+    auto destroyManagedAsset = [&](int handle) {
+        auto it = _gltfAssets.find(handle);
+        if (it == _gltfAssets.end() || !_gltfAssetLoader) return;
+        if (it->second.addedToScene) {
+            _scene->removeEntities(it->second.asset->getEntities(), it->second.asset->getEntityCount());
+        }
+        _gltfAssetLoader->destroyAsset(it->second.asset);
+        _gltfAssets.erase(it);
+    };
+    while (!_gltfAssets.empty()) {
+        destroyManagedAsset(_gltfAssets.begin()->first);
+    }
 
     for (auto &pair : _renderables) {
         _scene->remove(pair.second);
@@ -421,12 +492,28 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _engine->destroy(_renderer);
     if (_swapChain) _engine->destroy(_swapChain);
 
+    if (_gltfAssetLoader) {
+        AssetLoader::destroy(&_gltfAssetLoader);
+    }
+    if (_gltfMaterialProvider) {
+        _gltfMaterialProvider->destroyMaterials();
+        delete _gltfMaterialProvider;
+        _gltfMaterialProvider = nullptr;
+    }
+    if (_gltfTextureProvider) {
+        delete _gltfTextureProvider;
+        _gltfTextureProvider = nullptr;
+    }
+
     Engine::destroy(&_engine);
     _engine = nullptr;
 }
 
 - (void)clearScene {
     if (!_engine) return;
+    while (!_gltfAssets.empty()) {
+        [self destroyGltfAsset:_gltfAssets.begin()->first];
+    }
     for (auto &pair : _renderables) {
         _scene->remove(pair.second);
         _engine->destroy(pair.second);
@@ -1623,6 +1710,143 @@ static RenderableManager::PrimitiveType PFPrimitiveTypeFromValue(int32_t value) 
     _engine->destroy(it->second);
     EntityManager::get().destroy(it->second);
     _renderables.erase(it);
+}
+
+- (int)loadGltfAsset:(NSString *)path {
+    if (!_engine || !_gltfAssetLoader) return -1;
+
+    NSData *data = PFLoadDataFromPathOrUri(path);
+    if (!data) {
+        NSLog(@"Failed to load glTF asset data from '%@'", path);
+        return -1;
+    }
+
+    FilamentAsset *asset = _gltfAssetLoader->createAsset(
+        static_cast<uint8_t const *>(data.bytes),
+        static_cast<uint32_t>(data.length)
+    );
+    if (!asset) {
+        NSLog(@"Failed to parse glTF asset from '%@'", path);
+        return -1;
+    }
+
+    ResourceLoader resourceLoader({
+        .engine = _engine,
+        .normalizeSkinningWeights = true,
+    });
+    if (_gltfTextureProvider) {
+        resourceLoader.addTextureProvider("image/png", _gltfTextureProvider);
+        resourceLoader.addTextureProvider("image/jpeg", _gltfTextureProvider);
+    }
+    auto destroy = [](void *, size_t, void *userData) { CFBridgingRelease(userData); };
+    const char *const *resourceUris = asset->getResourceUris();
+    const size_t resourceUriCount = asset->getResourceUriCount();
+    for (size_t index = 0; index < resourceUriCount; index++) {
+        const char *resourceUri = resourceUris[index];
+        NSString *uriString = [NSString stringWithCString:resourceUri encoding:NSUTF8StringEncoding];
+        NSString *resolvedLocation = PFResolveRelativeResourceLocation(path, uriString);
+        NSData *resourceData = PFLoadDataFromPathOrUri(resolvedLocation);
+        if (!resourceData) {
+            NSLog(
+                @"Failed to load glTF resource '%@' for asset '%@' (resolved to '%@')",
+                uriString,
+                path,
+                resolvedLocation
+            );
+            _gltfAssetLoader->destroyAsset(asset);
+            return -1;
+        }
+        ResourceLoader::BufferDescriptor descriptor(
+            resourceData.bytes,
+            resourceData.length,
+            destroy,
+            (void *)CFBridgingRetain(resourceData)
+        );
+        resourceLoader.addResourceData(resourceUri, std::move(descriptor));
+    }
+    if (!resourceLoader.loadResources(asset)) {
+        NSLog(@"Failed to load glTF resources from '%@'", path);
+        _gltfAssetLoader->destroyAsset(asset);
+        return -1;
+    }
+    asset->releaseSourceData();
+
+    int handle = _nextHandle++;
+    FilamentInstance *instance = asset->getInstance();
+    _gltfAssets[handle] = PFManagedGltfAsset{
+        .asset = asset,
+        .animator = instance ? instance->getAnimator() : nullptr,
+        .addedToScene = false,
+    };
+    return handle;
+}
+
+- (void)destroyGltfAsset:(int)handle {
+    auto it = _gltfAssets.find(handle);
+    if (it == _gltfAssets.end() || !_gltfAssetLoader) return;
+    if (it->second.addedToScene) {
+        _scene->removeEntities(it->second.asset->getEntities(), it->second.asset->getEntityCount());
+    }
+    _gltfAssetLoader->destroyAsset(it->second.asset);
+    _gltfAssets.erase(it);
+}
+
+- (int)getGltfAnimationCount:(int)handle {
+    auto it = _gltfAssets.find(handle);
+    return it == _gltfAssets.end() || !it->second.animator ? 0 : (int)it->second.animator->getAnimationCount();
+}
+
+- (float)getGltfAnimationDuration:(int)handle animationIndex:(int)animationIndex {
+    auto it = _gltfAssets.find(handle);
+    return it == _gltfAssets.end() || !it->second.animator ? 0.0f : it->second.animator->getAnimationDuration((size_t)animationIndex);
+}
+
+- (void)applyGltfAnimation:(int)handle animationIndex:(int)animationIndex timeSeconds:(float)timeSeconds {
+    auto it = _gltfAssets.find(handle);
+    if (it == _gltfAssets.end() || !it->second.animator) return;
+    it->second.animator->applyAnimation((size_t)animationIndex, timeSeconds);
+}
+
+- (void)updateGltfBoneMatrices:(int)handle {
+    auto it = _gltfAssets.find(handle);
+    if (it == _gltfAssets.end() || !it->second.animator) return;
+    it->second.animator->updateBoneMatrices();
+}
+
+- (void)transformGltfToUnitCube:(int)handle {
+    auto it = _gltfAssets.find(handle);
+    if (it == _gltfAssets.end() || !_engine) return;
+
+    Aabb bounds = it->second.asset->getBoundingBox();
+    float3 center = bounds.center();
+    float3 extent = bounds.extent();
+    float maxExtent = std::max({extent.x, extent.y, extent.z}) * 2.0f;
+    if (maxExtent <= 0.0f) return;
+
+    auto &transformManager = _engine->getTransformManager();
+    auto instance = transformManager.getInstance(it->second.asset->getRoot());
+    if (!instance.isValid()) return;
+
+    float scale = 2.0f / maxExtent;
+    transformManager.setTransform(
+        instance,
+        mat4f::scaling(float3{scale, scale, scale}) *
+            mat4f::translation(float3{-center.x, -center.y, -center.z})
+    );
+}
+
+- (void)addGltfToScene:(int)handle {
+    auto it = _gltfAssets.find(handle);
+    if (it == _gltfAssets.end() || it->second.addedToScene || !_scene) return;
+    _scene->addEntities(it->second.asset->getEntities(), it->second.asset->getEntityCount());
+    it->second.addedToScene = true;
+}
+
+- (void)removeGltfFromScene:(int)handle {
+    auto it = _gltfAssets.find(handle);
+    if (it == _gltfAssets.end() || !it->second.addedToScene || !_scene) return;
+    _scene->removeEntities(it->second.asset->getEntities(), it->second.asset->getEntityCount());
+    it->second.addedToScene = false;
 }
 
 - (void)pickRenderableAtX:(int)x y:(int)y completion:(FilamentPickCompletion)completion {

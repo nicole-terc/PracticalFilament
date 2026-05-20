@@ -188,7 +188,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../tools/filament/1.70.1/ios/lib/arm64-apple-ios-simulator";
+					"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/../tools/filament/1.70.1/ios/lib/arm64-apple-ios";
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(SRCROOT)/../tools/filament/1.70.1/ios/lib/arm64-apple-ios-simulator-fixed";
 				OTHER_LDFLAGS = (
 					"-lfilament",
 					"-lbackend",
@@ -202,7 +203,13 @@
 					"-lzstd",
 					"-lgeometry",
 					"-lfilameshio",
+					"-lgltfio_core",
+					"-luberarchive",
+					"-luberzlib",
+					"-lfilamat",
+					"-ldracodec",
 					"-lmeshoptimizer",
+					"-lstb",
 					"-framework",
 					Metal,
 					"-framework",
@@ -298,7 +305,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../tools/filament/1.70.1/ios/lib/arm64-apple-ios-simulator";
+					"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/../tools/filament/1.70.1/ios/lib/arm64-apple-ios";
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(SRCROOT)/../tools/filament/1.70.1/ios/lib/arm64-apple-ios-simulator-fixed";
 				OTHER_LDFLAGS = (
 					"-lfilament",
 					"-lbackend",
@@ -312,7 +320,13 @@
 					"-lzstd",
 					"-lgeometry",
 					"-lfilameshio",
+					"-lgltfio_core",
+					"-luberarchive",
+					"-luberzlib",
+					"-lfilamat",
+					"-ldracodec",
 					"-lmeshoptimizer",
+					"-lstb",
 					"-framework",
 					Metal,
 					"-framework",

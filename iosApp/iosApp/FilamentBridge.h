@@ -123,6 +123,15 @@ typedef void (^FilamentPickCompletion)(int renderableHandle, float depth, float 
                            m30:(float)m30 m31:(float)m31 m32:(float)m32 m33:(float)m33;
 - (void)setMorphWeights:(int)handle weights:(NSArray<NSNumber *> * _Nonnull)weights;
 - (void)removeRenderable:(int)handle;
+- (int)loadGltfAsset:(NSString * _Nonnull)path;
+- (void)destroyGltfAsset:(int)handle;
+- (int)getGltfAnimationCount:(int)handle;
+- (float)getGltfAnimationDuration:(int)handle animationIndex:(int)animationIndex;
+- (void)applyGltfAnimation:(int)handle animationIndex:(int)animationIndex timeSeconds:(float)timeSeconds;
+- (void)updateGltfBoneMatrices:(int)handle;
+- (void)transformGltfToUnitCube:(int)handle;
+- (void)addGltfToScene:(int)handle;
+- (void)removeGltfFromScene:(int)handle;
 - (void)pickRenderableAtX:(int)x y:(int)y completion:(FilamentPickCompletion _Nonnull)completion;
 
 - (void)render;

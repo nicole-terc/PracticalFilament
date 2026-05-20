@@ -330,6 +330,42 @@ class FilamentBridgeAdapter: FilamentBridgeProtocol {
 
     func removeRenderable(handle: Int32) { bridge.removeRenderable(handle) }
 
+    func loadGltfAsset(path: String) -> Int32 {
+        bridge.loadGltfAsset(path)
+    }
+
+    func destroyGltfAsset(handle: Int32) {
+        bridge.destroyGltfAsset(handle)
+    }
+
+    func getGltfAnimationCount(handle: Int32) -> Int32 {
+        bridge.getGltfAnimationCount(handle)
+    }
+
+    func getGltfAnimationDuration(handle: Int32, animationIndex: Int32) -> Float {
+        bridge.getGltfAnimationDuration(handle, animationIndex: animationIndex)
+    }
+
+    func applyGltfAnimation(handle: Int32, animationIndex: Int32, timeSeconds: Float) {
+        bridge.applyGltfAnimation(handle, animationIndex: animationIndex, timeSeconds: timeSeconds)
+    }
+
+    func updateGltfBoneMatrices(handle: Int32) {
+        bridge.updateGltfBoneMatrices(handle)
+    }
+
+    func transformGltfToUnitCube(handle: Int32) {
+        bridge.transformGltf(toUnitCube: handle)
+    }
+
+    func addGltfToScene(handle: Int32) {
+        bridge.addGltf(toScene: handle)
+    }
+
+    func removeGltfFromScene(handle: Int32) {
+        bridge.removeGltf(fromScene: handle)
+    }
+
     func pickRenderableAt(x: Int32, y: Int32, callback: any FilamentBridgePickCallback) {
         bridge.pickRenderableAt(x: x, y: y) { handle, depth, fragX, fragY, fragZ in
             callback.onPickResult(

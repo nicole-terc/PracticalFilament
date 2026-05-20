@@ -388,28 +388,36 @@ class IosFilamentEngine(
     override fun setViewPostProcessing(handle: Int, enabled: Boolean) {
     }
 
-    override fun loadGltfAsset(path: String): Int = -1
+    override fun loadGltfAsset(path: String): Int = bridge.loadGltfAsset(path)
 
     override fun destroyGltfAsset(handle: Int) {
+        bridge.destroyGltfAsset(handle)
     }
 
-    override fun getGltfAnimationCount(handle: Int): Int = 0
+    override fun getGltfAnimationCount(handle: Int): Int = bridge.getGltfAnimationCount(handle)
 
-    override fun getGltfAnimationDuration(handle: Int, animationIndex: Int): Float = 0f
+    override fun getGltfAnimationDuration(handle: Int, animationIndex: Int): Float {
+        return bridge.getGltfAnimationDuration(handle, animationIndex = animationIndex)
+    }
 
     override fun applyGltfAnimation(handle: Int, animationIndex: Int, timeSeconds: Float) {
+        bridge.applyGltfAnimation(handle, animationIndex = animationIndex, timeSeconds = timeSeconds)
     }
 
     override fun updateGltfBoneMatrices(handle: Int) {
+        bridge.updateGltfBoneMatrices(handle)
     }
 
     override fun transformGltfToUnitCube(handle: Int) {
+        bridge.transformGltfToUnitCube(handle)
     }
 
     override fun addGltfToScene(handle: Int) {
+        bridge.addGltfToScene(handle)
     }
 
     override fun removeGltfFromScene(handle: Int) {
+        bridge.removeGltfFromScene(handle)
     }
 
     override fun requestFrame() {
@@ -550,6 +558,15 @@ interface FilamentBridgeProtocol {
     )
     fun setMorphWeights(handle: Int, weights: FloatArray)
     fun removeRenderable(handle: Int)
+    fun loadGltfAsset(path: String): Int
+    fun destroyGltfAsset(handle: Int)
+    fun getGltfAnimationCount(handle: Int): Int
+    fun getGltfAnimationDuration(handle: Int, animationIndex: Int): Float
+    fun applyGltfAnimation(handle: Int, animationIndex: Int, timeSeconds: Float)
+    fun updateGltfBoneMatrices(handle: Int)
+    fun transformGltfToUnitCube(handle: Int)
+    fun addGltfToScene(handle: Int)
+    fun removeGltfFromScene(handle: Int)
     fun pickRenderableAt(x: Int, y: Int, callback: FilamentBridgePickCallback)
     fun render()
     fun updateViewportWidth(width: Int, height: Int)
